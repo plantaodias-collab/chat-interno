@@ -1,0 +1,322 @@
+═════════════════════════════════════════════════════════════════════════════
+   GUIA DE INSTALAÇÃO DETALHADO - CHAT INTERNO
+═════════════════════════════════════════════════════════════════════════════
+
+
+PASSO 1: PREPARAR OS ARQUIVOS
+──────────────────────────────────────────────────────────────────────────────
+
+Todos os arquivos necessários devem estar na mesma pasta.
+
+Arquivos obrigatórios:
+   ✓ server.js           - Servidor principal
+   ✓ index.html          - Interface web
+   ✓ package.json        - Dependências do npm
+   ✓ setup.js            - Script de configuração
+
+Arquivos opcionais (facilitam uso no Windows):
+   ✓ configurar.bat      - Instala e configura (Windows)
+   ✓ iniciar.bat         - Inicia servidor (Windows)
+   ✓ README.md           - Documentação completa
+   ✓ GUIA_RAPIDO.txt     - Este guia
+
+Exemplo de estrutura:
+   C:\ChatInterno\
+   ├── server.js
+   ├── index.html
+   ├── package.json
+   ├── setup.js
+   ├── configurar.bat
+   ├── iniciar.bat
+   ├── README.md
+   └── GUIA_RAPIDO.txt
+
+
+PASSO 2: INSTALAR NODE.JS
+──────────────────────────────────────────────────────────────────────────────
+
+Verifique se já tem Node.js:
+   1. Abra: Prompt de Comando (cmd) ou PowerShell
+   2. Execute: node --version
+   3. Se receber um número de versão, passe ao PASSO 3
+
+Se não tem Node.js:
+   1. Acesse: https://nodejs.org/
+   2. Baixe a versão LTS (recomendado)
+   3. Execute o instalador
+   4. Siga os passos (deixe tudo padrão)
+   5. Reinicie o computador
+
+Verificar após instalar:
+   1. Abra novo Prompt de Comando
+   2. Execute: node --version
+      (deve mostrar algo como v18.17.0)
+   3. Execute: npm --version
+      (deve mostrar algo como 9.8.1)
+
+
+PASSO 3: CONFIGURAÇÃO AUTOMÁTICA (Windows)
+──────────────────────────────────────────────────────────────────────────────
+
+Para facilitar, use o arquivo "configurar.bat":
+
+   1. Abra a pasta do projeto
+   2. Clique com botão direito em "configurar.bat"
+   3. Escolha "Executar como administrador"
+   4. Aguarde até ver "Configuração concluída com sucesso"
+
+O script fará automaticamente:
+   ✓ Instala dependências (npm install)
+   ✓ Cria banco de dados
+   ✓ Pede dados do administrador
+   ✓ Cria tabelas no banco
+
+
+PASSO 3 (alternativo): CONFIGURAÇÃO MANUAL
+──────────────────────────────────────────────────────────────────────────────
+
+Se preferir fazer manualmente ou usar macOS/Linux:
+
+   1. Abra terminal/prompt na pasta do projeto
+
+   2. Instale dependências:
+      npm install
+      (aguarde até completar - pode levar alguns minutos)
+
+   3. Configure o banco de dados:
+      npm run setup
+
+      Siga as instruções:
+      - Digite seu nome
+      - Digite seu e-mail
+      - Digite uma senha forte
+      - Escolha criar grupos de exemplo (s/n)
+
+   4. Se tudo deu certo, verá:
+      ✓ Configuração finalizada com sucesso
+
+
+PASSO 4: INICIAR O SERVIDOR
+──────────────────────────────────────────────────────────────────────────────
+
+OPÇÃO A - Windows (mais fácil):
+   1. Clique 2x em "iniciar.bat"
+   2. Uma janela abrirá
+   3. Verá: "Servidor rodando em http://localhost:3000"
+
+OPÇÃO B - Terminal manual:
+   1. Abra terminal/prompt na pasta do projeto
+   2. Execute: npm start
+   3. Verá: "Servidor rodando em http://localhost:3000"
+
+Quando ver essa mensagem, o servidor está ativo!
+
+
+PASSO 5: ACESSAR O APLICATIVO
+──────────────────────────────────────────────────────────────────────────────
+
+1. Abra seu navegador (Chrome, Firefox, Edge, Safari)
+
+2. Digite na barra de endereço:
+   http://localhost:3000
+
+3. Pressione Enter
+
+4. Faça login com:
+   Email: o e-mail que você criou no setup
+   Senha: a senha que você criou no setup
+
+5. Pronto! Você está logado no Chat Interno
+
+
+PASSO 6: ACESSAR DE OUTRAS MÁQUINAS
+──────────────────────────────────────────────────────────────────────────────
+
+Descobrir o IP da máquina servidor:
+   1. Abra Prompt de Comando (cmd)
+   2. Execute: ipconfig
+   3. Procure por "IPv4 Address" na seção correta
+      (geralmente começa com 192.168 ou 10.)
+   4. Anote o número (ex: 192.168.1.100)
+
+Na outra máquina (mesmo que na rede):
+   1. Abra navegador
+   2. Digite: http://SEU_IP:3000
+      (ex: http://192.168.1.100:3000)
+   3. Faça login
+   4. Pronto!
+
+Importante:
+   - Máquinas devem estar na mesma rede local
+   - Firewall pode bloquear - permita porta 3000
+   - IP pode mudar se máquina reiniciar
+
+
+PASSO 7: CADASTRAR USUÁRIOS (Como Administrador)
+──────────────────────────────────────────────────────────────────────────────
+
+1. Faça login com sua conta de admin
+
+2. Clique em "⚙️ Painel Admin" (topo direito)
+
+3. Na seção "Cadastrar Novo Usuário":
+   - Digite o NOME do funcionário
+   - Digite o E-MAIL do funcionário
+   - Clique "Cadastrar Usuário"
+
+4. O sistema mostrará: "Usuário cadastrado com sucesso!"
+
+5. Comunique ao funcionário:
+   - E-mail: [o e-mail que você digitou]
+   - Senha temporária: Senha123!
+   - (Oriente-o a mudar a senha depois)
+
+Criar quantos usuários precisar. Todos terão acesso automático.
+
+
+PASSO 8: CRIAR GRUPOS (Como Administrador)
+──────────────────────────────────────────────────────────────────────────────
+
+1. No Painel Admin, procure "Criar Novo Grupo"
+
+2. Digite:
+   - Nome do grupo (ex: "Geral", "Financeiro", "TI")
+   - Descrição (ex: "Discussões gerais da equipe")
+
+3. Clique "Criar Grupo"
+
+4. Todos os usuários cadastrados terão acesso automático
+
+Exemplos de grupos úteis:
+   - Geral (discussões gerais)
+   - Anúncios (comunicados importantes)
+   - Suporte (problemas técnicos)
+   - Departamentos específicos
+
+
+PASSO 9: USAR O CHAT (Para todos)
+──────────────────────────────────────────────────────────────────────────────
+
+ENVIAR MENSAGEM EM GRUPO:
+   1. Clique no nome do grupo na barra lateral
+   2. Digite sua mensagem
+   3. Pressione ENTER ou clique "Enviar"
+   4. Todos do grupo veem a mensagem
+
+ENVIAR MENSAGEM PRIVADA:
+   1. Clique no nome de um contato na barra lateral
+   2. Digite sua mensagem
+   3. Pressione ENTER ou clique "Enviar"
+   4. Apenas essa pessoa vê a mensagem
+
+RECEBER NOTIFICAÇÕES:
+   1. Quando alguém mandar mensagem para você
+   2. Verá notificação no topo direito da tela
+   3. Se permitir, receberá também notificação do navegador
+   4. Clique "Permitir" quando o navegador pedir
+
+
+PARAR O SERVIDOR
+──────────────────────────────────────────────────────────────────────────────
+
+Windows (janela configurar.bat/iniciar.bat):
+   - Clique na janela
+   - Pressione CTRL+C
+   - Responda "S" quando pedir
+
+Terminal manual:
+   - Pressione CTRL+C
+   - A janela fechará
+
+Todos desconectarão automaticamente.
+
+
+ALTERAR PORTA (se precisar)
+──────────────────────────────────────────────────────────────────────────────
+
+Se porta 3000 já está em uso:
+
+   1. Abra arquivo "server.js" com editor de texto
+
+   2. Procure pela linha (próximo ao final):
+      const PORT = process.env.PORT || 3000;
+
+   3. Mude 3000 para outra porta (ex: 8080, 5000)
+      const PORT = process.env.PORT || 8080;
+
+   4. Salve o arquivo
+
+   5. Reinicie o servidor
+
+   6. Acesse na nova porta:
+      http://localhost:8080
+
+
+FIREWALL DO WINDOWS
+──────────────────────────────────────────────────────────────────────────────
+
+Se outras máquinas não conseguem conectar:
+
+   1. Abra: Windows Defender Firewall
+      (Painel de Controle > Segurança > Firewall)
+
+   2. Clique: "Permitir um programa pelo firewall"
+
+   3. Procure: Node.js na lista
+
+   4. Marque as caixas de "Rede Privada" e "Rede Pública"
+
+   5. Clique: OK
+
+Ou permita a porta manualmente (avançado):
+   1. Abra PowerShell como administrador
+   2. Execute:
+      netsh advfirewall firewall add rule name="Node.js 3000" dir=in action=allow protocol=tcp localport=3000
+
+
+RESETAR BANCO DE DADOS
+──────────────────────────────────────────────────────────────────────────────
+
+Se algo deu errado ou quer começar do zero:
+
+   1. Procure pelo arquivo "chat.db" na pasta do projeto
+
+   2. Delete-o (Shift+Delete ou envie para lixeira)
+
+   3. Execute novamente:
+      npm run setup
+
+   4. Crie novo admin e configure novamente
+
+   5. Inicie o servidor: npm start
+
+
+LOGS E DIAGNÓSTICO
+──────────────────────────────────────────────────────────────────────────────
+
+Para entender se algo deu errado:
+
+   1. Deixe o servidor rodando
+   2. Abra o navegador (F12) para developer tools
+   3. Vá à aba "Console"
+   4. Tente fazer a ação que deu erro
+   5. Veja mensagens de erro na console
+   6. Ou veja mensagens no terminal do servidor
+
+
+PRÓXIMAS AÇÕES
+──────────────────────────────────────────────────────────────────────────────
+
+Depois de instalado:
+
+   ✓ Crie grupos conforme necessário
+   ✓ Cadastre todos os funcionários
+   ✓ Compartilhe o link e credenciais
+   ✓ Teste mensagens em grupos e privadas
+   ✓ Verifique se notificações funcionam
+   ✓ Deixe o servidor rodando 24h (opcional)
+
+
+═════════════════════════════════════════════════════════════════════════════
+Dúvidas? Verifique README.md ou GUIA_RAPIDO.txt
+═════════════════════════════════════════════════════════════════════════════

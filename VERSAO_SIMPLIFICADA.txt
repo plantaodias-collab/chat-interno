@@ -1,0 +1,196 @@
+═════════════════════════════════════════════════════════════════════════════
+   VERSÃO SIMPLIFICADA - Chat Interno (Sem dependências nativas)
+═════════════════════════════════════════════════════════════════════════════
+
+Se você tiver problemas com o sqlite3, use esta versão simplificada!
+
+DIFERENÇAS:
+──────────────────────────────────────────────────────────────────────────────
+
+Versão Original (server.js):
+  ✓ Usa SQLite para persistência
+  ⚠ Requer compilação nativa (pode falhar em alguns ambientes)
+
+Versão Simplificada (server-simple.js):
+  ✓ Usa arquivos JSON para persistência
+  ✓ Funciona em qualquer ambiente
+  ✓ Mesmas funcionalidades
+  ✓ Sem dependências complicadas
+
+
+COMO USAR A VERSÃO SIMPLIFICADA:
+──────────────────────────────────────────────────────────────────────────────
+
+OPÇÃO 1: Substituir package.json
+
+  1. Delete: package.json
+  2. Renomeie: package-simple.json para package.json
+  3. Delete: npm_modules e package-lock.json (se existirem)
+  4. Execute: npm install
+  5. Execute: npm run setup
+  6. Execute: npm start
+
+
+OPÇÃO 2: Usar scripts diretamente
+
+  Windows (crie arquivo: iniciar-simples.bat):
+    ════════════════════════════════════════════
+    @echo off
+    chcp 65001 >nul
+    cls
+    echo Iniciando Chat Interno (versao simplificada)...
+    npm install --silent
+    npm start
+    pause
+
+  Linux/Mac (terminal):
+    ════════════════════════════════════════════
+    npm install
+    node server-simple.js
+
+
+ARQUIVO SETUP (escolha um):
+──────────────────────────────────────────────────────────────────────────────
+
+setup.js (versão original com SQLite)
+  ⚠ Pode falhar se sqlite3 não compilar
+
+setup-simple.js (versão simplificada)
+  ✓ Funciona sempre
+  ✓ Cria diretório 'data' com arquivos JSON
+
+Para usar a simplificada:
+  npm run setup (se usar package-simple.json)
+  ou
+  node setup-simple.js
+
+
+ESTRUTURA DE DADOS (Versão Simplificada):
+──────────────────────────────────────────────────────────────────────────────
+
+data/
+├── usuarios.json       → Lista de usuários
+├── grupos.json         → Lista de grupos
+├── membros.json        → Membros de cada grupo
+└── mensagens.json      → Histórico de mensagens
+
+Tudo é salvo automaticamente em JSON!
+
+
+PERFORMANCE:
+──────────────────────────────────────────────────────────────────────────────
+
+Versão Original (SQLite):
+  • Melhor para >10.000 mensagens
+  • Consultas mais rápidas
+  • Índices otimizados
+
+Versão Simplificada (JSON):
+  • Ótima para até 20 pessoas
+  • ~1000-5000 mensagens por pessoa
+  • Mais legível (arquivos JSON)
+  • Ideal para desenvolvimento
+
+Para este projeto (máx 20 pessoas), a versão JSON é PERFEITA!
+
+
+MIGRAÇÃO ENTRE VERSÕES:
+──────────────────────────────────────────────────────────────────────────────
+
+Se precisar trocar de SQLite para JSON:
+
+1. Exporte dados de chat.db (usando ferramenta SQLite)
+2. Converta para formato JSON
+3. Coloque em pasta data/
+4. Use server-simple.js
+
+Ou comece do zero (mais simples):
+
+1. Delete chat.db
+2. Use server-simple.js
+3. Execute setup-simple.js
+4. Dados serão criados em data/
+
+
+BACKUP COM JSON:
+──────────────────────────────────────────────────────────────────────────────
+
+Muito mais simples!
+
+Backup:
+  Copiar pasta: data/
+  Pronto! Já tem todos os dados
+
+Restore:
+  Copiar pasta: data/ de volta
+  Pronto! Todos os dados restaurados
+
+Abrir/Editar:
+  Qualquer editor de texto
+  Arquivos JSON são legíveis
+
+
+CHECKLIST PARA USAR VERSÃO SIMPLIFICADA:
+──────────────────────────────────────────────────────────────────────────────
+
+□ Tenho Node.js instalado (node --version)
+□ Tenho npm instalado (npm --version)
+□ Deleti package.json original
+□ Renomeei package-simple.json para package.json
+□ Deleti node_modules (se existir)
+□ Deleti package-lock.json (se existir)
+□ Deleti chat.db (se existir)
+□ Executei: npm install
+□ Executei: node setup-simple.js
+□ Respondí às perguntas de setup
+□ Executei: npm start
+□ Navegador: http://localhost:3000
+□ Login funcionou
+□ Tudo OK!
+
+
+TROUBLESHOOTING:
+──────────────────────────────────────────────────────────────────────────────
+
+Erro: "Cannot find module 'sqlite3'"
+  → Use a versão simplificada (server-simple.js)
+
+Erro: "Cannot find module 'express'"
+  → Execute: npm install
+
+Erro: "EADDRINUSE"
+  → Porta 3000 já em uso
+  → Mude em server-simple.js: const PORT = 8080;
+
+Pasta 'data' não foi criada:
+  → Execute manualmente: node setup-simple.js
+
+Dados sumiram:
+  → Verifique pasta data/ para ver os arquivos JSON
+
+
+DÚVIDAS TÉCNICAS:
+──────────────────────────────────────────────────────────────────────────────
+
+Por que JSON ao invés de SQLite?
+  • SQLite precisa compilação nativa
+  • JSON é portável e funciona em tudo
+  • Para 20 pessoas é totalmente adequado
+
+E se eu tiver 100 usuários?
+  • Considere migrar para PostgreSQL/MySQL
+  • Por enquanto, JSON funciona bem
+
+E os dados, são seguros em JSON?
+  • Tão seguros quanto SQLite localmente
+  • Criptografia de senha (bcryptjs) igual
+  • Credenciais não são salvas em texto puro
+
+Posso editar os arquivos JSON manualmente?
+  • Sim! Mas cuidado com formato
+  • Recomendo fazer backup antes
+  • Use editor com suporte para JSON
+
+═════════════════════════════════════════════════════════════════════════════
+Versão Simplificada - Pronta para usar!
+═════════════════════════════════════════════════════════════════════════════

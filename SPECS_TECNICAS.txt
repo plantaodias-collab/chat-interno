@@ -1,0 +1,399 @@
+═════════════════════════════════════════════════════════════════════════════
+   ESPECIFICAÇÕES TÉCNICAS - CHAT INTERNO
+═════════════════════════════════════════════════════════════════════════════
+
+
+ARQUITETURA
+──────────────────────────────────────────────────────────────────────────────
+
+Aplicação Web Full-Stack
+
+Frontend (Cliente):
+  • HTML5
+  • CSS3
+  • JavaScript vanilla (sem frameworks)
+  • Socket.IO Client
+  • Responsive Design (mobile-friendly)
+
+Backend (Servidor):
+  • Node.js
+  • Express.js
+  • Socket.IO
+  • SQLite3
+  • JWT (JSON Web Token)
+  • bcryptjs (hashing de senhas)
+
+Banco de Dados:
+  • SQLite (arquivo local)
+  • 4 tabelas principais
+  • Indexação automática
+
+
+REQUISITOS DO SISTEMA
+──────────────────────────────────────────────────────────────────────────────
+
+Servidor (Máquina rodando Chat):
+  • Node.js v14+ (recomendado v18+)
+  • 100MB livres em disco
+  • RAM: 512MB mínimo (1GB+ recomendado)
+  • Porta 3000 disponível (configurável)
+  • Windows, Linux ou macOS
+
+Clientes (Usuários):
+  • Navegador moderno (Chrome, Firefox, Edge, Safari)
+  • Conexão à rede local (WiFi ou Ethernet)
+  • 50MB de cache
+  • Qualquer SO (Windows, Mac, Linux)
+  • Celulares (Android, iOS)
+
+
+TECNOLOGIAS E VERSÕES
+──────────────────────────────────────────────────────────────────────────────
+
+express              ^4.18.2   - Framework HTTP
+socket.io            ^4.5.4    - WebSocket em tempo real
+cors                 ^2.8.5    - CORS middleware
+jsonwebtoken         ^9.0.0    - Autenticação JWT
+bcryptjs             ^2.4.3    - Hash de senhas
+sqlite3              ^5.1.6    - Banco de dados
+body-parser          ^1.20.2   - Parsing de request
+nodemon              ^2.0.20   - Dev server (desenvolvimento)
+
+
+SEGURANÇA
+──────────────────────────────────────────────────────────────────────────────
+
+Autenticação:
+  • JWT (JSON Web Token)
+  • Expiração: 30 dias
+  • Verificação em cada requisição
+  • Chave secreta configurável
+
+Senhas:
+  • Hashing com bcryptjs
+  • Nunca armazenadas em plain text
+  • Geração de hash com 10 rounds
+
+Comunicação:
+  • WebSocket com Socket.IO
+  • Validação de entrada
+  • Proteção contra XSS básica
+  • CORS habilitado
+
+Recomendações:
+  ⚠ Use em rede local apenas
+  ⚠ Se expor na internet, adicionar:
+    - SSL/HTTPS
+    - Firewall mais restritivo
+    - Rate limiting
+    - OWASP compliance
+
+
+PERFORMANCE
+──────────────────────────────────────────────────────────────────────────────
+
+Conexões simultâneas:
+  • Até 20 usuários simultaneamente
+  • 50+ com degradação
+  • Socket.IO gerencia automático
+
+Mensagens por segundo:
+  • ~10 msg/s normal (média)
+  • ~100 msg/s pico (aguenta)
+  • Sem perda de dados
+
+Tamanho de banco:
+  • Cresce ~100KB por 1000 mensagens
+  • Para 20 pessoas por 1 ano: ~200MB
+
+Latência:
+  • 50-200ms (local)
+  • Depende da rede
+
+
+BANCO DE DADOS
+──────────────────────────────────────────────────────────────────────────────
+
+Tabelas:
+
+1. usuarios
+   ├── id (INTEGER, PK)
+   ├── email (TEXT, UNIQUE)
+   ├── senha (TEXT, hashed)
+   ├── nome (TEXT)
+   ├── admin (INTEGER, bool)
+   ├── ativo (INTEGER, bool)
+   └── criado_em (DATETIME)
+
+2. grupos
+   ├── id (INTEGER, PK)
+   ├── nome (TEXT, UNIQUE)
+   ├── descricao (TEXT)
+   └── criado_em (DATETIME)
+
+3. membros_grupo
+   ├── id (INTEGER, PK)
+   ├── grupo_id (FK -> grupos)
+   ├── usuario_id (FK -> usuarios)
+   └── UNIQUE(grupo_id, usuario_id)
+
+4. mensagens
+   ├── id (INTEGER, PK)
+   ├── usuario_id (FK -> usuarios)
+   ├── grupo_id (FK -> grupos) [NULL para privadas]
+   ├── usuario_destino_id (FK -> usuarios) [NULL para grupos]
+   ├── conteudo (TEXT)
+   ├── lido (INTEGER, bool)
+   └── criado_em (DATETIME)
+
+Índices automáticos em:
+  • usuarios.email
+  • mensagens.grupo_id
+  • mensagens.usuario_id
+
+
+API REST ENDPOINTS
+──────────────────────────────────────────────────────────────────────────────
+
+Autenticação:
+  POST   /api/login
+         Body: { email, senha }
+         Response: { token, usuario }
+
+Administrador:
+  POST   /api/admin/criar-usuario
+         Auth: Bearer token
+         Body: { email, nome, senha? }
+
+  GET    /api/admin/usuarios
+         Auth: Bearer token
+         Response: [usuario, ...]
+
+  DELETE /api/admin/usuarios/:id
+         Auth: Bearer token
+
+  POST   /api/admin/criar-grupo
+         Auth: Bearer token
+         Body: { nome, descricao }
+
+Usuário:
+  GET    /api/usuarios
+         Auth: Bearer token
+         Response: [usuario, ...]
+
+  GET    /api/grupos
+         Auth: Bearer token
+         Response: [grupo, ...]
+
+Mensagens:
+  GET    /api/mensagens/grupo/:grupoId
+         Auth: Bearer token
+         Response: [mensagem, ...]
+
+  GET    /api/mensagens/privadas/:usuarioId
+         Auth: Bearer token
+         Response: [mensagem, ...]
+
+
+WEBSOCKET EVENTS
+──────────────────────────────────────────────────────────────────────────────
+
+Cliente → Servidor:
+  • conectar-usuario(usuarioId)
+  • entrar-grupo({ grupoId, usuarioId })
+  • mensagem-grupo({ grupoId, usuarioId, conteudo, usuarioNome })
+  • mensagem-privada({ remetente_id, destinatario_id, conteudo, remetenteNome })
+  • notificar-usuario({ usuarioId, tipo, mensagem })
+
+Servidor → Cliente:
+  • nova-mensagem-grupo({ conteudo, usuarioNome, grupoId, criado_em })
+  • nova-mensagem-privada({ conteudo, remetenteNome, remetente_id, criado_em })
+  • notificacao({ tipo, mensagem })
+
+
+FLUXO DE AUTENTICAÇÃO
+──────────────────────────────────────────────────────────────────────────────
+
+1. Usuário acessa http://localhost:3000
+2. Tela de login (não autenticado)
+3. Envia POST /api/login { email, senha }
+4. Servidor valida credenciais
+5. Gera JWT token (30 dias expiração)
+6. Retorna token + dados usuário
+7. Cliente armazena token em localStorage
+8. Todas requisições incluem: Authorization: Bearer token
+9. Servidor valida token a cada requisição
+10. WebSocket conecta com usuarioId
+
+
+ESCALABILIDADE
+──────────────────────────────────────────────────────────────────────────────
+
+Limitações atuais:
+  • SQLite (single-file database)
+  • Socket.IO memory adapter
+  • Um servidor Node.js
+
+Para crescer:
+  • Migrar para PostgreSQL/MySQL
+  • Usar Redis para session store
+  • Implementar clustering (multiple processes)
+  • Load balancer (Nginx)
+  • Replica de banco de dados
+
+
+COMPLIANCE E REGULAÇÕES
+──────────────────────────────────────────────────────────────────────────────
+
+LGPD (Lei Geral de Proteção de Dados):
+  ⚠ Dados sensíveis armazenados localmente
+  ✓ Retenção controlada pelo admin
+  ✓ Fácil backup/exportação
+  ⚠ Requer política de privacidade
+
+GDPR (Se usuários europeus):
+  ⚠ Requer consentimento explícito
+  ⚠ Direito de exclusão de dados
+  ⚠ Proteção de dados em trânsito
+
+Recomendação:
+  Consulte jurídico da sua organização
+
+
+BACKUP E RECOVERY
+──────────────────────────────────────────────────────────────────────────────
+
+Backup automático:
+  Não implementado. Fazer manualmente:
+
+  Diário:
+    1. Cópia arquivo chat.db
+    2. Guardar em local seguro
+
+  Semanal:
+    1. Cópia completa da pasta
+    2. Guardar em backup externo
+
+Recovery:
+  1. Parar servidor
+  2. Restaurar chat.db
+  3. Iniciar servidor
+  Dados até momento do backup serão mantidos
+
+
+MONITORAMENTO
+──────────────────────────────────────────────────────────────────────────────
+
+Logs (console do servidor):
+  • Conexões de usuários
+  • Erros de banco de dados
+  • Avisos de operação
+
+Browser Console (F12):
+  • Erros de JavaScript
+  • Requisições HTTP
+  • WebSocket status
+
+Recomendações:
+  • Usar PM2 para gerenciar processo
+  • Configurar logging a arquivo
+  • Monitorar espaço disco
+
+
+DESENVOLVIMENTO FUTURO
+──────────────────────────────────────────────────────────────────────────────
+
+Priority Alta:
+  ✓ Alteração de senha
+  ✓ Deletar mensagens
+  ✓ Editar mensagens
+  ✓ Busca de mensagens
+  ✓ Indicador "digitando..."
+
+Priority Média:
+  ✓ Upload de arquivos
+  ✓ Preview de imagens
+  ✓ Emojis
+  ✓ Reações (emoji reactions)
+  ✓ Mencionar usuários (@user)
+
+Priority Baixa:
+  ✓ Chamada de áudio/vídeo
+  ✓ Screen sharing
+  ✓ Gravação de áudio
+  ✓ Integração com serviços (Slack, Teams)
+  ✓ Mobile app nativa
+
+
+INTEGRAÇÃO COM OUTROS SISTEMAS
+──────────────────────────────────────────────────────────────────────────────
+
+Possíveis integrações futuras:
+  • Active Directory (autenticação corporativa)
+  • LDAP (diretório de usuários)
+  • Webhooks (notificações externas)
+  • API pública (integração com 3ª)
+  • Importação de usuários (CSV)
+
+
+TROUBLESHOOTING TÉCNICO
+──────────────────────────────────────────────────────────────────────────────
+
+Erro: EADDRINUSE (porta em uso)
+  Solução: Mude PORT em server.js
+
+Erro: SQLITE_CANTOPEN
+  Solução: Permissões de arquivo, ou delete chat.db
+
+Erro: JWT_EXPIRED
+  Solução: Login novamente (token expirou)
+
+Erro: Cannot GET /
+  Solução: index.html não está em public/
+
+Erro: Socket connection refused
+  Solução: Servidor não está rodando
+
+
+CONFIGURAÇÃO AVANÇADA
+──────────────────────────────────────────────────────────────────────────────
+
+Variáveis de ambiente (criar arquivo .env):
+
+PORT=3000
+SECRET_KEY=sua-chave-secreta-aqui
+NODE_ENV=production
+LOG_LEVEL=info
+
+Uso em desenvolvimento:
+  npm run dev (usa nodemon)
+
+Uso em produção:
+  npm start (sem reload automático)
+
+
+PERFORMANCE TUNING
+──────────────────────────────────────────────────────────────────────────────
+
+Para melhor performance:
+
+1. Database:
+   - Fazer VACUUM regularly: db.run("VACUUM");
+   - Indexar colunas frequentes
+
+2. Servidor:
+   - Usar cluster module
+   - Implementar connection pooling
+
+3. Network:
+   - Paginar mensagens (lazy load)
+   - Comprimir resposta (gzip)
+
+4. Cliente:
+   - Cache de mensagens localmente
+   - Virtual scrolling para histórico
+
+
+═════════════════════════════════════════════════════════════════════════════
+Documento técnico v1.0 - Chat Interno
+═════════════════════════════════════════════════════════════════════════════

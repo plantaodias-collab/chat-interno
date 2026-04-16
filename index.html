@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Interno - Equipe</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+
+    .login-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    .login-box {
+      background: white;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-box h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 28px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: 500;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 5px rgba(102, 126, 234, 0.1);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin-top: 10px;
+    }
+
+    .btn:hover {
+      background: #5568d3;
+    }
+
+    .btn-secondary {
+      background: #ccc;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #bbb;
+    }
+
+    .error-message {
+      color: #e74c3c;
+      font-size: 14px;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    .sidebar {
+      width: 300px;
+      background: #2c3e50;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #34495e;
+    }
+
+    .user-info {
+      padding: 15px;
+      background: #1a252f;
+      border-bottom: 1px solid #34495e;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .user-info div {
+      flex: 1;
+    }
+
+    .user-name {
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .user-email {
+      font-size: 12px;
+      color: #bbb;
+    }
+
+    .admin-badge {
+      background: #e74c3c;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      margin-left: 10px;
+    }
+
+    .logout-btn {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 20px;
+      padding: 0 10px;
+    }
+
+    .menu-title {
+      padding: 15px;
+      font-weight: bold;
+      font-size: 12px;
+      text-transform: uppercase;
+      color: #95a5a6;
+      border-bottom: 1px solid #34495e;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .menu-btn {
+      background: none;
+      border: none;
+      color: #95a5a6;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .menu-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    .menu-item {
+      padding: 12px 15px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all 0.3s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .menu-item:hover {
+      background: #34495e;
+    }
+
+    .menu-item.active {
+      background: #667eea;
+      border-left-color: #667eea;
+      font-weight: bold;
+    }
+
+    .notification-badge {
+      background: #e74c3c;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: white;
+    }
+
+    .header {
+      padding: 15px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h2 {
+      color: #333;
+      font-size: 20px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .header-btn {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .header-btn:hover {
+      background: #5568d3;
+    }
+
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .message {
+      padding: 10px 15px;
+      border-radius: 8px;
+      max-width: 70%;
+      word-wrap: break-word;
+    }
+
+    .message.own {
+      background: #667eea;
+      color: white;
+      align-self: flex-end;
+    }
+
+    .message.other {
+      background: #f0f0f0;
+      color: #333;
+      align-self: flex-start;
+    }
+
+    .message-sender {
+      font-weight: bold;
+      font-size: 12px;
+      margin-bottom: 5px;
+      opacity: 0.7;
+    }
+
+    .message-time {
+      font-size: 11px;
+      opacity: 0.7;
+      margin-top: 5px;
+    }
+
+    .input-area {
+      padding: 15px;
+      border-top: 1px solid #ddd;
+      display: flex;
+      gap: 10px;
+    }
+
+    .input-area input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    .input-area button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .input-area button:hover {
+      background: #5568d3;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-content h3 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .modal-content .form-group {
+      margin-bottom: 15px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .modal-buttons button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    .table thead {
+      background: #f0f0f0;
+    }
+
+    .table th, .table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .table th {
+      font-weight: bold;
+    }
+
+    .table-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .table-actions button {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .btn-delete {
+      background: #e74c3c;
+      color: white;
+    }
+
+    .btn-delete:hover {
+      background: #c0392b;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .notification-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 2000;
+    }
+
+    .notification {
+      background: white;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .notification.error {
+      border-left-color: #e74c3c;
+    }
+
+    .notification.success {
+      border-left-color: #27ae60;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
+    .admin-section {
+      padding: 10px;
+      border-top: 1px solid #34495e;
+      background: #1a252f;
+    }
+
+    .admin-menu-item {
+      color: #e74c3c;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div id="loginContainer" class="login-container">
+    <div class="login-box">
+      <h1>💬 Chat Interno</h1>
+      <div class="form-group">
+        <label>E-mail</label>
+        <input type="email" id="loginEmail" placeholder="seu@email.com">
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <input type="password" id="loginSenha" placeholder="Sua senha">
+      </div>
+      <button class="btn" onclick="fazerLogin()">Entrar</button>
+      <div id="loginError" class="error-message"></div>
+    </div>
+  </div>
+
+  <div id="chatContainer" class="container hidden">
+    <div class="sidebar">
+      <div class="user-info">
+        <div>
+          <div class="user-name" id="currentUserName"></div>
+          <div class="user-email" id="currentUserEmail"></div>
+        </div>
+        <span class="admin-badge" id="adminBadge" style="display: none;">ADMIN</span>
+        <button class="logout-btn" onclick="fazerLogout()">🚪</button>
+      </div>
+
+      <div class="menu-title">
+        Grupos
+        <button class="menu-btn" id="novoGrupoBtn" onclick="abrirNovoGrupo()" style="display: none;">+</button>
+      </div>
+      <div class="menu-list" id="gruposList"></div>
+
+      <div class="menu-title">
+        Contatos
+        <button class="menu-btn" onclick="abrirNovoContato()">+</button>
+      </div>
+      <div class="menu-list" id="contatosList"></div>
+
+      <div class="admin-section" id="adminSection" style="display: none;">
+        <div class="menu-item admin-menu-item" onclick="abrirPainelAdmin()">
+          ⚙️ Painel Admin
+        </div>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="header">
+        <h2 id="headerTitle">Bem-vindo ao Chat</h2>
+        <div class="header-actions">
+          <button class="header-btn" id="ajustesBtn" onclick="abrirAjustes()" style="display: none;">⚙️</button>
+        </div>
+      </div>
+
+      <div class="messages-container" id="messagesContainer"></div>
+
+      <div class="input-area">
+        <input type="text" id="messageInput" placeholder="Digite uma mensagem..." onkeypress="enviarSeEnter(event)">
+        <button onclick="enviarMensagem()">Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Admin -->
+  <div id="adminModal" class="modal">
+    <div class="modal-content">
+      <h3>Painel de Administração</h3>
+
+      <div style="margin-bottom: 20px;">
+        <h4>Cadastrar Novo Usuário</h4>
+        <div class="form-group">
+          <label>Nome</label>
+          <input type="text" id="adminNovonome" placeholder="Nome do usuário">
+        </div>
+        <div class="form-group">
+          <label>E-mail</label>
+          <input type="email" id="adminNovoEmail" placeholder="email@exemplo.com">
+        </div>
+        <button class="btn" onclick="cadastrarNovoUsuario()">Cadastrar Usuário</button>
+      </div>
+
+      <div style="border-top: 1px solid #ddd; padding-top: 20px;">
+        <h4>Usuários Cadastrados</h4>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>E-mail</th>
+              <th>Admin</th>
+              <th>Status</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody id="adminUsuariosTable"></tbody>
+        </table>
+      </div>
+
+      <div style="border-top: 1px solid #ddd; padding-top: 20px; margin-top: 20px;">
+        <h4>Criar Novo Grupo</h4>
+        <div class="form-group">
+          <label>Nome do Grupo</label>
+          <input type="text" id="adminNovoGrupoNome" placeholder="Nome do grupo">
+        </div>
+        <div class="form-group">
+          <label>Descrição</label>
+          <input type="text" id="adminNovoGrupoDesc" placeholder="Descrição do grupo">
+        </div>
+        <button class="btn" onclick="criarNovoGrupo()">Criar Grupo</button>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" onclick="fecharModal('adminModal')" style="margin-top: 20px;">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="notificationContainer" class="notification-container"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    let socket;
+    let token;
+    let usuarioAtual;
+    let tipoChat = null;
+    let chatIdAtual = null;
+
+    async function fazerLogin() {
+      const email = document.getElementById('loginEmail').value;
+      const senha = document.getElementById('loginSenha').value;
+
+      if (!email || !senha) {
+        mostrarerro('Digite e-mail e senha');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, senha })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          mostrarerro(data.erro || 'Erro ao fazer login');
+          return;
+        }
+
+        token = data.token;
+        usuarioAtual = data.usuario;
+
+        document.getElementById('loginContainer').classList.add('hidden');
+        document.getElementById('chatContainer').classList.remove('hidden');
+
+        document.getElementById('currentUserName').textContent = usuarioAtual.nome;
+        document.getElementById('currentUserEmail').textContent = usuarioAtual.email;
+
+        if (usuarioAtual.admin) {
+          document.getElementById('adminBadge').style.display = 'inline-block';
+          document.getElementById('adminSection').style.display = 'block';
+          document.getElementById('novoGrupoBtn').style.display = 'block';
+          document.getElementById('ajustesBtn').style.display = 'block';
+        }
+
+        conectarSocket();
+        carregarGrupos();
+        carregarContatos();
+      } catch (err) {
+        mostrarerro('Erro na conexão: ' + err.message);
+      }
+    }
+
+    function conectarSocket() {
+      socket = io();
+
+      socket.on('connect', () => {
+        console.log('Conectado ao servidor');
+        socket.emit('conectar-usuario', usuarioAtual.id);
+      });
+
+      socket.on('nova-mensagem-grupo', (data) => {
+        if (tipoChat === 'grupo' && chatIdAtual === data.grupoId) {
+          adicionarMensagem(data.conteudo, data.usuarioNome, false);
+        }
+        mostrarNotificacao(data.usuarioNome + ' falou no grupo');
+      });
+
+      socket.on('nova-mensagem-privada', (data) => {
+        if (tipoChat === 'privado' && chatIdAtual === data.remetente_id) {
+          adicionarMensagem(data.conteudo, data.remetenteNome, false);
+        }
+        mostrarNotificacao(data.remetenteNome + ' enviou uma mensagem privada');
+
+        // Pedir permissão para notificação desktop
+        if (Notification.permission === 'granted') {
+          new Notification('Nova mensagem privada', {
+            body: data.remetenteNome + ': ' + data.conteudo,
+            icon: '💬'
+          });
+        }
+      });
+
+      socket.on('notificacao', (data) => {
+        mostrarNotificacao(data.mensagem);
+      });
+    }
+
+    async function carregarGrupos() {
+      try {
+        const response = await fetch('/api/grupos', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const grupos = await response.json();
+
+        const gruposList = document.getElementById('gruposList');
+        gruposList.innerHTML = '';
+
+        grupos.forEach(grupo => {
+          const item = document.createElement('div');
+          item.className = 'menu-item';
+          item.textContent = '#️⃣ ' + grupo.nome;
+          item.onclick = () => carregarChat('grupo', grupo.id, grupo.nome);
+          gruposList.appendChild(item);
+        });
+      } catch (err) {
+        console.error('Erro ao carrega grupos:', err);
+      }
+    }
+
+    async function carregarContatos() {
+      try {
+        const response = await fetch('/api/usuarios', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const usuarios = await response.json();
+
+        const contatosList = document.getElementById('contatosList');
+        contatosList.innerHTML = '';
+
+        usuarios.forEach(usuario => {
+          const item = document.createElement('div');
+          item.className = 'menu-item';
+          item.textContent = '👤 ' + usuario.nome;
+          item.onclick = () => carregarChat('privado', usuario.id, usuario.nome);
+          contatosList.appendChild(item);
+        });
+      } catch (err) {
+        console.error('Erro ao carrega contatos:', err);
+      }
+    }
+
+    async function carregarChat(tipo, id, nome) {
+      tipoChat = tipo;
+      chatIdAtual = id;
+
+      document.querySelectorAll('.menu-item').forEach(item => {
+        item.classList.remove('active');
+      });
+
+      event.target.closest('.menu-item').classList.add('active');
+
+      document.getElementById('headerTitle').textContent = (tipo === 'grupo' ? '#️⃣ ' : '👤 ') + nome;
+      document.getElementById('messagesContainer').innerHTML = '';
+
+      try {
+        const endpoint = tipo === 'grupo'
+          ? `/api/mensagens/grupo/${id}`
+          : `/api/mensagens/privadas/${id}`;
+
+        const response = await fetch(endpoint, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const mensagens = await response.json();
+
+        mensagens.forEach(msg => {
+          const ehMeuMensagem = msg.usuario_id === usuarioAtual.id;
+          adicionarMensagem(msg.conteudo, msg.usuario_nome, !ehMeuMensagem);
+        });
+
+        if (tipoChat === 'grupo') {
+          socket.emit('entrar-grupo', { grupoId: id, usuarioId: usuarioAtual.id });
+        }
+      } catch (err) {
+        console.error('Erro ao carrega chat:', err);
+      }
+    }
+
+    function adicionarMensagem(conteudo, usuario, ehOutro) {
+      const container = document.getElementById('messagesContainer');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message ' + (ehOutro ? 'other' : 'own');
+
+      const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      msgDiv.innerHTML = `
+        ${ehOutro ? '<div class="message-sender">' + usuario + '</div>' : ''}
+        ${conteudo}
+        <div class="message-time">${hora}</div>
+      `;
+
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function enviarMensagem() {
+      const input = document.getElementById('messageInput');
+      const conteudo = input.value.trim();
+
+      if (!conteudo) return;
+
+      if (tipoChat === 'grupo') {
+        socket.emit('mensagem-grupo', {
+          grupoId: chatIdAtual,
+          usuarioId: usuarioAtual.id,
+          usuarioNome: usuarioAtual.nome,
+          conteudo
+        });
+      } else if (tipoChat === 'privado') {
+        socket.emit('mensagem-privada', {
+          remetente_id: usuarioAtual.id,
+          destinatario_id: chatIdAtual,
+          remetenteNome: usuarioAtual.nome,
+          conteudo
+        });
+
+        adicionarMensagem(conteudo, usuarioAtual.nome, false);
+      }
+
+      input.value = '';
+      input.focus();
+    }
+
+    function enviarSeEnter(event) {
+      if (event.key === 'Enter') {
+        enviarMensagem();
+      }
+    }
+
+    function abrirPainelAdmin() {
+      carregarUsuariosAdmin();
+      document.getElementById('adminModal').classList.add('active');
+    }
+
+    async function carregarUsuariosAdmin() {
+      try {
+        const response = await fetch('/api/admin/usuarios', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const usuarios = await response.json();
+
+        const tbody = document.getElementById('adminUsuariosTable');
+        tbody.innerHTML = '';
+
+        usuarios.forEach(usuario => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${usuario.nome}</td>
+            <td>${usuario.email}</td>
+            <td>${usuario.admin ? 'Sim' : 'Não'}</td>
+            <td>${usuario.ativo ? 'Ativo' : 'Inativo'}</td>
+            <td class="table-actions">
+              ${usuario.id !== usuarioAtual.id ? '<button class="btn-delete" onclick="desativarUsuario(' + usuario.id + ')">Desativar</button>' : '-'}
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error('Erro ao carrega usuários:', err);
+      }
+    }
+
+    async function cadastrarNovoUsuario() {
+      const nome = document.getElementById('adminNovonome').value;
+      const email = document.getElementById('adminNovoEmail').value;
+
+      if (!nome || !email) {
+        mostrarerro('Preencha todos os campos');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/admin/criar-usuario', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ nome, email, senha: 'Senha123!' })
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          mostrarerro(err.erro);
+          return;
+        }
+
+        mostrarNotificacao('Usuário cadastrado com sucesso! Senha padrão: Senha123!');
+        document.getElementById('adminNovonome').value = '';
+        document.getElementById('adminNovoEmail').value = '';
+        carregarUsuariosAdmin();
+      } catch (err) {
+        mostrarerro('Erro: ' + err.message);
+      }
+    }
+
+    async function desativarUsuario(usuarioId) {
+      if (!confirm('Desativar este usuário?')) return;
+
+      try {
+        const response = await fetch(`/api/admin/usuarios/${usuarioId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          mostrarNotificacao('Usuário desativado com sucesso');
+          carregarUsuariosAdmin();
+        }
+      } catch (err) {
+        mostrarerro('Erro: ' + err.message);
+      }
+    }
+
+    async function criarNovoGrupo() {
+      const nome = document.getElementById('adminNovoGrupoNome').value;
+      const descricao = document.getElementById('adminNovoGrupoDesc').value;
+
+      if (!nome) {
+        mostrarerro('Digite o nome do grupo');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/admin/criar-grupo', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ nome, descricao })
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          mostrarerro(err.erro);
+          return;
+        }
+
+        mostrarNotificacao('Grupo criado com sucesso');
+        document.getElementById('adminNovoGrupoNome').value = '';
+        document.getElementById('adminNovoGrupoDesc').value = '';
+        carregarGrupos();
+      } catch (err) {
+        mostrarerro('Erro: ' + err.message);
+      }
+    }
+
+    function abrirNovoGrupo() {
+      alert('Use o painel admin para criar grupos');
+    }
+
+    function abrirNovoContato() {
+      alert('Todos os contatos cadastrados aparecem na lista');
+    }
+
+    function abrirAjustes() {
+      alert('Opções de ajuste virão em breve');
+    }
+
+    function fazerLogout() {
+      token = null;
+      usuarioAtual = null;
+      tipoChat = null;
+      chatIdAtual = null;
+
+      if (socket) socket.disconnect();
+
+      document.getElementById('loginContainer').classList.remove('hidden');
+      document.getElementById('chatContainer').classList.add('hidden');
+      document.getElementById('loginEmail').value = '';
+      document.getElementById('loginSenha').value = '';
+    }
+
+    function mostrarerro(mensagem) {
+      document.getElementById('loginError').textContent = mensagem;
+      setTimeout(() => {
+        document.getElementById('loginError').textContent = '';
+      }, 5000);
+    }
+
+    function mostrarNotificacao(mensagem) {
+      const container = document.getElementById('notificationContainer');
+      const notif = document.createElement('div');
+      notif.className = 'notification';
+      notif.textContent = mensagem;
+
+      container.appendChild(notif);
+
+      setTimeout(() => {
+        notif.remove();
+      }, 5000);
+
+      // Pedir permissão para notificação desktop
+      if (Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    }
+
+    function fecharModal(modalId) {
+      document.getElementById(modalId).classList.remove('active');
+    }
+
+    window.onclick = function(event) {
+      const modal = event.target;
+      if (modal.classList.contains('modal')) {
+        modal.classList.remove('active');
+      }
+    }
+  </script>
+</body>
+</html>

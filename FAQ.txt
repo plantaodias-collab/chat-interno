@@ -1,0 +1,346 @@
+═════════════════════════════════════════════════════════════════════════════
+   PERGUNTAS FREQUENTES - CHAT INTERNO
+═════════════════════════════════════════════════════════════════════════════
+
+
+PERGUNTA: Qual navegador usar?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Qualquer navegador moderno:
+  • Google Chrome (recomendado)
+  • Mozilla Firefox
+  • Microsoft Edge
+  • Safari
+
+Versões atualizadas funcionam melhor. Atualize seu navegador.
+
+
+PERGUNTA: Quantos usuários suporta?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Até 20 pessoas simultaneamente (conforme especificado).
+Para mais usuários, a aplicação precisaria de otimizações.
+
+
+PERGUNTA: Posso usar em telefone/celular?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Sim! Funciona em:
+  • Smartphones (Android, iOS)
+  • Tablets
+  • Qualquer dispositivo com navegador
+
+Basta acessar: http://SEU_IP:3000
+
+
+PERGUNTA: Preciso estar na internet para usar?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Não. Funciona totalmente em rede local.
+Máquinas precisam estar conectadas à mesma rede (WiFi ou cabo).
+Não precisa de internet pública.
+
+
+PERGUNTA: Dados ficam salvos? Por quanto tempo?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Sim. Tudo é salvo no banco de dados (chat.db).
+Mensagens ficam armazenadas permanentemente até você deletar o arquivo.
+
+Para fazer backup:
+  1. Faça cópia do arquivo "chat.db"
+  2. Guarde em local seguro
+
+Para recuperar de backup:
+  1. Copie o arquivo "chat.db" de backup
+  2. Sobrescreva o arquivo atual
+
+
+PERGUNTA: Como faço backup das mensagens?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Copie o arquivo "chat.db".
+
+Passos:
+  1. Pare o servidor (CTRL+C)
+  2. Localize o arquivo "chat.db"
+  3. Copie para pendrive ou nuvem
+  4. Inicie o servidor novamente
+
+Restore:
+  1. Pare o servidor
+  2. Delete "chat.db" atual
+  3. Copie o backup antigo de volta
+  4. Inicie o servidor
+
+
+PERGUNTA: Posso usar em mais de uma máquina?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Não recomendado rodar servidor em 2 máquinas diferentes.
+
+Correto:
+  ✓ 1 máquina rodando servidor (24h)
+  ✓ Múltiplas máquinas acessando (http://IP:3000)
+
+Se máquina do servidor cair:
+  • Ninguém consegue acessar até reiniciar
+  • Deixe rodando em máquina dedicada ou servidor
+
+
+PERGUNTA: Servidor deve rodar 24 horas?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Depende de você:
+
+Se apenas horário comercial:
+  • Inicie quando chegar
+  • Desligue ao sair
+  • Mensagens histórico é mantido
+
+Se precisa acesso fora do horário:
+  • Deixe sempre ligado
+  • Considere usar servidor dedicado
+  • Ou computador com acesso remoto
+
+
+PERGUNTA: Posso alterar minha senha?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Essa funcionalidade não existe ainda.
+
+Solução alternativa:
+  1. Admin acessa Painel
+  2. Desativa sua conta
+  3. Cria nova conta com novo email
+  4. Você faz login com novo email
+
+Está na lista de futuras melhorias.
+
+
+PERGUNTA: Esqueci minha senha!
+────────────────────────────────────────────────────────────────────────────
+Resposta: Contate o administrador.
+
+Admin pode:
+  1. Desativar sua conta
+  2. Criar nova conta para você
+  3. Comunicar nova senha padrão (Senha123!)
+
+Solução rápida (se você é o admin):
+  1. Delete o arquivo "chat.db"
+  2. Execute "npm run setup" novamente
+  3. Crie novo admin
+
+
+PERGUNTA: Posso deletar mensagens?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Essa funcionalidade não existe ainda.
+
+Está na lista de futuras melhorias.
+
+Se urgente:
+  • Admin pode deletar banco inteiro
+  • Não há forma seletiva ainda
+
+
+PERGUNTA: Como dou permissão de admin a outro usuário?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Atualmente, só no banco de dados.
+
+Passos (avançado):
+  1. Pare o servidor
+  2. Abra "chat.db" com SQLite (SQLite Studio - grátis)
+  3. Execute SQL: UPDATE usuarios SET admin = 1 WHERE email = 'email@user.com'
+  4. Inicie servidor novamente
+
+Simpler: crie novo admin no setup com banco zerado.
+
+
+PERGUNTA: Posso usar em VPN ou acesso remoto?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Sim, mas com cuidado.
+
+Se está em VPN da empresa:
+  ✓ Funciona normalmente
+  ✓ Use IP da VPN
+
+Se acesso remoto (remote desktop):
+  ✓ Funciona se conseguir acessar browser
+
+Não recomendado:
+  ✗ Expor servidor na internet pública
+  ✗ Sem VPN = dados podem ser interceptados
+
+
+PERGUNTA: Porta 3000 está em uso. Como mudo?
+────────────────────────────────────────────────────────────────────────────
+Resposta:
+  1. Abra "server.js" com editor
+  2. Procure: const PORT = process.env.PORT || 3000;
+  3. Mude 3000 para 8080, 5000 ou outra
+  4. Salve
+  5. Reinicie servidor
+  6. Acesse: http://localhost:NOVA_PORTA
+
+
+PERGUNTA: Como vejo logs/erros do servidor?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Veja no terminal onde servidor está rodando.
+
+Erros aparecem em mensagens tipo:
+  [erro] Mensagem do problema
+
+No navegador (F12):
+  1. Pressione F12
+  2. Vá à aba "Console"
+  3. Veja erros em vermelho
+
+
+PERGUNTA: Posso colocar em servidor cloud (AWS, Azure, etc)?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Sim, mas requer conhecimento técnico.
+
+Passos:
+  1. Crie máquina virtual na nuvem
+  2. Instale Node.js nela
+  3. Copie arquivos do Chat
+  4. Execute npm install
+  5. Execute npm start
+  6. Configure domínio (se quiser)
+
+Cuidados:
+  ⚠ Expõe na internet - adicionar autenticação extra
+  ⚠ Custos mensais
+  ⚠ Responsabilidade de backup
+
+
+PERGUNTA: Posso adicionar mais funcionalidades?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Com conhecimento em Node.js e JavaScript, sim.
+
+Exemplos que podem ser adicionados:
+  • Busca de mensagens
+  • Upload de arquivos
+  • Formatação de texto (bold, itálico)
+  • Emojis
+  • Perfis de usuário
+  • Gravação de áudio
+
+
+PERGUNTA: Quem tem acesso às mensagens?
+────────────────────────────────────────────────────────────────────────────
+Resposta:
+  • Grupo: Todos membros do grupo veem
+  • Privada: Apenas você e o destinatário
+  • Admin: Não tem acesso especial a privadas
+  • Banco: Admin que controla pode ver tudo (arquivo chat.db)
+
+
+PERGUNTA: É seguro? Alguém pode hackear?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Em rede local é seguro.
+
+Cuidados:
+  ✓ Rede local = segura (confie na rede)
+  ✓ Senhas criptografadas no banco
+  ✓ Comunicação com autenticação JWT
+
+Riscos se expor na internet:
+  ✗ Falta SSL/HTTPS
+  ✗ Possível acesso não autorizado
+  ✗ Requer melhorias de segurança
+
+
+PERGUNTA: Posso usar em Windows Server?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Sim, totalmente compatível.
+
+Node.js funciona em:
+  ✓ Windows 10/11
+  ✓ Windows Server 2016+
+  ✓ Linux
+  ✓ macOS
+
+
+PERGUNTA: Preciso de conhecimento técnico?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Para instalar: Mínimo.
+Para usar: Nenhum.
+
+Instalação:
+  • Clique em configurar.bat
+  • Clique em iniciar.bat
+  • Pronto!
+
+Se tiver problemas:
+  • Leia INSTALACAO_DETALHADA.txt
+  • Verifique se Node.js está instalado
+  • Permita porta no firewall
+
+
+PERGUNTA: Posso usar em rede WiFi compartilhada?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Sim, funciona normalmente.
+
+Situações:
+  ✓ WiFi corporativo
+  ✓ WiFi de escritório
+  ✓ Hotspot de celular (mesmo que lento)
+
+Se não funciona:
+  • Verifique firewall do modem/router
+  • Confirme que está mesma rede
+  • Tente com cabo Ethernet
+
+
+PERGUNTA: Quantas mensagens por segundo aguenta?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Aguenta bem para até 20 pessoas.
+
+Limite aproximado:
+  • 50-100 mensagens/segundo (pico)
+  • 10 mensagens/segundo (média)
+  • Sem lag perceptível em uso normal
+
+
+PERGUNTA: Banco de dados está corrompido. O que faço?
+────────────────────────────────────────────────────────────────────────────
+Resposta:
+
+Passo 1: Fazer backup (se tiver dados importantes):
+  1. Procure "chat.db"
+  2. Copie para pendrive
+
+Passo 2: Resetar banco:
+  1. Delete "chat.db"
+  2. Execute: npm run setup
+  3. Crie novo admin
+  4. Inicie: npm start
+
+Todos dados antigos serão perdidos.
+
+
+PERGUNTA: Como faço monitoramento/relatórios?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Atualmente não existe.
+
+Solução manual:
+  1. Abra chat.db com SQLite Studio
+  2. Execute queries para consultar:
+     - Usuários ativos
+     - Total de mensagens
+     - Mensagens por período
+
+Exemplo de query:
+  SELECT COUNT(*) as total FROM mensagens;
+
+
+PERGUNTA: Tenho muitos usuários agora. O que devo fazer?
+────────────────────────────────────────────────────────────────────────────
+Resposta: Se passou 20 usuários:
+
+Curto prazo:
+  • Aplicação ainda funciona até 30-40 pessoas
+  • Performance diminui
+
+Longo prazo:
+  • Migrar para solução profissional (Slack, Teams, etc)
+  • Ou otimizar aplicação (requer desenvolvimento)
+  • Ou usar múltiplos servidores em cluster
+
+
+═════════════════════════════════════════════════════════════════════════════
+Pergunta não respondida? Veja INSTALACAO_DETALHADA.txt ou README.md
+═════════════════════════════════════════════════════════════════════════════

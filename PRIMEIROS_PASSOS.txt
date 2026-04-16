@@ -1,0 +1,571 @@
+═════════════════════════════════════════════════════════════════════════════
+                    PRIMEIROS PASSOS - BEM VISUAL
+           Orientação passo a passo com instruções super claras
+═════════════════════════════════════════════════════════════════════════════
+
+Leia isto primeiro! Tem tudo bem explicado em português simples.
+
+
+✓ PASSO 1: INSTALAR NODE.JS (5 MINUTOS)
+──────────────────────────────────────────────────────────────────────────────
+
+O que é Node.js?
+  É um programa que faz o chat funcionar. Precisa instalar uma única vez.
+
+Como fazer:
+
+1. Abra seu navegador (Chrome, Firefox, Edge, Safari... qualquer um)
+
+2. Na barra de endereço (onde você digita www.google.com), clique
+
+3. Apague tudo que está lá e digite:
+   https://nodejs.org
+
+4. Pressione ENTER
+
+5. Vai abrir a página da Node.js com 2 botões grandes:
+
+   Você vai ver:
+   ┌────────────────────────────────────────────┐
+   │  nodejs.org/                               │
+   │                                            │
+   │    [LTS]              [Current]           │
+   │    ↑ CLIQUE AQUI     (ignore este)        │
+   │                                            │
+   └────────────────────────────────────────────┘
+
+6. Clique no botão LTS (à esquerda)
+
+7. Vai começar a baixar um arquivo
+
+8. Procure este arquivo (geralmente em Downloads):
+   "node-v22.22.0-x64.msi"
+
+9. Clique 2x neste arquivo (duplo clique)
+
+10. Vai abrir um programa de instalação. Você vai ver várias telas:
+
+    Tela 1: "Welcome to Node.js"
+    → Clique: NEXT
+
+    Tela 2: "License Agreement"
+    → Clique: NEXT (ou marque "I Accept" antes)
+
+    Tela 3: "Destination Folder"
+    → Clique: NEXT (deixe como está)
+
+    Tela 4: "Custom Setup"
+    → Clique: NEXT (deixe como está)
+
+    Tela 5: "Ready to Install"
+    → Clique: INSTALL
+
+    Tela 6: (aguarde a instalação)
+
+    Tela 7: "Completed"
+    → Clique: FINISH
+
+11. Pronto! Node.js foi instalado! ✓
+
+Para verificar se funcionou:
+
+1. Pressione as teclas: Windows + R
+   (a tecla Windows é aquela com a logo do Windows)
+
+2. Aparecerá uma caixa com um campo de texto
+
+3. Digite:     cmd
+
+4. Pressione: ENTER
+
+5. Aparecerá uma janela preta (Prompt de Comando)
+   Você verá algo como:
+   C:\Users\SeuNome\>
+
+6. Digite:     node --version
+
+7. Pressione: ENTER
+
+8. Deve aparecer um número como:
+   v22.22.0
+
+Se apareceu um número = SUCESSO! ✓
+
+Se não apareceu = Node.js não foi instalado. Tente novamente.
+
+
+✓ PASSO 2: PREPARAR OS ARQUIVOS (5 MINUTOS)
+──────────────────────────────────────────────────────────────────────────────
+
+Você já tem todos os arquivos do Chat Interno.
+
+Agora precisa organizá-los em uma pasta.
+
+Como fazer:
+
+1. Abra o Windows Explorer
+   (aquele ícone de pasta na barra de tarefas)
+
+2. Vá para a raiz do C:
+   Na barra de endereço (onde mostra o caminho), clique
+   Apague tudo
+   Digite: C:\
+   Pressione ENTER
+
+3. Você está em C:\ agora
+
+4. Procure por espaço vazio na pasta
+   (não clique em nenhum arquivo/pasta)
+
+5. Clique com o BOTÃO DIREITO do mouse em espaço vazio
+
+6. Aparecerá um menu com opções:
+   ┌──────────────────────────┐
+   │ Novo                 →   │
+   │ Colar                    │
+   │ Atualizar                │
+   │ Propriedades             │
+   └──────────────────────────┘
+
+7. Passe o mouse por "Novo" (à direita aparecerá um submenu)
+
+8. Clique em: "Pasta"
+
+9. Aparecerá uma pasta nova com o nome selecionado
+   "Nova Pasta"
+
+10. O nome já está selecionado (azul). Apague e digite:
+    ChatInterno
+
+11. Pressione: ENTER
+
+12. Pronto! Agora você tem a pasta C:\ChatInterno
+
+Agora copie os arquivos:
+
+1. Procure por todos os arquivos que você baixou
+   (devem estar em Downloads ou em alguma pasta)
+
+2. Os arquivos são:
+   ✓ server-simple.js
+   ✓ index.html
+   ✓ package-simple.json
+   ✓ setup-simple.js
+   ✓ GUIA_PARA_LEIGOS.txt
+   ✓ E mais alguns arquivos .txt
+
+3. Selecione TODOS os arquivos:
+   Pressione: Ctrl + A
+   (tudo fica azul = selecionado)
+
+4. Copie:
+   Pressione: Ctrl + C
+
+5. Agora abra a pasta C:\ChatInterno que você criou
+
+6. Cole os arquivos:
+   Pressione: Ctrl + V
+
+7. Pronto! Todos os arquivos estão em C:\ChatInterno ✓
+
+
+✓ PASSO 3: INSTALAR DEPENDÊNCIAS (10 MINUTOS)
+──────────────────────────────────────────────────────────────────────────────
+
+Agora você vai usar o Prompt de Comando (aquela janela preta).
+
+Como fazer:
+
+1. Pressione: Windows + R
+
+2. Aparece a caixa de texto
+
+3. Digite: cmd
+
+4. Pressione: ENTER
+
+5. Aparece a janela preta do Prompt de Comando
+   Você verá:
+   C:\Users\SeuNome\>
+
+6. Você quer ir para C:\ChatInterno
+   Digite:     cd C:\ChatInterno
+
+7. Pressione: ENTER
+
+8. Agora você verá:
+   C:\ChatInterno>
+
+9. Agora vamos instalar as dependências
+   Digite: npm install --silent
+
+10. Pressione: ENTER
+
+11. Vai aparecer muito texto! Não se preocupe, é normal.
+    Vai dizer várias coisas sobre pacotes sendo baixados.
+
+    Aguarde 2-3 minutos
+
+12. Quando terminar, dirá algo como:
+    "added 223 packages in 30s"
+
+Se viu "added X packages" = SUCESSO! ✓
+
+
+✓ PASSO 4: CRIAR SUA CONTA DE ADMINISTRADOR (5 MINUTOS)
+──────────────────────────────────────────────────────────────────────────────
+
+Você ainda está no Prompt de Comando (janela preta).
+
+Como fazer:
+
+1. Digite: npm run setup
+
+2. Pressione: ENTER
+
+3. Aparecerá uma mensagem:
+   ╔════════════════════════════════════════╗
+   ║   CONFIGURAÇÃO INICIAL - CHAT INTERNO   ║
+   ╚════════════════════════════════════════╝
+
+4. Agora ele vai fazer 4 perguntas:
+
+   ═════════════════════════════════════════════════════════════════
+   PERGUNTA 1: "Nome do administrador:"
+
+   O que fazer:
+   • Digite seu nome completo
+     Exemplo: João Silva
+   • Pressione: ENTER
+   ═════════════════════════════════════════════════════════════════
+
+   ═════════════════════════════════════════════════════════════════
+   PERGUNTA 2: "E-mail do administrador:"
+
+   O que fazer:
+   • Digite seu e-mail
+     Exemplo: joao@empresa.com
+   • Pressione: ENTER
+   ═════════════════════════════════════════════════════════════════
+
+   ═════════════════════════════════════════════════════════════════
+   PERGUNTA 3: "Senha do administrador:"
+
+   O que fazer:
+   • Digite uma senha FORTE
+     Exemplo: Minha@Senha123
+   • Use LETRAS, NÚMEROS e SÍMBOLOS (@, #, etc)
+   • Não aparece o que você está digitando (é seguro)
+   • Pressione: ENTER
+   ═════════════════════════════════════════════════════════════════
+
+   ═════════════════════════════════════════════════════════════════
+   PERGUNTA 4: "Deseja criar grupos de exemplo? (s/n):"
+
+   O que fazer:
+   • Digite: s (de sim)
+   • Pressione: ENTER
+   ═════════════════════════════════════════════════════════════════
+
+5. Vai aparecer:
+   [✓] Administrador criado com sucesso!
+   [✓] Grupo "Geral" criado
+   [✓] Grupo "Anúncios" criado
+   [✓] Grupo "Suporte" criado
+
+6. Vai dizer:
+   ╔════════════════════════════════════════╗
+   ║   CONFIGURAÇÃO FINALIZADA COM SUCESSO   ║
+   ╚════════════════════════════════════════╝
+
+ANOTE AGORA SEUS DADOS (importante!):
+
+   Email: ________________________  (o que você digitou)
+   Senha: ________________________  (a que você criou)
+
+Você vai usar isto para fazer login depois!
+
+Pronto! Configuração concluída! ✓
+
+
+✓ PASSO 5: INICIAR O SERVIDOR (1 MINUTO)
+──────────────────────────────────────────────────────────────────────────────
+
+Você ainda está no Prompt de Comando.
+
+Como fazer:
+
+1. Digite: npm start
+
+2. Pressione: ENTER
+
+3. Aguarde alguns segundos...
+
+4. Você verá:
+   Servidor rodando em http://localhost:3000
+   Arquivos de dados: C:\ChatInterno\data
+
+✓ SERVIDOR ESTÁ ATIVO!
+
+MUITO IMPORTANTE:
+
+   ⚠️  Deixe esta janela ABERTA!
+   ⚠️  Se fechar, o chat desliga!
+   ⚠️  Pode minimizar, mas não pode fechar!
+   ⚠️  Deixe assim enquanto estiver usando o chat!
+
+
+✓ PASSO 6: ACESSAR O CHAT (1 MINUTO)
+──────────────────────────────────────────────────────────────────────────────
+
+Agora você vai entrar no chat pelo navegador.
+
+Como fazer:
+
+1. Abra seu navegador (Chrome, Firefox, Edge, Safari...)
+
+2. Na barra de endereço (onde você digita www.google.com):
+   • Clique para selecionar
+   • Apague tudo que está lá
+   • Digite: http://localhost:3000
+   • Pressione: ENTER
+
+3. Vai aparecer uma página:
+
+   ┌─────────────────────────────────┐
+   │       💬 Chat Interno           │
+   │                                 │
+   │ E-mail:                         │
+   │ ┌─────────────────────────────┐ │
+   │ │ [campo de texto]            │ │
+   │ └─────────────────────────────┘ │
+   │                                 │
+   │ Senha:                          │
+   │ ┌─────────────────────────────┐ │
+   │ │ [campo de texto]            │ │
+   │ └─────────────────────────────┘ │
+   │                                 │
+   │      [    ENTRAR    ]           │
+   │                                 │
+   └─────────────────────────────────┘
+
+4. Clique no campo "E-mail"
+
+5. Digite o e-mail que você anotou
+
+6. Clique no campo "Senha"
+
+7. Digite a senha que você anotou
+
+8. Clique no botão "ENTRAR"
+
+9. Se conseguir entrar:
+   ✓ SUCESSO! Você está dentro do chat!
+
+Se não conseguir:
+   ✗ Verifique se digitou certo (maiúsculas e minúsculas são diferentes)
+   ✗ Verifique se o servidor está rodando (janela preta aberta)
+
+
+✓ PASSO 7: CRIAR USUÁRIOS PARA SUA EQUIPE (5 MINUTOS POR USUÁRIO)
+──────────────────────────────────────────────────────────────────────────────
+
+Agora você vai criar contas para seus funcionários.
+
+Você está dentro do chat. Procure no canto direito:
+⚙️ Painel Admin
+
+Clique nele.
+
+Vai abrir uma janela (modal) com:
+
+┌────────────────────────────────────────────┐
+│     Painel de Administração                │
+│                                            │
+│  Cadastrar Novo Usuário                  │
+│  ─────────────────────────────            │
+│  Nome:                                    │
+│  ┌──────────────────────────────────────┐ │
+│  │ [campo para digitar]                 │ │
+│  └──────────────────────────────────────┘ │
+│                                            │
+│  E-mail:                                  │
+│  ┌──────────────────────────────────────┐ │
+│  │ [campo para digitar]                 │ │
+│  └──────────────────────────────────────┘ │
+│                                            │
+│  [ CADASTRAR USUÁRIO ]                    │
+│                                            │
+│  ────────────────────────────────────────│
+│  Usuários Cadastrados                     │
+│  ────────────────────────────────────────│
+│  [tabela com usuários]                   │
+│                                            │
+└────────────────────────────────────────────┘
+
+Para cadastrar um usuário:
+
+1. Clique no campo "Nome"
+
+2. Digite o nome do funcionário:
+   Exemplo: Maria Silva
+
+3. Clique no campo "E-mail"
+
+4. Digite o e-mail dele:
+   Exemplo: maria@empresa.com
+
+5. Clique no botão "CADASTRAR USUÁRIO"
+
+6. Aparecerá:
+   ✓ "Usuário cadastrado com sucesso!"
+
+Repita isto para cada funcionário!
+
+A senha padrão é: Senha123!
+(Você envia isto para o funcionário)
+
+
+✓ PASSO 8: CRIAR GRUPOS (5 MINUTOS)
+──────────────────────────────────────────────────────────────────────────────
+
+Ainda no Painel Admin, procure:
+"Criar Novo Grupo"
+
+Você verá:
+┌────────────────────────────────────────┐
+│  Criar Novo Grupo                      │
+│  ─────────────────────────────────────│
+│  Nome do Grupo:                        │
+│  ┌──────────────────────────────────┐ │
+│  │ [campo para digitar]             │ │
+│  └──────────────────────────────────┘ │
+│                                        │
+│  Descrição:                            │
+│  ┌──────────────────────────────────┐ │
+│  │ [campo para digitar]             │ │
+│  └──────────────────────────────────┘ │
+│                                        │
+│  [ CRIAR GRUPO ]                       │
+│                                        │
+└────────────────────────────────────────┘
+
+Para criar um grupo:
+
+1. Clique no campo "Nome do Grupo"
+
+2. Digite o nome:
+   Exemplo: Geral
+
+3. Clique no campo "Descrição"
+
+4. Digite uma descrição:
+   Exemplo: Discussões gerais da equipe
+
+5. Clique em "CRIAR GRUPO"
+
+6. Aparecerá:
+   ✓ "Grupo criado com sucesso!"
+
+Crie quantos grupos precisar! Exemplos:
+   • Geral (para todos)
+   • Anúncios (avisos importantes)
+   • Vendas (equipe de vendas)
+   • Suporte (para problemas)
+   • Financeiro (setor financeiro)
+
+
+✓ PASSO 9: TESTAR ENVIANDO UMA MENSAGEM (2 MINUTOS)
+──────────────────────────────────────────────────────────────────────────────
+
+Agora você vai testar se tudo funciona.
+
+1. Feche o Painel Admin (clique no X ou em "Fechar")
+
+2. Você voltará ao chat. Na esquerda, você vê:
+
+   GRUPOS
+   ✓ Geral
+   ✓ Anúncios
+   ✓ Suporte
+
+3. Clique em "Geral"
+
+4. Agora a tela mostra:
+
+   Ao topo: "#️⃣ Geral"
+
+   No meio: área para mensagens (vazia)
+
+   No rodapé:
+   ┌──────────────────────────┐
+   │ Digite uma mensagem... │
+   └──────────────────────────┘
+                [ENVIAR]
+
+5. Clique no campo de mensagem
+
+6. Digite: Teste de mensagem
+
+7. Pressione: ENTER
+   (ou clique no botão ENVIAR)
+
+8. Sua mensagem aparecerá na tela:
+
+   ┌──────────────────────────────┐
+   │     (seu nome)               │
+   │     Teste de mensagem        │
+   │     14:30                    │
+   └──────────────────────────────┘
+
+✓ FUNCIONOU! Você consegue enviar mensagens!
+
+
+PRONTO! VOCÊ TERMINOU!
+──────────────────────────────────────────────────────────────────────────────
+
+Parabéns! Seu Chat Interno está 100% funcional!
+
+Agora você pode:
+   ✓ Enviar mensagens em grupos
+   ✓ Enviar mensagens privadas
+   ✓ Receber notificações
+   ✓ Gerenciar usuários
+   ✓ Criar novos grupos
+
+Tudo seguro, tudo gratuito, tudo seu!
+
+
+PRÓXIMOS PASSOS
+──────────────────────────────────────────────────────────────────────────────
+
+1. COMPARTILHE COM SUA EQUIPE:
+
+   Descubra o IP da sua máquina:
+   • Abra Prompt de Comando (Windows+R, cmd, ENTER)
+   • Digite: ipconfig
+   • Procure "IPv4 Address"
+   • Anote o número (ex: 192.168.1.100)
+
+   Envie para sua equipe:
+   "Acessem: http://192.168.1.100:3000"
+   "Email: [o que você cadastrou]"
+   "Senha: Senha123!"
+
+2. DEIXE O SERVIDOR RODANDO:
+
+   Deixe a janela do Prompt aberta enquanto estiver usando
+   Se quiser deixar 24h, sua máquina precisa estar ligada
+
+3. FAÇA BACKUP:
+
+   Copie a pasta: C:\ChatInterno\data
+   Guarde em pendrive ou nuvem
+   Se algo der errado, pode restaurar
+
+
+═════════════════════════════════════════════════════════════════════════════
+
+Tudo certo? Então curta seu novo Chat Interno! 🎉
+
+═════════════════════════════════════════════════════════════════════════════

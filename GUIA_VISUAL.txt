@@ -1,0 +1,386 @@
+═════════════════════════════════════════════════════════════════════════════
+   GUIA VISUAL - Chat Interno (Passo a Passo com Imagens)
+═════════════════════════════════════════════════════════════════════════════
+
+
+ETAPA 1: BAIXAR NODE.JS
+──────────────────────────────────────────────────────────────────────────────
+
+PASSO 1A: Abrir navegador
+┌─────────────────────────────────────┐
+│  Chrome / Firefox / Edge / Safari  │
+│          (qualquer um)               │
+└─────────────────────────────────────┘
+         ↓
+    Clique no ícone
+
+PASSO 1B: Digitar endereço
+┌──────────────────────────────────────────────────────┐
+│ https://nodejs.org/                                │
+│ (cole isto na barra de endereço)                   │
+└──────────────────────────────────────────────────────┘
+
+PASSO 1C: Página que vai abrir
+┌────────────────────────────────────────────────────┐
+│                  nodejs.org                         │
+│                                                    │
+│     [LTS] ← CLIQUE AQUI      [Current]           │
+│     (à esquerda)              (ignore)            │
+│                                                    │
+│   Baixar arquivo .msi                            │
+└────────────────────────────────────────────────────┘
+
+PASSO 1D: Após download
+┌────────────────────────────────────────────────────┐
+│  Procure em: C:\Users\SeuNome\Downloads           │
+│                                                    │
+│  Arquivo: node-v22.22.0-x64.msi                  │
+│                                                    │
+│  Clique 2x para instalar                          │
+└────────────────────────────────────────────────────┘
+
+PASSO 1E: Durante instalação
+┌────────────────────────────────────────────────────┐
+│  Tela 1: Bem-vindo → Clique: NEXT                │
+│  Tela 2: Licença → Clique: NEXT                  │
+│  Tela 3: Pasta → Clique: NEXT                    │
+│  Tela 4: Opções → Clique: NEXT                   │
+│  Tela 5: Resumo → Clique: NEXT                   │
+│  Tela Final: Pronto! → Clique: FINISH            │
+└────────────────────────────────────────────────────┘
+
+PASSO 1F: Verificar instalação
+┌────────────────────────────────────────────────────┐
+│  Pressione: Windows + R                           │
+│  Aparece uma caixa de texto                       │
+│                                                    │
+│  Digite: cmd                                       │
+│  Pressione: ENTER                                  │
+│                                                    │
+│  Aparece janela preta (Prompt de Comando)        │
+│                                                    │
+│  Digite: node --version                           │
+│  Pressione: ENTER                                  │
+│                                                    │
+│  Se aparecer: v22.22.0 = SUCESSO ✓              │
+└────────────────────────────────────────────────────┘
+
+
+ETAPA 2: PREPARAR PASTA
+──────────────────────────────────────────────────────────────────────────────
+
+PASSO 2A: Criar pasta
+┌────────────────────────────────────────────────────┐
+│  Abra: Windows Explorer (ícone de pasta)          │
+│                                                    │
+│  Navegue para: C:\                                │
+│                                                    │
+│  Botão direito em espaço vazio                    │
+│  Escolha: "Nova Pasta"                            │
+│                                                    │
+│  Digite: ChatInterno                              │
+│  Pressione: ENTER                                  │
+│                                                    │
+│  Pronto! Pasta C:\ChatInterno criada              │
+└────────────────────────────────────────────────────┘
+
+PASSO 2B: Copiar arquivos
+┌────────────────────────────────────────────────────┐
+│  Localize os arquivos que você baixou:            │
+│                                                    │
+│  ✓ server-simple.js                              │
+│  ✓ index.html                                     │
+│  ✓ package-simple.json                           │
+│  ✓ setup-simple.js                               │
+│  ✓ Todos os arquivos .txt                        │
+│                                                    │
+│  Selecione todos (Ctrl+A)                         │
+│  Copie (Ctrl+C)                                   │
+│  Entre em: C:\ChatInterno                         │
+│  Cole (Ctrl+V)                                    │
+│                                                    │
+│  Agora tudo está em C:\ChatInterno               │
+└────────────────────────────────────────────────────┘
+
+
+ETAPA 3: INSTALAR DEPENDÊNCIAS
+──────────────────────────────────────────────────────────────────────────────
+
+PASSO 3A: Abrir Prompt de Comando
+┌────────────────────────────────────────────────────┐
+│  Pressione: Windows + R                           │
+│  Digite: cmd                                       │
+│  Pressione: ENTER                                  │
+│                                                    │
+│  Aparece:                                          │
+│  ┌──────────────────────────────┐                 │
+│  │ C:\Users\SeuNome\>           │                 │
+│  │ ▌                            │                 │
+│  └──────────────────────────────┘                 │
+└────────────────────────────────────────────────────┘
+
+PASSO 3B: Ir para pasta ChatInterno
+┌────────────────────────────────────────────────────┐
+│  Digite exatamente:                                │
+│  cd C:\ChatInterno                                │
+│                                                    │
+│  Pressione: ENTER                                  │
+│                                                    │
+│  Aparece:                                          │
+│  C:\ChatInterno>                                  │
+└────────────────────────────────────────────────────┘
+
+PASSO 3C: Instalar pacotes
+┌────────────────────────────────────────────────────┐
+│  Digite:                                           │
+│  npm install --silent                             │
+│                                                    │
+│  Pressione: ENTER                                  │
+│                                                    │
+│  Aguarde... pode levar 2-3 minutos                │
+│                                                    │
+│  Quando terminar, verá:                           │
+│  "added 223 packages in 30s"                      │
+└────────────────────────────────────────────────────┘
+
+
+ETAPA 4: CONFIGURAR ADMINISTRADOR
+──────────────────────────────────────────────────────────────────────────────
+
+PASSO 4A: Iniciar setup
+┌────────────────────────────────────────────────────┐
+│  Na mesma janela, digite:                         │
+│  npm run setup                                     │
+│                                                    │
+│  Pressione: ENTER                                  │
+│                                                    │
+│  Aparecerá:                                        │
+│  ╔════════════════════════════════════════╗       │
+│  ║   CONFIGURAÇÃO INICIAL - CHAT INTERNO   ║       │
+│  ╚════════════════════════════════════════╝       │
+└────────────────────────────────────────────────────┘
+
+PASSO 4B: Responder perguntas
+┌────────────────────────────────────────────────────┐
+│  PERGUNTA 1:                                       │
+│  "Nome do administrador:"                          │
+│  Resposta: João Silva                              │
+│  Pressione: ENTER                                  │
+│                                                    │
+│  PERGUNTA 2:                                       │
+│  "E-mail do administrador:"                        │
+│  Resposta: joao@empresa.com                       │
+│  Pressione: ENTER                                  │
+│                                                    │
+│  PERGUNTA 3:                                       │
+│  "Senha do administrador:"                         │
+│  Resposta: Minha@Senha123                         │
+│  (não aparece o que está digitando - é normal!)   │
+│  Pressione: ENTER                                  │
+│                                                    │
+│  PERGUNTA 4:                                       │
+│  "Deseja criar grupos de exemplo? (s/n):"        │
+│  Resposta: s                                       │
+│  Pressione: ENTER                                  │
+└────────────────────────────────────────────────────┘
+
+PASSO 4C: Sucesso!
+┌────────────────────────────────────────────────────┐
+│  Verá:                                             │
+│  ╔════════════════════════════════════════╗       │
+│  ║   CONFIGURAÇÃO FINALIZADA COM SUCESSO   ║       │
+│  ╚════════════════════════════════════════╝       │
+│                                                    │
+│  Dados que você vai usar depois:                  │
+│  • Email: joao@empresa.com                        │
+│  • Senha: Minha@Senha123                          │
+│                                                    │
+│  ANOTE AGORA! Pode esquecer depois.               │
+└────────────────────────────────────────────────────┘
+
+
+ETAPA 5: INICIAR SERVIDOR
+──────────────────────────────────────────────────────────────────────────────
+
+PASSO 5A: Comando de inicialização
+┌────────────────────────────────────────────────────┐
+│  Na mesma janela, digite:                         │
+│  npm start                                         │
+│                                                    │
+│  Pressione: ENTER                                  │
+│                                                    │
+│  Aguarde alguns segundos...                        │
+└────────────────────────────────────────────────────┘
+
+PASSO 5B: Servidor rodando!
+┌────────────────────────────────────────────────────┐
+│  Verá a mensagem:                                  │
+│                                                    │
+│  Servidor rodando em http://localhost:3000       │
+│  Arquivos de dados: C:\ChatInterno\data          │
+│                                                    │
+│  ✓ SERVIDOR ATIVO!                               │
+│                                                    │
+│  IMPORTANTE:                                       │
+│  Deixe esta janela ABERTA!                        │
+│  Se fechar, o chat desliga.                       │
+│  Se minimizar, fica funcionando                   │
+└────────────────────────────────────────────────────┘
+
+
+ETAPA 6: ACESSAR O CHAT
+──────────────────────────────────────────────────────────────────────────────
+
+PASSO 6A: Abrir navegador
+┌────────────────────────────────────────────────────┐
+│  Abra seu navegador (Chrome, Firefox, Edge...)    │
+│                                                    │
+│  Na barra de endereço, clique                     │
+│                                                    │
+│  Limpe tudo que está lá (Ctrl+A, Delete)        │
+│                                                    │
+│  Digite:                                           │
+│  http://localhost:3000                            │
+│                                                    │
+│  Pressione: ENTER                                  │
+└────────────────────────────────────────────────────┘
+
+PASSO 6B: Página de login
+┌────────────────────────────────────────────────────┐
+│          💬 CHAT INTERNO                           │
+│                                                    │
+│  E-mail:                                           │
+│  ┌──────────────────────────────┐                 │
+│  │ joao@empresa.com             │                 │
+│  └──────────────────────────────┘                 │
+│                                                    │
+│  Senha:                                            │
+│  ┌──────────────────────────────┐                 │
+│  │ ••••••••••••••               │                 │
+│  └──────────────────────────────┘                 │
+│                                                    │
+│         [    ENTRAR    ]                          │
+└────────────────────────────────────────────────────┘
+
+PASSO 6C: Preencher formulário
+┌────────────────────────────────────────────────────┐
+│  1. Clique no campo "E-mail"                      │
+│  2. Digite: joao@empresa.com (seu email)          │
+│  3. Clique no campo "Senha"                       │
+│  4. Digite: Minha@Senha123 (sua senha)            │
+│  5. Clique no botão "ENTRAR"                      │
+└────────────────────────────────────────────────────┘
+
+PASSO 6D: Dentro do chat
+┌─────────────────────────────────────────────────────────────┐
+│ João Silva  (seu nome)                        🚪           │
+│ joao@empresa.com                                            │
+│ [ADMIN]                                                     │
+│─────────────────────────────────────────────────────────────│
+│                                                             │
+│ GRUPOS              ⚙️ Painel Admin                        │
+│ ✓ #️⃣ Geral          (clique aqui para                    │
+│ ✓ #️⃣ Anúncios        gerenciar usuários)                │
+│ ✓ #️⃣ Suporte                                             │
+│                                                             │
+│ CONTATOS                                                    │
+│ ✓ 👤 Nenhum ainda                                         │
+│                                                             │
+│─────────────────────────────────────────────────────────────│
+│                                                             │
+│              [escolha um grupo ou contato]                │
+│                                                             │
+│              para começar a conversar                     │
+│                                                             │
+│─────────────────────────────────────────────────────────────│
+│  ┌──────────────────────────────────────────────────┐     │
+│  │ Digite sua mensagem aqui...                      │     │
+│  └──────────────────────────────────────────────────┘     │
+│                              [ENVIAR]                      │
+└─────────────────────────────────────────────────────────────┘
+
+✓ VOCÊ ESTÁ DENTRO DO CHAT!
+
+
+ETAPA 7: CRIAR USUÁRIOS
+──────────────────────────────────────────────────────────────────────────────
+
+PASSO 7A: Acessar painel admin
+┌────────────────────────────────────────────────────┐
+│  Procure no canto direito: ⚙️ Painel Admin        │
+│  Clique nele                                       │
+│                                                    │
+│  Abrirá uma janela (modal)                        │
+└────────────────────────────────────────────────────┘
+
+PASSO 7B: Janela do Painel Admin
+┌────────────────────────────────────────────────────┐
+│        Painel de Administração                     │
+│                                                    │
+│  Cadastrar Novo Usuário                           │
+│  ─────────────────────────────                    │
+│  Nome:                                             │
+│  ┌──────────────────────────────┐                 │
+│  │ Maria Silva                  │                 │
+│  └──────────────────────────────┘                 │
+│                                                    │
+│  E-mail:                                           │
+│  ┌──────────────────────────────┐                 │
+│  │ maria@empresa.com            │                 │
+│  └──────────────────────────────┘                 │
+│                                                    │
+│  [  CADASTRAR USUÁRIO  ]                          │
+└────────────────────────────────────────────────────┘
+
+PASSO 7C: Cadastrar usuário
+┌────────────────────────────────────────────────────┐
+│  1. Digite o nome do funcionário                   │
+│  2. Digite o email dele                            │
+│  3. Clique em "CADASTRAR USUÁRIO"                 │
+│                                                    │
+│  Verá:                                             │
+│  "Usuário cadastrado com sucesso!"                │
+│                                                    │
+│  IMPORTANTE:                                       │
+│  A senha padrão é: Senha123!                      │
+│  Envie para o funcionário:                        │
+│    Email: maria@empresa.com                       │
+│    Senha: Senha123!                               │
+└────────────────────────────────────────────────────┘
+
+PASSO 7D: Repetir para todos
+┌────────────────────────────────────────────────────┐
+│  Faça isso para cada funcionário que precisa      │
+│  acessar o chat                                    │
+│                                                    │
+│  Não tem limite! Pode adicionar quantos quiser    │
+│  (até 20 pessoas usando ao mesmo tempo)          │
+└────────────────────────────────────────────────────┘
+
+
+RESUMO FINAL
+──────────────────────────────────────────────────────────────────────────────
+
+O que foi feito:
+
+1. ✓ Node.js instalado
+2. ✓ Pasta C:\ChatInterno criada com arquivos
+3. ✓ Dependências instaladas (npm install)
+4. ✓ Administrador configurado (npm run setup)
+5. ✓ Servidor iniciado (npm start)
+6. ✓ Chat acessível em http://localhost:3000
+7. ✓ Funcionários cadastrados
+
+O que você consegue fazer agora:
+
+✓ Acessar o chat
+✓ Enviar mensagens em grupos
+✓ Enviar mensagens privadas
+✓ Receber notificações
+✓ Criar novos usuários
+✓ Criar novos grupos
+✓ Tudo de forma segura e gratuita!
+
+═════════════════════════════════════════════════════════════════════════════
+Parabéns! Seu Chat Interno está 100% funcional! 🎉
+═════════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,147 @@
+═════════════════════════════════════════════════════════════════════════════
+   CHAT INTERNO - GUIA RÁPIDO DE INSTALAÇÃO E USO
+═════════════════════════════════════════════════════════════════════════════
+
+REQUISITOS
+──────────────────────────────────────────────────────────────────────────────
+✓ Node.js instalado (baixar em https://nodejs.org)
+✓ Windows, macOS ou Linux
+✓ Todos os arquivos em uma pasta
+
+PRIMEIRO ACESSO - APENAS 3 PASSOS
+──────────────────────────────────────────────────────────────────────────────
+
+1. CONFIGURAR (execute uma única vez)
+   ────────────────────────────────────
+   Windows:  Clique 2x em "configurar.bat"
+   macOS/Linux: abra terminal e execute: npm run setup
+
+   Siga as instruções:
+   - Digite seu nome
+   - Digite seu e-mail (admin)
+   - Digite uma senha
+   - Escolha se quer criar grupos de exemplo
+
+2. INSTALAR (execute uma única vez)
+   ───────────────────────────────────
+   Você receberá mensagem de conclusão na tela.
+
+3. INICIAR O SERVIDOR
+   ──────────────────────
+   Windows:  Clique 2x em "iniciar.bat"
+   macOS/Linux: abra terminal e execute: npm start
+
+   Verá: "Servidor rodando em http://localhost:3000"
+
+
+ACESSAR O APLICATIVO
+──────────────────────────────────────────────────────────────────────────────
+
+Na mesma máquina:
+   Abra o navegador e vá para: http://localhost:3000
+
+Em outra máquina (rede local):
+   1. Descubra o IP: abra terminal/cmd e execute "ipconfig"
+      (procure por "IPv4 Address", ex: 192.168.1.100)
+
+   2. Na outra máquina, acesse: http://SEU_IP:3000
+      Exemplo: http://192.168.1.100:3000
+
+
+USAR O PAINEL DE ADMINISTRAÇÃO
+──────────────────────────────────────────────────────────────────────────────
+
+1. Faça login com seu e-mail e senha (que criou no setup)
+
+2. Clique em "⚙️ Painel Admin" (canto superior)
+
+3. CADASTRAR NOVO USUÁRIO:
+   - Digite nome e e-mail
+   - Clique "Cadastrar Usuário"
+   - Senha padrão: Senha123!
+   - Compartilhe e-mail e senha com o funcionário
+
+4. CRIAR GRUPO:
+   - Digite nome do grupo
+   - Adicione descrição (opcional)
+   - Clique "Criar Grupo"
+   - Todos os usuários terão acesso
+
+USAR O CHAT
+──────────────────────────────────────────────────────────────────────────────
+
+CONVERSA EM GRUPO:
+   - Clique no grupo na barra lateral
+   - Digite mensagem
+   - Pressione Enter ou clique "Enviar"
+
+MENSAGEM PRIVADA:
+   - Clique no nome do contato na barra lateral
+   - Digite mensagem
+   - Pressione Enter ou clique "Enviar"
+
+NOTIFICAÇÕES:
+   - Recebe automaticamente quando alguém fala com você
+   - Permite notificações do navegador (desktop)
+
+
+PARAR O SERVIDOR
+──────────────────────────────────────────────────────────────────────────────
+Windows:  Clique na janela do servidor e pressione CTRL+C
+macOS/Linux: No terminal, pressione CTRL+C
+
+
+ALTERAR PORTA (se 3000 já está em uso)
+──────────────────────────────────────────────────────────────────────────────
+1. Abra arquivo "server.js" com editor de texto
+2. Encontre a linha: const PORT = process.env.PORT || 3000;
+3. Mude 3000 para outra porta (ex: 8080)
+4. Salve o arquivo
+5. Inicie novamente
+
+
+PROBLEMAS COMUNS
+──────────────────────────────────────────────────────────────────────────────
+
+Problema: "Node.js não encontrado"
+Solução: Instale Node.js em https://nodejs.org
+
+Problema: "Porta 3000 já em uso"
+Solução: Altere a porta em server.js (veja acima)
+
+Problema: "Banco de dados corrompido"
+Solução: Delete "chat.db" e execute "npm run setup" novamente
+
+Problema: "Não consegue acessar de outra máquina"
+Solução:
+   - Permita porta 3000 no firewall do Windows
+   - Use o IP correto (execute "ipconfig")
+   - Máquinas devem estar na mesma rede
+
+
+ESTRUTURA DE PASTAS
+──────────────────────────────────────────────────────────────────────────────
+ChatInterno/
+├── server.js           ← Servidor backend
+├── index.html          ← Interface web
+├── package.json        ← Dependências
+├── setup.js            ← Configuração inicial
+├── chat.db             ← Banco de dados (criado automaticamente)
+├── configurar.bat      ← Instalar (Windows)
+├── iniciar.bat         ← Iniciar servidor (Windows)
+├── README.md           ← Documentação completa
+└── GUIA_RAPIDO.txt     ← Este arquivo
+
+
+INFORMAÇÕES TÉCNICAS
+──────────────────────────────────────────────────────────────────────────────
+Backend: Node.js + Express + Socket.IO
+Banco: SQLite
+Frontend: HTML5 + CSS3 + JavaScript
+Autenticação: JWT
+Comunicação em tempo real: WebSocket
+
+
+═════════════════════════════════════════════════════════════════════════════
+Dúvidas? Verifique o arquivo README.md para documentação completa.
+═════════════════════════════════════════════════════════════════════════════

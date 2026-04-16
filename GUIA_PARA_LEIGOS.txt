@@ -1,0 +1,451 @@
+═════════════════════════════════════════════════════════════════════════════
+   GUIA COMPLETO PARA LEIGOS - CHAT INTERNO
+   Passo a passo SEM jargão técnico
+═════════════════════════════════════════════════════════════════════════════
+
+ANTES DE COMEÇAR - O QUE VOCÊ PRECISA SABER
+──────────────────────────────────────────────────────────────────────────────
+
+1. O que você vai fazer?
+   Instalar um aplicativo que permite sua equipe conversar pela internet local
+
+2. Precisa de internet externa?
+   NÃO! Funciona apenas na rede da sua empresa/escritório
+
+3. Quanto custa?
+   NADA! É totalmente gratuito
+
+4. Quanto tempo leva?
+   30 minutos no total
+
+5. Precisa saber programação?
+   NÃO! É só apertar botões
+
+
+PASSO 1: PREPARAR A MÁQUINA (15 minutos)
+──────────────────────────────────────────────────────────────────────────────
+
+Você vai instalar "Node.js" (é um programa que faz o chat rodar).
+
+COMO FAZER:
+
+1.1) Abra seu navegador (Chrome, Firefox, Edge, Safari)
+
+1.2) Vá para: https://nodejs.org/
+
+1.3) Você vai ver dois botões grandes:
+     • "LTS" (à esquerda) - É o que você quer! Clique aqui
+     • "Current" (à direita) - Ignore este
+
+1.4) Clique no botão grande "LTS" - um arquivo começará a baixar
+
+1.5) Aguarde o download terminar
+
+1.6) Procure o arquivo baixado (geralmente em "Downloads")
+     Nome dele é algo como: "node-v22.22.0-x64.msi"
+
+1.7) Clique 2x no arquivo para instalar
+
+1.8) Vão aparecer telas com perguntas - clique em "NEXT" (próximo) em todas
+
+1.9) Quando terminar, clique em "FINISH" (concluir)
+
+1.10) PRONTO! Node.js está instalado!
+
+Para verificar se funcionou:
+   • Pressione a tecla Windows + R (abre uma caixa)
+   • Digite: cmd
+   • Pressione ENTER
+   • Digite: node --version
+   • Aparecerá: v22.22.0 (ou número similar)
+   • Se aparecer número = SUCESSO! ✓
+
+
+PASSO 2: PREPARAR OS ARQUIVOS (5 minutos)
+──────────────────────────────────────────────────────────────────────────────
+
+Você já baixou os arquivos do Chat Interno. Agora precisa organizá-los.
+
+COMO FAZER:
+
+2.1) Crie uma pasta no seu computador:
+     • Abra o Windows Explorer (aquela pasta amarela)
+     • Vá para: C:\
+     • Clique com botão direito em espaço vazio
+     • Escolha: "Nova Pasta"
+     • Digite o nome: ChatInterno
+     • Pressione ENTER
+
+2.2) Agora você tem uma pasta C:\ChatInterno
+
+2.3) Copie TODOS os arquivos que você baixou para esta pasta:
+     • server-simple.js
+     • index.html
+     • package-simple.json
+     • setup-simple.js
+     • E todos os outros arquivos .txt
+
+     Como copiar:
+     • Selecione os arquivos (Ctrl+A para selecionar tudo)
+     • Copie (Ctrl+C)
+     • Entre na pasta ChatInterno
+     • Cole (Ctrl+V)
+
+2.4) PRONTO! Arquivos estão organizados!
+
+
+PASSO 3: INSTALAR DEPENDÊNCIAS (10 minutos)
+──────────────────────────────────────────────────────────────────────────────
+
+Agora você vai "avisar" ao Node.js quais programas ele precisa.
+
+COMO FAZER:
+
+3.1) Abra o Prompt de Comando:
+     • Pressione: Windows + R
+     • Digite: cmd
+     • Pressione: ENTER
+
+3.2) Você verá uma janela preta com texto branco
+
+3.3) Digite este comando (copie exatamente):
+     cd C:\ChatInterno
+
+3.4) Pressione ENTER
+
+3.5) Agora você está na pasta certa. Digite:
+     npm install --silent
+
+3.6) Aguarde... vai aparecer muito texto e barras de progresso
+
+3.7) Quando terminar, dirá algo como:
+     "added 223 packages in 30s"
+
+3.8) PRONTO! Dependências estão instaladas!
+
+
+PASSO 4: CONFIGURAR O ADMINISTRADOR (5 minutos)
+──────────────────────────────────────────────────────────────────────────────
+
+Você é o administrador! Agora vai criar sua senha.
+
+COMO FAZER:
+
+4.1) Na mesma janela do Prompt de Comando, digite:
+     npm run setup
+
+4.2) Aparecerão 3 perguntas:
+
+     PERGUNTA 1: "Nome do administrador:"
+     • Digite seu nome completo (ex: João Silva)
+     • Pressione ENTER
+
+     PERGUNTA 2: "E-mail do administrador:"
+     • Digite seu email (ex: joao@empresa.com)
+     • Pressione ENTER
+
+     PERGUNTA 3: "Senha do administrador:"
+     • Digite uma senha FORTE (ex: Minha@Senha123)
+     • Use letras, números e símbolos
+     • Pressione ENTER
+
+     PERGUNTA 4: "Deseja criar grupos de exemplo? (s/n):"
+     • Digite: s
+     • Pressione ENTER
+
+4.3) Você verá:
+     "Configuração finalizada com sucesso!"
+
+4.4) PRONTO! Você é agora o administrador!
+
+
+PASSO 5: INICIAR O SERVIDOR (imediato)
+──────────────────────────────────────────────────────────────────────────────
+
+Agora você vai "ligar" o chat.
+
+COMO FAZER:
+
+5.1) Na mesma janela, digite:
+     npm start
+
+5.2) Aguarde alguns segundos...
+
+5.3) Verá a mensagem:
+     "Servidor rodando em http://localhost:3000"
+
+5.4) MUITO BEM! O servidor está ligado!
+
+5.5) IMPORTANTE: Deixe esta janela aberta!
+     (Se fechar, o chat desliga)
+
+
+PASSO 6: ACESSAR O CHAT (imediato)
+──────────────────────────────────────────────────────────────────────────────
+
+Agora você entra no chat!
+
+COMO FAZER:
+
+6.1) Abra seu navegador (Chrome, Firefox, Edge, Safari)
+
+6.2) Na barra de endereço (onde você digita endereços), clique
+
+6.3) Digite exatamente:
+     http://localhost:3000
+
+6.4) Pressione ENTER
+
+6.5) Aparecerá uma página de login com:
+     • Campo: "E-mail"
+     • Campo: "Senha"
+     • Botão: "Entrar"
+
+6.6) Digite:
+     • E-mail: o email que você criou no passo 4
+     • Senha: a senha que você criou no passo 4
+
+6.7) Clique em "Entrar"
+
+6.8) SUCESSO! Você entrou no Chat!
+
+Agora você vê:
+   • Lista de grupos (esquerda)
+   • Lista de contatos (esquerda)
+   • Área de chat (centro)
+   • Campo para digitar mensagem (rodapé)
+
+
+PASSO 7: CRIAR USUÁRIOS (FUNCIONÁRIOS)
+──────────────────────────────────────────────────────────────────────────────
+
+Agora você vai criar contas para sua equipe acessar.
+
+COMO FAZER:
+
+7.1) Na página do chat, procure:
+     "⚙️ Painel Admin" (canto superior direito)
+
+7.2) Clique nele
+
+7.3) Aparecerá uma janela com seções
+
+7.4) Procure: "Cadastrar Novo Usuário"
+
+7.5) Você verá dois campos:
+     • Nome (ex: Maria Silva)
+     • E-mail (ex: maria@empresa.com)
+
+7.6) Preencha com dados do funcionário
+
+7.7) Clique: "Cadastrar Usuário"
+
+7.8) Aparecerá: "Usuário cadastrado com sucesso!"
+
+7.9) IMPORTANTE: Anote a senha padrão: Senha123!
+
+7.10) Repita para cada funcionário que precisa acessar
+
+Exemplo:
+   Nome: João da Silva
+   Email: joao@empresa.com
+   Senha (padrão): Senha123!
+
+
+PASSO 8: CRIAR GRUPOS (SALAS)
+──────────────────────────────────────────────────────────────────────────────
+
+Crie salas de conversa para diferentes temas.
+
+COMO FAZER:
+
+8.1) Ainda no Painel Admin
+
+8.2) Procure: "Criar Novo Grupo"
+
+8.3) Preencha:
+     • Nome do Grupo: (ex: "Geral", "Vendas", "TI")
+     • Descrição: (ex: "Discussões gerais da equipe")
+
+8.4) Clique: "Criar Grupo"
+
+8.5) Aparecerá: "Grupo criado com sucesso!"
+
+8.6) Repita para criar quantos grupos precisar
+
+Exemplos de grupos:
+   • Geral (para todos)
+   • Anúncios (informes importantes)
+   • Vendas (equipe de vendas)
+   • Suporte (para problemas)
+   • Financeiro (departamento financeiro)
+
+
+PASSO 9: COMPARTILHAR COM A EQUIPE
+──────────────────────────────────────────────────────────────────────────────
+
+Sua equipe vai acessar do computador dela.
+
+COMO FAZER:
+
+9.1) Você precisa saber o IP da sua máquina:
+     • Abra o Prompt de Comando (Windows + R, cmd, ENTER)
+     • Digite: ipconfig
+     • Procure por "IPv4 Address"
+     • Anote o número (ex: 192.168.1.100)
+
+9.2) Envie para sua equipe:
+     "Abra seu navegador e vá para:
+      http://192.168.1.100:3000"
+
+9.3) Para cada pessoa, diga:
+     • Email: [o email que você cadastrou]
+     • Senha: Senha123!
+
+9.4) Ao acessar, devem mudar a senha!
+
+9.5) Pronto! Todos podem usar o chat!
+
+
+PASSO 10: USAR O CHAT NO DIA A DIA
+──────────────────────────────────────────────────────────────────────────────
+
+Como enviar mensagens:
+
+MENSAGEM EM GRUPO:
+   1. Clique no nome do grupo (lado esquerdo)
+   2. Digite a mensagem
+   3. Pressione ENTER ou clique "Enviar"
+   4. Todos do grupo veem
+
+MENSAGEM PRIVADA:
+   1. Clique no nome da pessoa (seção "Contatos")
+   2. Digite a mensagem
+   3. Pressione ENTER ou clique "Enviar"
+   4. Só aquela pessoa vê
+
+NOTIFICAÇÕES:
+   • Quando alguém manda mensagem, você recebe aviso
+   • Aparece no canto direito da tela
+
+
+PROBLEMAS COMUNS
+──────────────────────────────────────────────────────────────────────────────
+
+PROBLEMA: "A página não carrega em http://localhost:3000"
+SOLUÇÃO:
+   1. Verifique se a janela do Prompt de Comando ainda está aberta
+   2. Se estiver fechada, você perdeu o servidor
+   3. Abra Prompt de Comando novamente
+   4. Va para: cd C:\ChatInterno
+   5. Digite: npm start
+   6. Tente novamente
+
+
+PROBLEMA: "Esqueci minha senha!"
+SOLUÇÃO:
+   1. Delete a pasta: C:\ChatInterno\data
+   2. Feche o servidor (feche a janela do Prompt)
+   3. Execute novamente: npm run setup
+   4. Crie nova senha
+
+
+PROBLEMA: "Ninguém consegue acessar pelo IP"
+SOLUÇÃO:
+   1. Verifique se o IP está correto (ipconfig)
+   2. Verifique se estão na mesma rede (WiFi/cabo)
+   3. Pode ser firewall bloqueando:
+      • Abra: Painel de Controle > Firewall do Windows
+      • Clique: "Permitir um programa"
+      • Procure: Node.js
+      • Marque as caixas
+      • Clique: OK
+
+
+PROBLEMA: "A página está lenta"
+SOLUÇÃO:
+   1. Isso é normal com muitas pessoas usando
+   2. Atualize o navegador (F5)
+   3. Se persistir, reinicie o servidor
+
+
+DICAS DE OURO
+──────────────────────────────────────────────────────────────────────────────
+
+1. BACKUP DOS DADOS:
+   • Copie a pasta: C:\ChatInterno\data
+   • Guarde em pendrive ou nuvem
+   • Se algo der errado, pode restaurar
+
+2. DEIXAR RODANDO O DIA TODO:
+   • Deixe a janela do Prompt aberta
+   • Não desligue a máquina
+   • O chat ficará sempre disponível
+
+3. REINICIAR:
+   • Feche a janela do Prompt (fecha o servidor)
+   • Abra novamente
+   • Digite: npm start
+   • Está de volta ao ar
+
+4. MUDANÇA DE SENHA:
+   • Usuario novo pode mudar a senha Senha123!
+   • Essa funcionalidade vem em breve
+
+5. ADICIONAR PESSOAS DEPOIS:
+   • Painel Admin > Cadastrar novo usuario
+   • Não precisa reiniciar nada
+   • Usuario aparece automaticamente
+
+
+CHECKLIST FINAL
+──────────────────────────────────────────────────────────────────────────────
+
+□ Node.js instalado (node --version apareceu número)
+□ Pasta C:\ChatInterno criada com os arquivos
+□ npm install --silent executado com sucesso
+□ npm run setup executado (criei admin)
+□ npm start rodando (janela aberta)
+□ http://localhost:3000 abre a página
+□ Login funciona (usei meus dados)
+□ Painel Admin acessível (botão ⚙️)
+□ Usuários criados (ao menos 1)
+□ Grupos criados (ao menos 1)
+□ Outros acessam pelo IP
+□ Mensagens funcionam
+□ Notificações funcionam
+□ Backup feito (pasta data copiada)
+
+Se todos marcados = SUCESSO TOTAL! 🎉
+
+
+PRÓXIMAS MELHORIAS
+──────────────────────────────────────────────────────────────────────────────
+
+Logo você poderá:
+   • Trocar sua própria senha
+   • Deletar mensagens
+   • Editar mensagens
+   • Buscar mensagens antigas
+   • Enviar imagens
+   • E muito mais!
+
+
+SUPORTE RÁPIDO
+──────────────────────────────────────────────────────────────────────────────
+
+Leu tudo e ainda tem dúvida?
+
+1. Releia este guia (está bem completo)
+2. Consulte: FAQ.txt
+3. Consulte: INSTALACAO_DETALHADA.txt
+
+
+═════════════════════════════════════════════════════════════════════════════
+Parabéns! Seu Chat Interno está funcionando!
+
+Agora sua equipe pode conversar sem depender de aplicativos de fora.
+
+Tudo é seu, tudo é seguro, tudo é gratuito!
+
+═════════════════════════════════════════════════════════════════════════════

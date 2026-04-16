@@ -1,0 +1,307 @@
+═════════════════════════════════════════════════════════════════════════════
+   CHECKLIST - IMPLEMENTAÇÃO DO CHAT INTERNO
+═════════════════════════════════════════════════════════════════════════════
+
+
+FASE 1: PREPARAÇÃO
+──────────────────────────────────────────────────────────────────────────────
+
+□ Todos os arquivos baixados/copiados
+  ✓ server.js
+  ✓ index.html
+  ✓ package.json
+  ✓ setup.js
+  ✓ configurar.bat
+  ✓ iniciar.bat
+  ✓ README.md
+  ✓ Outros documentos
+
+□ Pasta criada (ex: C:\ChatInterno)
+□ Todos arquivos na mesma pasta
+□ Espaço disco disponível (100MB mínimo)
+
+
+FASE 2: INSTALAÇÃO NODE.JS
+──────────────────────────────────────────────────────────────────────────────
+
+□ Node.js baixado de https://nodejs.org/ (versão LTS)
+□ Node.js instalado
+□ Instalador executado com sucesso
+□ Computador reiniciado (recomendado)
+□ Verificado com: node --version (deve mostrar v14+)
+□ Verificado com: npm --version (deve mostrar versão)
+
+
+FASE 3: INSTALAÇÃO DO APLICATIVO
+──────────────────────────────────────────────────────────────────────────────
+
+□ Clicado em "configurar.bat" (ou npm install se manual)
+□ Aguardado até completar (pode levar 2-3 minutos)
+□ Pasta "node_modules" criada
+□ Mensagem "npm install" bem-sucedida
+
+
+FASE 4: CONFIGURAÇÃO DO BANCO DE DADOS
+──────────────────────────────────────────────────────────────────────────────
+
+□ Clicado em "configurar.bat" (ou npm run setup se manual)
+□ Respondido: Nome do administrador
+□ Respondido: E-mail do administrador
+□ Respondido: Senha do administrador
+□ Respondido: Criar grupos de exemplo (s/n)
+□ Mensagem "Configuração finalizada com sucesso"
+□ Arquivo "chat.db" criado
+
+
+FASE 5: INICIALIZAÇÃO DO SERVIDOR
+──────────────────────────────────────────────────────────────────────────────
+
+□ Clicado em "iniciar.bat" (ou npm start se manual)
+□ Janela do servidor aberta
+□ Mensagem: "Servidor rodando em http://localhost:3000"
+□ Sem erros vermelhos na console
+□ Servidor aguardando conexões
+
+
+FASE 6: TESTE LOCAL
+──────────────────────────────────────────────────────────────────────────────
+
+□ Navegador aberto (Chrome, Firefox, Edge)
+□ Acessado: http://localhost:3000
+□ Página de login carregada
+□ Campo de e-mail visível
+□ Campo de senha visível
+□ Botão "Entrar" visível
+
+
+FASE 7: LOGIN INICIAL
+──────────────────────────────────────────────────────────────────────────────
+
+□ Digitado e-mail do admin
+□ Digitado senha do admin
+□ Clicado em "Entrar"
+□ Redirecionado para chat principal (não é login error)
+□ Nome do admin aparece (canto superior esquerdo)
+□ Email do admin aparece
+□ Badge "ADMIN" aparece (vermelho)
+
+
+FASE 8: PAINEL DE ADMINISTRAÇÃO
+──────────────────────────────────────────────────────────────────────────────
+
+□ Clicado em "⚙️ Painel Admin"
+□ Modal abriu
+□ Formulário de novo usuário visível
+□ Tabela de usuários visível
+□ Seção de novo grupo visível
+□ Botão "Fechar" funciona
+
+
+FASE 9: CRIAR USUÁRIOS TESTE
+──────────────────────────────────────────────────────────────────────────────
+
+□ Criado usuário: Nome = "João", Email = "joao@test.com"
+□ Clicado "Cadastrar Usuário"
+□ Mensagem "Usuário cadastrado com sucesso"
+□ Criado usuário: Nome = "Maria", Email = "maria@test.com"
+□ Clicado "Cadastrar Usuário"
+□ Ambos aparecem na tabela de usuários
+□ Anotado que senha padrão é: Senha123!
+
+
+FASE 10: CRIAR GRUPOS TESTE
+──────────────────────────────────────────────────────────────────────────────
+
+□ Digitado nome do grupo: "Geral"
+□ Digitado descrição: "Discussões gerais"
+□ Clicado "Criar Grupo"
+□ Mensagem "Grupo criado com sucesso"
+□ Grupo aparece na lista de grupos (lado esquerdo)
+□ Digitado nome do grupo: "Anúncios"
+□ Clicado "Criar Grupo"
+□ Ambos grupos visíveis na barra lateral
+
+
+FASE 11: TESTE DE MENSAGEM EM GRUPO
+──────────────────────────────────────────────────────────────────────────────
+
+□ Clicado no grupo "Geral"
+□ Campo de entrada de mensagem aparece
+□ Digitado mensagem: "Teste de mensagem"
+□ Clicado "Enviar" ou pressionado ENTER
+□ Mensagem aparece no chat
+□ Mensagem aparece com seu nome (Admin)
+□ Hora da mensagem aparece
+
+
+FASE 12: TESTE DE LOGOUT
+──────────────────────────────────────────────────────────────────────────────
+
+□ Clicado no ícone de porta (logout, canto superior)
+□ Desconectado
+□ Voltou para tela de login
+□ Campo de e-mail vazio
+□ Campo de senha vazio
+
+
+FASE 13: TESTE DE USUÁRIO COMUM
+──────────────────────────────────────────────────────────────────────────────
+
+□ Digitado email: joao@test.com
+□ Digitado senha: Senha123!
+□ Clicado "Entrar"
+□ Login bem-sucedido
+□ Vê seu nome "João" (não tem badge ADMIN)
+□ Vê grupos na barra lateral
+□ Clicou em grupo "Geral"
+□ Vê mensagem do Admin que foi enviada antes
+□ Digitou resposta
+□ Clicou enviar
+□ Mensagem aparece com seu nome "João"
+
+
+FASE 14: TESTE PRIVADO
+──────────────────────────────────────────────────────────────────────────────
+
+□ Na conta de João, clicou em "Maria" (contatos)
+□ Chat privado abriu
+□ Campo de mensagem aparece
+□ Digitou: "Oi Maria"
+□ Clicou enviar
+□ Mensagem aparece
+□ Fez logout de João
+
+
+FASE 15: TESTE NOTIFICAÇÃO
+──────────────────────────────────────────────────────────────────────────────
+
+□ Login com admin novamente
+□ Clicou em "Maria"
+□ Chat privado com Maria abriu
+□ Na outra aba/navegador: login com Maria
+□ Maria recebeu notificação (canto superior direito)
+□ Mensagem do admin aparece no chat de Maria
+□ (Opcional) Permitir notificação do navegador
+
+
+FASE 16: TESTE DE REDE LOCAL
+──────────────────────────────────────────────────────────────────────────────
+
+□ Descoberto IP local:
+  - Aberto cmd/PowerShell
+  - Executado: ipconfig
+  - Procurado "IPv4 Address"
+  - Anotado IP (ex: 192.168.1.100)
+
+□ De outra máquina na rede:
+  - Aberto navegador
+  - Digitado: http://SEU_IP:3000
+  - Login bem-sucedido
+  - Consegue enviar mensagens
+  - Mensagens sincronizam em tempo real
+
+
+FASE 17: TESTE DE NOTIFICAÇÕES
+──────────────────────────────────────────────────────────────────────────────
+
+□ Admin envia mensagem privada para João
+□ João (em outra máquina) recebe notificação
+□ Notificação aparece no topo direito
+□ Clicou em contato de Admin
+□ Mensagem aparece no chat
+□ Browser pede permissão para notificação
+□ (Opcional) Clicado "Permitir"
+
+
+FASE 18: TESTE DE PERSISTÊNCIA
+──────────────────────────────────────────────────────────────────────────────
+
+□ Anotadas algumas mensagens enviadas
+□ Clicado em outro grupo (ex: Anúncios)
+□ Voltado ao grupo "Geral"
+□ Mensagens anteriores ainda aparecem (histórico mantido)
+□ Fecho o navegador
+□ Reabro navegador
+□ Acesso novamente: http://localhost:3000
+□ Faço login
+□ Histórico das mensagens está lá
+
+
+FASE 19: TESTE DE ESCALABILIDADE
+──────────────────────────────────────────────────────────────────────────────
+
+□ Criados 10+ usuários teste
+□ Todos conseguem fazer login
+□ Podem enviar mensagens simultaneamente
+□ Sem travamentos perceptíveis
+□ Sem erros de banco de dados
+
+
+FASE 20: VERIFICAÇÕES FINAIS
+──────────────────────────────────────────────────────────────────────────────
+
+□ Servidor rodando sem erros
+□ Chat.db existe e tem tamanho > 0
+□ Node_modules pasta existe
+□ Interface carrega rapidamente
+□ Mensagens entregues sem delay
+□ Notificações funcionando
+□ Logout funciona
+□ Acesso de múltiplas máquinas funciona
+
+
+FASE 21: DOCUMENTAÇÃO
+──────────────────────────────────────────────────────────────────────────────
+
+□ README.md lido e entendido
+□ GUIA_RAPIDO.txt lido
+□ INSTALACAO_DETALHADA.txt guardado para referência
+□ FAQ.txt consultado se houver dúvidas
+□ SPECS_TECNICAS.txt guardado para arquivo
+
+
+FASE 22: PREPARAÇÃO PARA PRODUÇÃO
+──────────────────────────────────────────────────────────────────────────────
+
+□ Servidor vai rodar em máquina dedicada
+□ Backups agendados (cópia periódica de chat.db)
+□ Firewall configurado (porta 3000 permitida)
+□ Admin criado com senha forte
+□ Lista de usuários preparada
+□ Grupos criados conforme necessidade
+□ Script de startup automático (opcional)
+
+
+FASE 23: TREINAMENTO
+──────────────────────────────────────────────────────────────────────────────
+
+□ Treinamento com usuários finalistas
+□ Explicado como logar
+□ Explicado como enviar mensagem em grupo
+□ Explicado como enviar privado
+□ Mostrado como permitir notificações
+□ Respondidas dúvidas
+□ Documentação distribuída
+
+
+FASE 24: LANÇAMENTO
+──────────────────────────────────────────────────────────────────────────────
+
+□ Todos usuários têm credenciais
+□ Todos conseguem acessar
+□ Servidor rodando 24h (se necessário)
+□ Admin disponível para suporte
+□ Sistema em operação
+
+
+═════════════════════════════════════════════════════════════════════════════
+
+RESUMO FINAL
+──────────────────────────────────────────────────────────────────────────────
+
+Total de passos: 100+
+Tempo estimado: 2-4 horas (primeira vez)
+
+Se todas caixas estão marcadas ✓, seu Chat Interno está funcionando!
+
+═════════════════════════════════════════════════════════════════════════════

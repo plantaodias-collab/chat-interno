@@ -1,0 +1,141 @@
+const sqlite3 = require('sqlite3').verbose();
+const bcrypt = require('bcryptjs');
+const path = require('path');
+const readline = require('readline');
+
+const DB_PATH = path.join(__dirname, 'chat.db');
+const db = new sqlite3.Database(DB_PATH);
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+const pergunta = (texto) => {
+  return new Promise((resolve) => {
+    rl.question(texto, (resposta) => {
+      resolve(resposta);
+    });
+  });
+};
+
+const runAsync = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) reject(err);
+      else resolve(this);
+    });
+  });
+};
+
+const criarTabelas = async () => {
+  console.log('\n[*] Criando tabelas do banco de dados...');
+
+  await runAsync(`CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    senha TEXT NOT NULL,
+    nome TEXT NOT NULL,
+    admin INTEGER DEFAULT 0,
+    ativo INTEGER DEFAULT 1,
+    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  await runAsync(`CREATE TABLE IF NOT EXISTS grupos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL UNIQUE,
+    descricao TEXT,
+    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  await runAsync(`CREATE TABLE IF NOT EXISTS membros_grupo (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    grupo_id INTEGER NOT NULL,
+    usuario_id INTEGER NOT NULL,
+    FOREIGN KEY(grupo_id) REFERENCES grupos(id),
+    FOREIGN KEY(usuario_id) REFERENCES usuarios(id),
+    UNIQUE(grupo_id, usuario_id)
+  )`);
+
+  await runAsync(`CREATE TABLE IF NOT EXISTS mensagens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL,
+    grupo_id INTEGER,
+    usuario_destino_id INTEGER,
+    conteudo TEXT NOT NULL,
+    lido INTEGER DEFAULT 0,
+    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(usuario_id) REFERENCES usuarios(id),
+    FOREIGN KEY(grupo_id) REFERENCES grupos(id),
+    FOREIGN KEY(usuario_destino_id) REFERENCES usuarios(id)
+  )`);
+
+  console.log('[✓] Tabelas criadas com sucesso\n');
+};
+
+const criarAdministrador = async () => {
+  console.log('=== CONFIGURAÇÃO DO ADMINISTRADOR ===\n');
+
+  const nome = await pergunta('Nome do administrador: ');
+  const email = await pergunta('E-mail do administrador: ');
+  const senha = await pergunta('Senha do administrador: ');
+
+  const senhaHash = await bcrypt.hash(senha, 10);
+
+  await runAsync(
+    'INSERT INTO usuarios (email, nome, senha, admin) VALUES (?, ?, ?, 1)',
+    [email, nome, senhaHash]
+  );
+
+  console.log('\n[✓] Administrador criado com sucesso!');
+  console.log(`    E-mail: ${email}`);
+  console.log(`    Nome: ${nome}\n`);
+};
+
+const criarGruposExemplo = async () => {
+  const perguntaGrupos = await pergunta('Deseja criar grupos de exemplo? (s/n): ');
+
+  if (perguntaGrupos.toLowerCase() === 's') {
+    const grupos = [
+      { nome: 'Geral', descricao: 'Discussões gerais da equipe' },
+      { nome: 'Anúncios', descricao: 'Anúncios importantes' },
+      { nome: 'Suporte', descricao: 'Grupo de suporte técnico' }
+    ];
+
+    for (const grupo of grupos) {
+      await runAsync('INSERT INTO grupos (nome, descricao) VALUES (?, ?)', [grupo.nome, grupo.descricao]);
+      console.log(`[✓] Grupo "${grupo.nome}" criado`);
+    }
+    console.log('');
+  }
+};
+
+const main = async () => {
+  try {
+    console.log('\n╔════════════════════════════════════════╗');
+    console.log('║   CONFIGURAÇÃO INICIAL - CHAT INTERNO   ║');
+    console.log('╚════════════════════════════════════════╝\n');
+
+    await criarTabelas();
+    await criarAdministrador();
+    await criarGruposExemplo();
+
+    console.log('╔════════════════════════════════════════╗');
+    console.log('║   CONFIGURAÇÃO FINALIZADA COM SUCESSO   ║');
+    console.log('╚════════════════════════════════════════╝\n');
+    console.log('Próximos passos:');
+    console.log('1. Execute: npm install');
+    console.log('2. Execute: npm start');
+    console.log('3. Acesse: http://localhost:3000\n');
+
+    rl.close();
+    db.close();
+  } catch (err) {
+    console.error('[✗] Erro:', err.message);
+    rl.close();
+    db.close();
+    process.exit(1);
+  }
+};
+
+main();
