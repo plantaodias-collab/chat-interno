@@ -918,6 +918,7 @@
     let lastTimestampState = {};
     let onlineState = new Set();
     let typingUsers = new Map();
+    const STORAGE_KEY = 'chatinterno.session';
 
     function getChatKey(tipo, id) {
       return `${tipo}-${id}`;
@@ -1036,6 +1037,138 @@
       document.getElementById('uploadStatus').textContent = texto || '';
     }
 
+    function salvarSessao() {
+      if (!token || !usuarioAtual) return;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        token,
+        usuario: usuarioAtual
+      }));
+    }
+
+    function limparSessao() {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+
+    async function carregarDadosIniciais() {
+      await carregarGrupos();
+      await carregarContatos();
+      await carregarResumoConversas();
+      updateBrowserTitle();
+
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    }
+
+    function aplicarSessaoUsuario() {
+      document.getElementById('loginContainer').classList.add('hidden');
+      document.getElementById('chatContainer').classList.remove('hidden');
+      document.getElementById('currentUserName').textContent = usuarioAtual.nome;
+      document.getElementById('currentUserEmail').textContent = usuarioAtual.email;
+      document.getElementById('currentUserAvatar').textContent = initials(usuarioAtual.nome);
+
+      const isAdmin = Boolean(usuarioAtual.admin);
+      document.getElementById('adminBadge').style.display = isAdmin ? 'inline-flex' : 'none';
+      document.getElementById('adminSection').classList.toggle('hidden', !isAdmin);
+      document.getElementById('novoGrupoBtn').style.display = isAdmin ? 'inline-flex' : 'none';
+      document.getElementById('ajustesBtn').classList.toggle('hidden', !isAdmin);
+    }
+
+    async function restaurarSessao() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+
+        const session = JSON.parse(raw);
+        if (!session?.token || !session?.usuario) {
+          limparSessao();
+          return;
+        }
+
+        token = session.token;
+        usuarioAtual = session.usuario;
+        aplicarSessaoUsuario();
+        conectarSocket();
+        await carregarDadosIniciais();
+      } catch (_err) {
+        limparSessao();
+      }
+    }
+
+    function processarMensagemGrupo(data) {
+      const chatKey = getChatKey('grupo', data.grupoId);
+      const isCurrent = tipoChat === 'grupo' && Number(chatIdAtual) === Number(data.grupoId);
+      const preview = data.tipo === 'arquivo'
+        ? `${data.usuarioNome}: Arquivo: ${data.arquivo_nome_original}`
+        : `${data.usuarioNome}: ${data.conteudo}`;
+
+      lastPreviewState[chatKey] = preview;
+      lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
+      lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
+
+      if (isCurrent) {
+        adicionarMensagem({
+          ...data,
+          usuarioNome: data.usuarioNome,
+          ehOutro: Number(data.usuarioId) !== Number(usuarioAtual.id)
+        });
+      } else {
+        unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
+      }
+
+      typingUsers.delete(`grupo-${data.grupoId}`);
+      renderTypingIndicator();
+      renderGrupos();
+      updateBrowserTitle();
+
+      if (Number(data.usuarioId) !== Number(usuarioAtual.id)) {
+        mostrarNotificacao(`${data.usuarioNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem'} no grupo`, 'success');
+      }
+    }
+
+    function processarMensagemPrivada(data) {
+      const chatKey = getChatKey('privado', data.remetente_id);
+      const isCurrent = tipoChat === 'privado' && Number(chatIdAtual) === Number(data.remetente_id);
+      const preview = data.tipo === 'arquivo'
+        ? `${data.remetenteNome}: Arquivo: ${data.arquivo_nome_original}`
+        : `${data.remetenteNome}: ${data.conteudo}`;
+
+      lastPreviewState[chatKey] = preview;
+      lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
+      lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
+
+      if (isCurrent) {
+        adicionarMensagem({
+          ...data,
+          usuarioNome: data.remetenteNome,
+          ehOutro: true,
+          usuarioId: data.remetente_id
+        });
+
+        socket.emit('marcar-lidas', {
+          remetenteId: data.remetente_id,
+          destinatarioId: usuarioAtual.id
+        });
+      } else {
+        unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
+      }
+
+      typingUsers.delete(`privado-${data.remetente_id}`);
+      renderTypingIndicator();
+      renderContatos();
+      updateBrowserTitle();
+
+      mostrarNotificacao(`${data.remetenteNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem privada'}`, 'success');
+
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Nova mensagem privada', {
+          body: data.tipo === 'arquivo'
+            ? `${data.remetenteNome}: Arquivo ${data.arquivo_nome_original}`
+            : `${data.remetenteNome}: ${data.conteudo}`
+        });
+      }
+    }
+
     async function fazerLogin() {
       const email = document.getElementById('loginEmail').value.trim();
       const senha = document.getElementById('loginSenha').value;
@@ -1062,28 +1195,11 @@
         token = data.token;
         usuarioAtual = data.usuario;
 
-        document.getElementById('loginContainer').classList.add('hidden');
-        document.getElementById('chatContainer').classList.remove('hidden');
-        document.getElementById('currentUserName').textContent = usuarioAtual.nome;
-        document.getElementById('currentUserEmail').textContent = usuarioAtual.email;
-        document.getElementById('currentUserAvatar').textContent = initials(usuarioAtual.nome);
-
-        if (usuarioAtual.admin) {
-          document.getElementById('adminBadge').style.display = 'inline-flex';
-          document.getElementById('adminSection').classList.remove('hidden');
-          document.getElementById('novoGrupoBtn').style.display = 'inline-flex';
-          document.getElementById('ajustesBtn').classList.remove('hidden');
-        }
+        salvarSessao();
+        aplicarSessaoUsuario();
 
         conectarSocket();
-        await carregarGrupos();
-        await carregarContatos();
-        await carregarResumoConversas();
-        updateBrowserTitle();
-
-        if ('Notification' in window && Notification.permission === 'default') {
-          Notification.requestPermission();
-        }
+        await carregarDadosIniciais();
       } catch (err) {
         mostrarErro('Erro na conexão: ' + err.message);
       }
@@ -1119,85 +1235,35 @@
       });
 
       socket.on('nova-mensagem-grupo', (data) => {
-        const chatKey = getChatKey('grupo', data.grupoId);
-        const isCurrent = tipoChat === 'grupo' && Number(chatIdAtual) === Number(data.grupoId);
-        const preview = data.tipo === 'arquivo'
-          ? `${data.usuarioNome}: Arquivo: ${data.arquivo_nome_original}`
-          : `${data.usuarioNome}: ${data.conteudo}`;
-
-        lastPreviewState[chatKey] = preview;
-        lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
-        lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
-
-        if (isCurrent) {
-          adicionarMensagem({
-            ...data,
-            usuarioNome: data.usuarioNome,
-            ehOutro: Number(data.usuarioId) !== Number(usuarioAtual.id)
-          });
-        } else {
-          unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
-        }
-
-        typingUsers.delete(`grupo-${data.grupoId}`);
-        renderTypingIndicator();
-        renderGrupos();
-        updateBrowserTitle();
-
-        if (Number(data.usuarioId) !== Number(usuarioAtual.id)) {
-          mostrarNotificacao(`${data.usuarioNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem'} no grupo`, 'success');
-        }
+        processarMensagemGrupo(data);
       });
 
       socket.on('nova-mensagem-privada', (data) => {
-        const chatKey = getChatKey('privado', data.remetente_id);
-        const isCurrent = tipoChat === 'privado' && Number(chatIdAtual) === Number(data.remetente_id);
-        const preview = data.tipo === 'arquivo'
-          ? `${data.remetenteNome}: Arquivo: ${data.arquivo_nome_original}`
-          : `${data.remetenteNome}: ${data.conteudo}`;
-
-        lastPreviewState[chatKey] = preview;
-        lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
-        lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
-
-        if (isCurrent) {
-          adicionarMensagem({
-            ...data,
-            usuarioNome: data.remetenteNome,
-            ehOutro: true,
-            usuarioId: data.remetente_id
-          });
-
-          socket.emit('marcar-lidas', {
-            remetenteId: data.remetente_id,
-            destinatarioId: usuarioAtual.id
-          });
-        } else {
-          unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
-        }
-
-        typingUsers.delete(`privado-${data.remetente_id}`);
-        renderTypingIndicator();
-        renderContatos();
-        updateBrowserTitle();
-
-        mostrarNotificacao(`${data.remetenteNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem privada'}`, 'success');
-
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('Nova mensagem privada', {
-            body: data.tipo === 'arquivo'
-              ? `${data.remetenteNome}: Arquivo ${data.arquivo_nome_original}`
-              : `${data.remetenteNome}: ${data.conteudo}`
-          });
-        }
+        processarMensagemPrivada(data);
       });
 
       socket.on('novo-arquivo-grupo', (data) => {
-        socket.emit('nova-mensagem-grupo', data);
+        processarMensagemGrupo(data);
       });
 
       socket.on('novo-arquivo-privado', (data) => {
-        socket.emit('nova-mensagem-privada', data);
+        processarMensagemPrivada(data);
+      });
+
+      socket.on('mensagem-enviada-confirmacao', (data) => {
+        const chatKey = getChatKey('privado', data.destinatario_id);
+        lastPreviewState[chatKey] = `VocÃª: ${data.conteudo}`;
+        lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
+        lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
+        renderContatos();
+      });
+
+      socket.on('arquivo-enviado-confirmacao', (data) => {
+        const chatKey = getChatKey('privado', data.destinatario_id);
+        lastPreviewState[chatKey] = `VocÃª: Arquivo: ${data.arquivo_nome_original}`;
+        lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
+        lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
+        renderContatos();
       });
 
       socket.on('mensagens-lidas', (data) => {
@@ -1680,6 +1746,7 @@
     function abrirAjustes() { mostrarNotificacao('Ajustes avançados podem ser expandidos em seguida', 'success'); }
 
     function fazerLogout() {
+      limparSessao();
       token = null;
       usuarioAtual = null;
       tipoChat = null;
@@ -1702,6 +1769,13 @@
       document.getElementById('chatContainer').classList.add('hidden');
       document.getElementById('loginEmail').value = '';
       document.getElementById('loginSenha').value = '';
+      document.getElementById('currentUserName').textContent = '';
+      document.getElementById('currentUserEmail').textContent = '';
+      document.getElementById('currentUserAvatar').textContent = 'U';
+      document.getElementById('adminBadge').style.display = 'none';
+      document.getElementById('adminSection').classList.add('hidden');
+      document.getElementById('novoGrupoBtn').style.display = 'none';
+      document.getElementById('ajustesBtn').classList.add('hidden');
       document.getElementById('messagesContainer').innerHTML = '';
       document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat';
       document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
@@ -1721,6 +1795,8 @@
         event.target.classList.remove('active');
       }
     };
+
+    restaurarSessao();
   </script>
 </body>
 </html>

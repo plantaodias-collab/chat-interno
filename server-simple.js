@@ -17,19 +17,38 @@ const io = socketIO(server, {
   }
 });
 
-const SECRET_KEY = 'sua-chave-secreta-aqui-mude-isso';
-const DATA_DIR = path.join(__dirname, 'data');
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const STORAGE_ROOT = path.resolve(
+  process.env.STORAGE_ROOT ||
+  process.env.RAILWAY_VOLUME_MOUNT_PATH ||
+  __dirname
+);
+const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(STORAGE_ROOT, 'data'));
+const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || path.join(STORAGE_ROOT, 'uploads'));
+const SECRET_KEY = process.env.SECRET_KEY || 'sua-chave-secreta-aqui-mude-isso';
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png']);
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+function ensureDir(dirPath) {
+  if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+}
+
+ensureDir(DATA_DIR);
+ensureDir(UPLOAD_DIR);
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '.')));
 app.use('/uploads', express.static(UPLOAD_DIR));
+
+app.get('/health', (_req, res) => {
+  res.json({
+    ok: true,
+    storageRoot: STORAGE_ROOT,
+    dataDir: DATA_DIR,
+    uploadDir: UPLOAD_DIR,
+    hasVolume: Boolean(process.env.RAILWAY_VOLUME_MOUNT_PATH)
+  });
+});
 
 class SimpleDB {
   constructor() {
@@ -156,10 +175,54 @@ function enrichMessage(m) {
   };
 }
 
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function sanitizeText(value) {
+  return String(value || '').trim();
+}
+
+function findActiveUserById(userId) {
+  return db.usuarios.find((u) => u.id === Number(userId) && u.ativo);
+}
+
+async function bootstrapAdmin() {
+  if (db.usuarios.some((u) => u.admin && u.ativo)) return;
+
+  const nome = sanitizeText(process.env.ADMIN_NOME);
+  const email = normalizeEmail(process.env.ADMIN_EMAIL);
+  const senha = String(process.env.ADMIN_SENHA || '').trim();
+
+  if (!nome || !email || !senha) {
+    console.warn('Nenhum administrador ativo encontrado. Defina ADMIN_NOME, ADMIN_EMAIL e ADMIN_SENHA para bootstrap automatico.');
+    return;
+  }
+
+  const senhaHash = await bcrypt.hash(senha, 10);
+  db.usuarios.push({
+    id: Date.now(),
+    email,
+    nome,
+    senha: senhaHash,
+    admin: 1,
+    ativo: 1,
+    criado_em: new Date().toISOString()
+  });
+  db.save();
+
+  console.log(`Administrador bootstrap criado para ${email}`);
+}
+
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, senha } = req.body;
-    const usuario = db.usuarios.find((u) => u.email === email && u.ativo);
+    const email = normalizeEmail(req.body?.email);
+    const senha = String(req.body?.senha || '');
+    if (!email || !senha) {
+      return res.status(400).json({ erro: 'Informe e-mail e senha' });
+    }
+
+    const usuario = db.usuarios.find((u) => normalizeEmail(u.email) === email && u.ativo);
 
     if (!usuario) return res.status(401).json({ erro: 'Usuário ou senha inválidos' });
 
@@ -191,8 +254,18 @@ app.post('/api/admin/criar-usuario', verificarToken, async (req, res) => {
     const usuarioAdmin = db.usuarios.find((u) => u.id === req.userId);
     if (!usuarioAdmin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
 
-    const { email, nome, senha = 'Senha123!' } = req.body;
-    if (db.usuarios.find((u) => u.email === email)) {
+    const email = normalizeEmail(req.body?.email);
+    const nome = sanitizeText(req.body?.nome);
+    const senha = String(req.body?.senha || 'Senha123!').trim() || 'Senha123!';
+    if (!nome || !email) {
+      return res.status(400).json({ erro: 'Nome e email sÃ£o obrigatÃ³rios' });
+    }
+
+    if (!email.includes('@')) {
+      return res.status(400).json({ erro: 'Email invÃ¡lido' });
+    }
+
+    if (db.usuarios.find((u) => normalizeEmail(u.email) === email)) {
       return res.status(400).json({ erro: 'Email já cadastrado' });
     }
 
@@ -252,7 +325,12 @@ app.post('/api/admin/criar-grupo', verificarToken, (req, res) => {
     const usuarioAdmin = db.usuarios.find((u) => u.id === req.userId);
     if (!usuarioAdmin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
 
-    const { nome, descricao } = req.body;
+    const nome = sanitizeText(req.body?.nome);
+    const descricao = sanitizeText(req.body?.descricao);
+    if (!nome) {
+      return res.status(400).json({ erro: 'Nome do grupo Ã© obrigatÃ³rio' });
+    }
+
     const novoGrupo = {
       id: Date.now(),
       nome,
@@ -357,15 +435,26 @@ app.get('/api/conversas/privadas/resumo', verificarToken, (req, res) => {
 
 app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => {
   try {
-    const { tipoChat, chatId } = req.body;
+    const tipoChat = sanitizeText(req.body?.tipoChat);
+    const chatId = Number(req.body?.chatId);
     if (!req.file) return res.status(400).json({ erro: 'Arquivo não enviado' });
     if (!tipoChat || !chatId) return res.status(400).json({ erro: 'Destino do arquivo não informado' });
+
+    if (!['grupo', 'privado'].includes(tipoChat)) {
+      return res.status(400).json({ erro: 'Tipo de chat invÃ¡lido' });
+    }
+    if (tipoChat === 'grupo' && !db.grupos.some((g) => g.id === chatId)) {
+      return res.status(404).json({ erro: 'Grupo nÃ£o encontrado' });
+    }
+    if (tipoChat === 'privado' && !findActiveUserById(chatId)) {
+      return res.status(404).json({ erro: 'UsuÃ¡rio de destino nÃ£o encontrado' });
+    }
 
     const msg = {
       id: Date.now(),
       usuario_id: Number(req.userId),
-      grupo_id: tipoChat === 'grupo' ? Number(chatId) : null,
-      usuario_destino_id: tipoChat === 'privado' ? Number(chatId) : null,
+      grupo_id: tipoChat === 'grupo' ? chatId : null,
+      usuario_destino_id: tipoChat === 'privado' ? chatId : null,
       conteudo: '',
       tipo: 'arquivo',
       arquivo_nome_original: req.file.originalname,
@@ -394,7 +483,7 @@ app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => 
     };
 
     if (tipoChat === 'grupo') {
-      payload.grupoId = Number(chatId);
+      payload.grupoId = chatId;
       io.to(`grupo-${chatId}`).emit('novo-arquivo-grupo', payload);
     } else {
       payload.remetente_id = Number(req.userId);
@@ -402,7 +491,7 @@ app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => 
       io.to(`usuario-${chatId}`).emit('novo-arquivo-privado', payload);
       io.to(`usuario-${req.userId}`).emit('arquivo-enviado-confirmacao', {
         ...payload,
-        destinatario_id: Number(chatId),
+        destinatario_id: chatId,
         status: 'enviado'
       });
     }
@@ -558,8 +647,22 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
-  console.log(`Arquivos de dados: ${DATA_DIR}`);
-  console.log(`Arquivos enviados: ${UPLOAD_DIR}`);
+
+async function startServer() {
+  await bootstrapAdmin();
+
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor rodando em http://localhost:${PORT}`);
+    console.log(`Storage root: ${STORAGE_ROOT}`);
+    console.log(`Arquivos de dados: ${DATA_DIR}`);
+    console.log(`Arquivos enviados: ${UPLOAD_DIR}`);
+    if (!process.env.SECRET_KEY) {
+      console.warn('SECRET_KEY nao definida. Configure uma chave forte antes de publicar em producao.');
+    }
+  });
+}
+
+startServer().catch((err) => {
+  console.error('Falha ao iniciar servidor:', err);
+  process.exit(1);
 });

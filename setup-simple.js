@@ -3,7 +3,12 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const readline = require('readline');
 
-const DATA_DIR = path.join(__dirname, 'data');
+const STORAGE_ROOT = path.resolve(
+  process.env.STORAGE_ROOT ||
+  process.env.RAILWAY_VOLUME_MOUNT_PATH ||
+  __dirname
+);
+const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(STORAGE_ROOT, 'data'));
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -25,8 +30,25 @@ const criarDiretorio = () => {
   }
 };
 
+const lerUsuarios = () => {
+  const filePath = path.join(DATA_DIR, 'usuarios.json');
+  if (!fs.existsSync(filePath)) return [];
+
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return [];
+  }
+};
+
 const criarAdministrador = async () => {
   console.log('\n=== CONFIGURAÇÃO DO ADMINISTRADOR ===\n');
+
+  const usuariosExistentes = lerUsuarios();
+  if (usuariosExistentes.length > 0) {
+    console.log('[!] JÃ¡ existem usuÃ¡rios cadastrados em ' + DATA_DIR);
+    console.log('    Para Railway, prefira usar ADMIN_NOME, ADMIN_EMAIL e ADMIN_SENHA no primeiro deploy.\n');
+  }
 
   const nome = await pergunta('Nome do administrador: ');
   const email = await pergunta('E-mail do administrador: ');
