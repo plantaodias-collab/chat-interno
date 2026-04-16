@@ -1,605 +1,838 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chat Interno - Equipe</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    :root {
+      --bg: #0b1220;
+      --panel: #111827;
+      --panel-2: #172033;
+      --panel-3: #1f2a40;
+      --line: #263247;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-2: #2563eb;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --bubble-own: #2563eb;
+      --bubble-other: #e5e7eb;
+      --bubble-other-text: #0f172a;
+      --badge: #ef4444;
+      --shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+      --radius: 18px;
     }
 
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f5f5f5;
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(59,130,246,0.18), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(37,99,235,0.18), transparent 30%),
+        var(--bg);
+      color: var(--text);
       height: 100vh;
       overflow: hidden;
     }
 
-    .container {
-      display: flex;
-      height: 100vh;
-    }
+    button, input { font: inherit; }
+
+    .hidden { display: none !important; }
 
     .login-container {
+      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 100%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
+      padding: 24px;
     }
 
     .login-box {
-      background: white;
-      padding: 40px;
-      border-radius: 10px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
       width: 100%;
-      max-width: 400px;
+      max-width: 420px;
+      background: rgba(17, 24, 39, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 32px;
+      backdrop-filter: blur(16px);
     }
 
-    .login-box h1 {
-      text-align: center;
-      color: #333;
-      margin-bottom: 30px;
+    .login-brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 12px;
       font-size: 28px;
+      font-weight: 800;
     }
 
-    .form-group {
-      margin-bottom: 20px;
+    .login-subtitle {
+      text-align: center;
+      color: var(--muted);
+      margin-bottom: 28px;
+      font-size: 14px;
     }
+
+    .form-group { margin-bottom: 18px; }
 
     .form-group label {
       display: block;
       margin-bottom: 8px;
-      color: #555;
-      font-weight: 500;
-    }
-
-    .form-group input {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
+      color: #cbd5e1;
+      font-weight: 600;
       font-size: 14px;
-      transition: border-color 0.3s;
     }
 
-    .form-group input:focus {
+    .field {
+      width: 100%;
+      border: 1px solid rgba(148,163,184,0.18);
+      background: rgba(15, 23, 42, 0.88);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 14px 16px;
       outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 5px rgba(102, 126, 234, 0.1);
+      transition: 0.2s ease;
+    }
+
+    .field:focus {
+      border-color: rgba(59,130,246,0.8);
+      box-shadow: 0 0 0 4px rgba(59,130,246,0.16);
     }
 
     .btn {
-      width: 100%;
-      padding: 12px;
-      background: #667eea;
-      color: white;
       border: none;
-      border-radius: 5px;
-      font-size: 16px;
-      font-weight: bold;
+      border-radius: 14px;
+      padding: 13px 16px;
       cursor: pointer;
-      transition: background 0.3s;
-      margin-top: 10px;
+      transition: 0.2s ease;
+      font-weight: 700;
     }
 
-    .btn:hover {
-      background: #5568d3;
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: white;
+      margin-top: 8px;
     }
+
+    .btn-primary:hover { transform: translateY(-1px); filter: brightness(1.04); }
 
     .btn-secondary {
-      background: #ccc;
-      color: #333;
+      background: #334155;
+      color: #fff;
     }
 
-    .btn-secondary:hover {
-      background: #bbb;
+    .btn-danger {
+      background: var(--danger);
+      color: white;
     }
 
     .error-message {
-      color: #e74c3c;
-      font-size: 14px;
-      margin-top: 10px;
+      color: #fca5a5;
+      font-size: 13px;
+      margin-top: 12px;
       text-align: center;
+      min-height: 16px;
+    }
+
+    .container {
+      height: 100vh;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 16px;
+    }
+
+    .sidebar,
+    .main-content {
+      border: 1px solid rgba(148,163,184,0.12);
+      border-radius: 24px;
+      background: rgba(17,24,39,0.92);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow);
+      overflow: hidden;
     }
 
     .sidebar {
-      width: 300px;
-      background: #2c3e50;
-      color: white;
       display: flex;
       flex-direction: column;
-      border-right: 1px solid #34495e;
+      min-width: 0;
     }
 
     .user-info {
-      padding: 15px;
-      background: #1a252f;
-      border-bottom: 1px solid #34495e;
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 12px;
     }
 
-    .user-info div {
-      flex: 1;
+    .avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: white;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      flex: 0 0 auto;
+    }
+
+    .user-meta { min-width: 0; flex: 1; }
+
+    .user-name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
     }
 
     .user-name {
-      font-weight: bold;
-      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .user-email {
       font-size: 12px;
-      color: #bbb;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .admin-badge {
-      background: #e74c3c;
-      color: white;
+      background: rgba(239,68,68,0.15);
+      color: #fca5a5;
+      border: 1px solid rgba(239,68,68,0.28);
+      border-radius: 999px;
       padding: 2px 8px;
-      border-radius: 3px;
       font-size: 11px;
-      margin-left: 10px;
+      font-weight: 700;
     }
 
     .logout-btn {
-      background: none;
       border: none;
+      background: rgba(255,255,255,0.06);
       color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
       cursor: pointer;
-      font-size: 20px;
-      padding: 0 10px;
+      flex: 0 0 auto;
     }
 
-    .menu-title {
-      padding: 15px;
-      font-weight: bold;
-      font-size: 12px;
-      text-transform: uppercase;
-      color: #95a5a6;
-      border-bottom: 1px solid #34495e;
+    .sidebar-section {
+      padding: 14px 14px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .sidebar-section-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
     .menu-btn {
-      background: none;
       border: none;
-      color: #95a5a6;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
       cursor: pointer;
       font-size: 18px;
     }
 
     .menu-list {
-      flex: 1;
+      min-height: 80px;
+      max-height: 34vh;
       overflow-y: auto;
-      padding: 0;
+      padding-right: 4px;
     }
 
-    .menu-item {
-      padding: 12px 15px;
-      cursor: pointer;
-      border-left: 3px solid transparent;
-      transition: all 0.3s;
+    .chat-item {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: 0.2s ease;
+      margin-bottom: 6px;
+      border: 1px solid transparent;
     }
 
-    .menu-item:hover {
-      background: #34495e;
+    .chat-item:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(148,163,184,0.08);
     }
 
-    .menu-item.active {
-      background: #667eea;
-      border-left-color: #667eea;
-      font-weight: bold;
+    .chat-item.active {
+      background: rgba(59,130,246,0.14);
+      border-color: rgba(59,130,246,0.24);
     }
 
-    .notification-badge {
-      background: #e74c3c;
-      color: white;
+    .chat-item.unread {
+      background: rgba(255,255,255,0.035);
+      border-color: rgba(239,68,68,0.16);
+    }
+
+    .chat-icon {
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      width: 20px;
-      height: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
+      font-size: 18px;
+      flex: 0 0 auto;
+      background: rgba(59,130,246,0.14);
     }
 
-    .main-content {
+    .chat-icon.private { background: rgba(34,197,94,0.14); }
+    .chat-icon.group { background: rgba(59,130,246,0.14); }
+
+    .chat-details {
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      background: white;
+      min-width: 0;
     }
 
-    .header {
-      padding: 15px;
-      background: #f8f9fa;
-      border-bottom: 1px solid #ddd;
+    .chat-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
     }
+
+    .chat-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-time {
+      font-size: 11px;
+      color: var(--muted);
+      flex: 0 0 auto;
+    }
+
+    .chat-preview-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .chat-preview {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .notification-badge {
+      min-width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      padding: 0 7px;
+      background: var(--badge);
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      box-shadow: 0 8px 18px rgba(239,68,68,0.28);
+      flex: 0 0 auto;
+    }
+
+    .admin-section {
+      padding: 12px 14px 14px;
+      margin-top: auto;
+      border-top: 1px solid var(--line);
+    }
+
+    .admin-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      border: 1px solid rgba(239,68,68,0.16);
+      background: rgba(239,68,68,0.08);
+      color: #fca5a5;
+      border-radius: 16px;
+      padding: 12px 14px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      min-height: 84px;
+    }
+
+    .header-main {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .header-title-wrap { min-width: 0; }
 
     .header h2 {
-      color: #333;
       font-size: 20px;
+      font-weight: 800;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .header-actions {
-      display: flex;
-      gap: 10px;
+    .header-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
     }
+
+    .header-actions { display: flex; gap: 10px; }
 
     .header-btn {
-      background: #667eea;
+      border: 1px solid rgba(148,163,184,0.14);
+      background: rgba(255,255,255,0.05);
       color: white;
-      border: none;
-      padding: 8px 15px;
-      border-radius: 5px;
+      padding: 10px 14px;
+      border-radius: 14px;
       cursor: pointer;
-      font-size: 14px;
-    }
-
-    .header-btn:hover {
-      background: #5568d3;
+      font-weight: 700;
     }
 
     .messages-container {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
-      padding: 15px;
+      padding: 22px;
       display: flex;
       flex-direction: column;
+      gap: 14px;
+      background:
+        radial-gradient(circle at top right, rgba(59,130,246,0.05), transparent 20%),
+        linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));
+    }
+
+    .empty-state {
+      margin: auto;
+      text-align: center;
+      color: var(--muted);
+      max-width: 420px;
+    }
+
+    .empty-state .emoji {
+      font-size: 54px;
+      margin-bottom: 14px;
+      display: block;
+    }
+
+    .message-row {
+      display: flex;
       gap: 10px;
+      align-items: flex-end;
+    }
+
+    .message-row.own {
+      justify-content: flex-end;
+    }
+
+    .message-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      flex: 0 0 auto;
     }
 
     .message {
-      padding: 10px 15px;
-      border-radius: 8px;
-      max-width: 70%;
-      word-wrap: break-word;
+      max-width: min(72%, 760px);
+      padding: 12px 14px 10px;
+      border-radius: 18px;
+      word-break: break-word;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.08);
     }
 
     .message.own {
-      background: #667eea;
+      background: linear-gradient(135deg, var(--bubble-own), #1d4ed8);
       color: white;
-      align-self: flex-end;
+      border-bottom-right-radius: 6px;
     }
 
     .message.other {
-      background: #f0f0f0;
-      color: #333;
-      align-self: flex-start;
+      background: var(--bubble-other);
+      color: var(--bubble-other-text);
+      border-bottom-left-radius: 6px;
     }
 
     .message-sender {
-      font-weight: bold;
       font-size: 12px;
-      margin-bottom: 5px;
-      opacity: 0.7;
+      font-weight: 800;
+      margin-bottom: 6px;
+      opacity: 0.82;
+    }
+
+    .message-text {
+      white-space: pre-wrap;
+      line-height: 1.45;
+      font-size: 14px;
     }
 
     .message-time {
       font-size: 11px;
-      opacity: 0.7;
-      margin-top: 5px;
+      opacity: 0.68;
+      margin-top: 6px;
+      text-align: right;
     }
 
     .input-area {
-      padding: 15px;
-      border-top: 1px solid #ddd;
+      padding: 16px 20px 20px;
+      border-top: 1px solid var(--line);
+      background: rgba(17,24,39,0.92);
+    }
+
+    .composer {
       display: flex;
-      gap: 10px;
-    }
-
-    .input-area input {
-      flex: 1;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(148,163,184,0.12);
+      border-radius: 20px;
       padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      font-size: 14px;
     }
 
-    .input-area button {
-      background: #667eea;
-      color: white;
+    .composer input {
+      flex: 1;
+      background: transparent;
       border: none;
-      padding: 10px 20px;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: bold;
+      outline: none;
+      color: var(--text);
+      padding: 8px 10px;
+      min-width: 0;
     }
 
-    .input-area button:hover {
-      background: #5568d3;
+    .composer input::placeholder { color: var(--muted); }
+
+    .send-btn {
+      border: none;
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(37,99,235,0.22);
     }
 
     .modal {
       display: none;
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
+      inset: 0;
+      background: rgba(2, 6, 23, 0.64);
+      backdrop-filter: blur(8px);
       z-index: 1000;
       align-items: center;
       justify-content: center;
+      padding: 20px;
     }
 
-    .modal.active {
-      display: flex;
-    }
+    .modal.active { display: flex; }
 
     .modal-content {
-      background: white;
-      padding: 30px;
-      border-radius: 10px;
-      max-width: 500px;
-      width: 90%;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      width: min(960px, 96vw);
+      max-height: 88vh;
+      overflow: auto;
+      border-radius: 24px;
+      background: #fff;
+      color: #0f172a;
+      box-shadow: var(--shadow);
+      padding: 26px;
     }
 
-    .modal-content h3 {
-      margin-bottom: 20px;
-      color: #333;
+    .modal-content h3,
+    .modal-content h4 { color: #0f172a; }
+
+    .modal-content .field {
+      background: #fff;
+      color: #0f172a;
+      border-color: #dbe1ea;
     }
 
-    .modal-content .form-group {
-      margin-bottom: 15px;
-    }
-
-    .modal-buttons {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .modal-buttons button {
-      flex: 1;
-      padding: 10px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: bold;
+    .modal-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
     }
 
     .table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 15px;
-    }
-
-    .table thead {
-      background: #f0f0f0;
+      margin-top: 12px;
+      font-size: 14px;
     }
 
     .table th, .table td {
-      padding: 12px;
+      padding: 12px 10px;
+      border-bottom: 1px solid #e5e7eb;
       text-align: left;
-      border-bottom: 1px solid #ddd;
+      vertical-align: middle;
     }
 
-    .table th {
-      font-weight: bold;
-    }
+    .table thead { background: #f8fafc; }
 
     .table-actions {
       display: flex;
-      gap: 10px;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
-    .table-actions button {
-      padding: 5px 10px;
+    .mini-btn {
+      padding: 7px 10px;
       border: none;
-      border-radius: 3px;
+      border-radius: 10px;
       cursor: pointer;
+      font-weight: 700;
       font-size: 12px;
-    }
-
-    .btn-delete {
-      background: #e74c3c;
-      color: white;
-    }
-
-    .btn-delete:hover {
-      background: #c0392b;
-    }
-
-    .hidden {
-      display: none !important;
     }
 
     .notification-container {
       position: fixed;
-      top: 20px;
-      right: 20px;
+      top: 18px;
+      right: 18px;
       z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 360px;
     }
 
     .notification {
-      background: white;
-      border-left: 4px solid #667eea;
-      padding: 15px;
-      margin-bottom: 10px;
-      border-radius: 5px;
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-      animation: slideIn 0.3s ease;
+      background: #fff;
+      color: #0f172a;
+      border-left: 4px solid var(--primary);
+      padding: 14px 14px 14px 16px;
+      border-radius: 16px;
+      box-shadow: 0 18px 40px rgba(2,6,23,0.18);
+      animation: slideIn 0.25s ease;
+      font-size: 14px;
+      line-height: 1.35;
     }
+
+    .notification.error { border-left-color: var(--danger); }
+    .notification.success { border-left-color: var(--success); }
 
     @keyframes slideIn {
-      from {
-        transform: translateX(400px);
-        opacity: 0;
+      from { transform: translateX(18px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.32); border-radius: 999px; }
+
+    @media (max-width: 980px) {
+      .container {
+        grid-template-columns: 1fr;
+        padding: 10px;
       }
-      to {
-        transform: translateX(0);
-        opacity: 1;
+
+      .sidebar {
+        max-height: 38vh;
       }
-    }
 
-    .notification.error {
-      border-left-color: #e74c3c;
-    }
-
-    .notification.success {
-      border-left-color: #27ae60;
-    }
-
-    ::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: #f1f1f1;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: #888;
-      border-radius: 4px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #555;
-    }
-
-    .admin-section {
-      padding: 10px;
-      border-top: 1px solid #34495e;
-      background: #1a252f;
-    }
-
-    .admin-menu-item {
-      color: #e74c3c;
-      font-weight: bold;
+      .messages-container { padding: 16px; }
+      .message { max-width: 84%; }
+      .header h2 { font-size: 17px; }
     }
   </style>
 </head>
 <body>
   <div id="loginContainer" class="login-container">
     <div class="login-box">
-      <h1>💬 Chat Interno</h1>
+      <div class="login-brand">
+        <span>💬</span>
+        <span>Chat Interno</span>
+      </div>
+      <div class="login-subtitle">Mensagens em tempo real entre a equipe</div>
       <div class="form-group">
-        <label>E-mail</label>
-        <input type="email" id="loginEmail" placeholder="seu@email.com">
+        <label for="loginEmail">E-mail</label>
+        <input class="field" type="email" id="loginEmail" placeholder="seu@email.com" />
       </div>
       <div class="form-group">
-        <label>Senha</label>
-        <input type="password" id="loginSenha" placeholder="Sua senha">
+        <label for="loginSenha">Senha</label>
+        <input class="field" type="password" id="loginSenha" placeholder="Sua senha" />
       </div>
-      <button class="btn" onclick="fazerLogin()">Entrar</button>
+      <button class="btn btn-primary" onclick="fazerLogin()">Entrar</button>
       <div id="loginError" class="error-message"></div>
     </div>
   </div>
 
   <div id="chatContainer" class="container hidden">
-    <div class="sidebar">
+    <aside class="sidebar">
       <div class="user-info">
-        <div>
-          <div class="user-name" id="currentUserName"></div>
+        <div class="avatar" id="currentUserAvatar">U</div>
+        <div class="user-meta">
+          <div class="user-name-row">
+            <div class="user-name" id="currentUserName"></div>
+            <span class="admin-badge" id="adminBadge" style="display:none;">ADMIN</span>
+          </div>
           <div class="user-email" id="currentUserEmail"></div>
         </div>
-        <span class="admin-badge" id="adminBadge" style="display: none;">ADMIN</span>
-        <button class="logout-btn" onclick="fazerLogout()">🚪</button>
+        <button class="logout-btn" onclick="fazerLogout()" title="Sair">⎋</button>
       </div>
 
-      <div class="menu-title">
-        Grupos
-        <button class="menu-btn" id="novoGrupoBtn" onclick="abrirNovoGrupo()" style="display: none;">+</button>
-      </div>
-      <div class="menu-list" id="gruposList"></div>
-
-      <div class="menu-title">
-        Contatos
-        <button class="menu-btn" onclick="abrirNovoContato()">+</button>
-      </div>
-      <div class="menu-list" id="contatosList"></div>
-
-      <div class="admin-section" id="adminSection" style="display: none;">
-        <div class="menu-item admin-menu-item" onclick="abrirPainelAdmin()">
-          ⚙️ Painel Admin
+      <section class="sidebar-section">
+        <div class="sidebar-section-header">
+          <div class="section-title">Grupos</div>
+          <button class="menu-btn" id="novoGrupoBtn" onclick="abrirNovoGrupo()" style="display:none;" title="Novo grupo">+</button>
         </div>
-      </div>
-    </div>
+        <div class="menu-list" id="gruposList"></div>
+      </section>
 
-    <div class="main-content">
+      <section class="sidebar-section">
+        <div class="sidebar-section-header">
+          <div class="section-title">Contatos</div>
+          <button class="menu-btn" onclick="abrirNovoContato()" title="Contatos">+</button>
+        </div>
+        <div class="menu-list" id="contatosList"></div>
+      </section>
+
+      <div class="admin-section hidden" id="adminSection">
+        <button class="admin-menu-item" onclick="abrirPainelAdmin()">⚙️ Painel Admin</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
       <div class="header">
-        <h2 id="headerTitle">Bem-vindo ao Chat</h2>
+        <div class="header-main">
+          <div class="avatar" id="chatHeaderAvatar">💬</div>
+          <div class="header-title-wrap">
+            <h2 id="headerTitle">Bem-vindo ao Chat</h2>
+            <div class="header-subtitle" id="headerSubtitle">Selecione um grupo ou contato para iniciar</div>
+          </div>
+        </div>
         <div class="header-actions">
-          <button class="header-btn" id="ajustesBtn" onclick="abrirAjustes()" style="display: none;">⚙️</button>
+          <button class="header-btn hidden" id="ajustesBtn" onclick="abrirAjustes()">⚙️ Ajustes</button>
         </div>
       </div>
 
-      <div class="messages-container" id="messagesContainer"></div>
+      <div class="messages-container" id="messagesContainer">
+        <div class="empty-state">
+          <span class="emoji">💬</span>
+          <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Seu chat está pronto</div>
+          <div>As conversas não abertas podem exibir contador vermelho, horário e prévia da última mensagem, no estilo que você pediu.</div>
+        </div>
+      </div>
 
       <div class="input-area">
-        <input type="text" id="messageInput" placeholder="Digite uma mensagem..." onkeypress="enviarSeEnter(event)">
-        <button onclick="enviarMensagem()">Enviar</button>
+        <div class="composer">
+          <input type="text" id="messageInput" placeholder="Digite uma mensagem..." onkeypress="enviarSeEnter(event)" />
+          <button class="send-btn" onclick="enviarMensagem()" title="Enviar">➤</button>
+        </div>
       </div>
-    </div>
+    </main>
   </div>
 
-  <!-- Modal Admin -->
   <div id="adminModal" class="modal">
     <div class="modal-content">
-      <h3>Painel de Administração</h3>
+      <h3 style="margin-bottom: 18px;">Painel de Administração</h3>
 
-      <div style="margin-bottom: 20px;">
-        <h4>Cadastrar Novo Usuário</h4>
-        <div class="form-group">
-          <label>Nome</label>
-          <input type="text" id="adminNovonome" placeholder="Nome do usuário">
-        </div>
-        <div class="form-group">
-          <label>E-mail</label>
-          <input type="email" id="adminNovoEmail" placeholder="email@exemplo.com">
-        </div>
-        <button class="btn" onclick="cadastrarNovoUsuario()">Cadastrar Usuário</button>
-      </div>
+      <div class="modal-grid">
+        <section>
+          <h4 style="margin-bottom: 14px;">Cadastrar novo usuário</h4>
+          <div class="form-group">
+            <label for="adminNovonome">Nome</label>
+            <input class="field" type="text" id="adminNovonome" placeholder="Nome do usuário" />
+          </div>
+          <div class="form-group">
+            <label for="adminNovoEmail">E-mail</label>
+            <input class="field" type="email" id="adminNovoEmail" placeholder="email@exemplo.com" />
+          </div>
+          <button class="btn btn-primary" onclick="cadastrarNovoUsuario()">Cadastrar usuário</button>
+        </section>
 
-      <div style="border-top: 1px solid #ddd; padding-top: 20px;">
-        <h4>Usuários Cadastrados</h4>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>E-mail</th>
-              <th>Admin</th>
-              <th>Status</th>
-              <th>Ação</th>
-            </tr>
-          </thead>
-          <tbody id="adminUsuariosTable"></tbody>
-        </table>
-      </div>
+        <section style="border-top:1px solid #e5e7eb; padding-top:22px;">
+          <h4>Usuários cadastrados</h4>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Admin</th>
+                <th>Status</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody id="adminUsuariosTable"></tbody>
+          </table>
+        </section>
 
-      <div style="border-top: 1px solid #ddd; padding-top: 20px; margin-top: 20px;">
-        <h4>Criar Novo Grupo</h4>
-        <div class="form-group">
-          <label>Nome do Grupo</label>
-          <input type="text" id="adminNovoGrupoNome" placeholder="Nome do grupo">
-        </div>
-        <div class="form-group">
-          <label>Descrição</label>
-          <input type="text" id="adminNovoGrupoDesc" placeholder="Descrição do grupo">
-        </div>
-        <button class="btn" onclick="criarNovoGrupo()">Criar Grupo</button>
-      </div>
+        <section style="border-top:1px solid #e5e7eb; padding-top:22px;">
+          <h4 style="margin-bottom: 14px;">Criar novo grupo</h4>
+          <div class="form-group">
+            <label for="adminNovoGrupoNome">Nome do grupo</label>
+            <input class="field" type="text" id="adminNovoGrupoNome" placeholder="Nome do grupo" />
+          </div>
+          <div class="form-group">
+            <label for="adminNovoGrupoDesc">Descrição</label>
+            <input class="field" type="text" id="adminNovoGrupoDesc" placeholder="Descrição do grupo" />
+          </div>
+          <button class="btn btn-primary" onclick="criarNovoGrupo()">Criar grupo</button>
+        </section>
 
-      <div class="modal-buttons">
-        <button class="btn btn-secondary" onclick="fecharModal('adminModal')" style="margin-top: 20px;">Fechar</button>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+          <button class="btn btn-secondary" onclick="fecharModal('adminModal')">Fechar</button>
+        </div>
       </div>
     </div>
   </div>
@@ -613,13 +846,52 @@
     let usuarioAtual;
     let tipoChat = null;
     let chatIdAtual = null;
+    let gruposCache = [];
+    let contatosCache = [];
+    let unreadState = {};
+    let lastPreviewState = {};
+    let lastTimeState = {};
+
+    function getChatKey(tipo, id) {
+      return `${tipo}-${id}`;
+    }
+
+    function escapeHtml(texto) {
+      return String(texto)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function initials(nome) {
+      if (!nome) return '?';
+      const partes = nome.trim().split(/\s+/).slice(0, 2);
+      return partes.map(p => p[0]?.toUpperCase() || '').join('');
+    }
+
+    function formatTime(date = new Date()) {
+      return new Date(date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function updateHeaderIcon(tipo) {
+      const icon = document.getElementById('chatHeaderAvatar');
+      if (tipo === 'grupo') {
+        icon.textContent = '#';
+      } else if (tipo === 'privado') {
+        icon.textContent = '👤';
+      } else {
+        icon.textContent = '💬';
+      }
+    }
 
     async function fazerLogin() {
-      const email = document.getElementById('loginEmail').value;
+      const email = document.getElementById('loginEmail').value.trim();
       const senha = document.getElementById('loginSenha').value;
 
       if (!email || !senha) {
-        mostrarerro('Digite e-mail e senha');
+        mostrarErro('Digite e-mail e senha');
         return;
       }
 
@@ -633,31 +905,37 @@
         const data = await response.json();
 
         if (!response.ok) {
-          mostrarerro(data.erro || 'Erro ao fazer login');
+          mostrarErro(data.erro || 'Erro ao fazer login');
           return;
         }
 
         token = data.token;
         usuarioAtual = data.usuario;
-
         document.getElementById('loginContainer').classList.add('hidden');
         document.getElementById('chatContainer').classList.remove('hidden');
-
         document.getElementById('currentUserName').textContent = usuarioAtual.nome;
         document.getElementById('currentUserEmail').textContent = usuarioAtual.email;
+        document.getElementById('currentUserAvatar').textContent = initials(usuarioAtual.nome);
 
         if (usuarioAtual.admin) {
-          document.getElementById('adminBadge').style.display = 'inline-block';
-          document.getElementById('adminSection').style.display = 'block';
-          document.getElementById('novoGrupoBtn').style.display = 'block';
-          document.getElementById('ajustesBtn').style.display = 'block';
+          document.getElementById('adminBadge').style.display = 'inline-flex';
+          document.getElementById('adminSection').classList.remove('hidden');
+          document.getElementById('novoGrupoBtn').style.display = 'inline-flex';
+          document.getElementById('ajustesBtn').classList.remove('hidden');
         }
 
         conectarSocket();
-        carregarGrupos();
-        carregarContatos();
+        await carregarGrupos();
+        await carregarContatos();
+        solicitarPermissaoNotificacao();
       } catch (err) {
-        mostrarerro('Erro na conexão: ' + err.message);
+        mostrarErro('Erro na conexão: ' + err.message);
+      }
+    }
+
+    function solicitarPermissaoNotificacao() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
       }
     }
 
@@ -665,34 +943,51 @@
       socket = io();
 
       socket.on('connect', () => {
-        console.log('Conectado ao servidor');
         socket.emit('conectar-usuario', usuarioAtual.id);
       });
 
       socket.on('nova-mensagem-grupo', (data) => {
-        if (tipoChat === 'grupo' && chatIdAtual === data.grupoId) {
+        const chatKey = getChatKey('grupo', data.grupoId);
+        const isCurrent = tipoChat === 'grupo' && chatIdAtual === data.grupoId;
+
+        lastPreviewState[chatKey] = `${data.usuarioNome}: ${data.conteudo}`;
+        lastTimeState[chatKey] = formatTime();
+
+        if (isCurrent) {
           adicionarMensagem(data.conteudo, data.usuarioNome, false);
+        } else {
+          unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
         }
-        mostrarNotificacao(data.usuarioNome + ' falou no grupo');
+
+        renderGrupos();
+        mostrarNotificacao(`${data.usuarioNome} falou no grupo`, 'success');
       });
 
       socket.on('nova-mensagem-privada', (data) => {
-        if (tipoChat === 'privado' && chatIdAtual === data.remetente_id) {
-          adicionarMensagem(data.conteudo, data.remetenteNome, false);
-        }
-        mostrarNotificacao(data.remetenteNome + ' enviou uma mensagem privada');
+        const chatKey = getChatKey('privado', data.remetente_id);
+        const isCurrent = tipoChat === 'privado' && chatIdAtual === data.remetente_id;
 
-        // Pedir permissão para notificação desktop
-        if (Notification.permission === 'granted') {
+        lastPreviewState[chatKey] = `${data.remetenteNome}: ${data.conteudo}`;
+        lastTimeState[chatKey] = formatTime();
+
+        if (isCurrent) {
+          adicionarMensagem(data.conteudo, data.remetenteNome, true);
+        } else {
+          unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
+        }
+
+        renderContatos();
+        mostrarNotificacao(`${data.remetenteNome} enviou uma mensagem privada`, 'success');
+
+        if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('Nova mensagem privada', {
-            body: data.remetenteNome + ': ' + data.conteudo,
-            icon: '💬'
+            body: `${data.remetenteNome}: ${data.conteudo}`
           });
         }
       });
 
       socket.on('notificacao', (data) => {
-        mostrarNotificacao(data.mensagem);
+        mostrarNotificacao(data.mensagem, 'success');
       });
     }
 
@@ -701,21 +996,38 @@
         const response = await fetch('/api/grupos', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const grupos = await response.json();
-
-        const gruposList = document.getElementById('gruposList');
-        gruposList.innerHTML = '';
-
-        grupos.forEach(grupo => {
-          const item = document.createElement('div');
-          item.className = 'menu-item';
-          item.textContent = '#️⃣ ' + grupo.nome;
-          item.onclick = () => carregarChat('grupo', grupo.id, grupo.nome);
-          gruposList.appendChild(item);
-        });
+        gruposCache = await response.json();
+        renderGrupos();
       } catch (err) {
-        console.error('Erro ao carrega grupos:', err);
+        console.error('Erro ao carregar grupos:', err);
       }
+    }
+
+    function renderGrupos() {
+      const gruposList = document.getElementById('gruposList');
+      gruposList.innerHTML = '';
+
+      gruposCache.forEach(grupo => {
+        const key = getChatKey('grupo', grupo.id);
+        const unread = unreadState[key] || 0;
+        const item = document.createElement('div');
+        item.className = `chat-item ${tipoChat === 'grupo' && chatIdAtual === grupo.id ? 'active' : ''} ${unread > 0 ? 'unread' : ''}`;
+        item.innerHTML = `
+          <div class="chat-icon group">#</div>
+          <div class="chat-details">
+            <div class="chat-top">
+              <div class="chat-name">${escapeHtml(grupo.nome)}</div>
+              <div class="chat-time">${lastTimeState[key] || ''}</div>
+            </div>
+            <div class="chat-preview-row">
+              <div class="chat-preview">${escapeHtml(lastPreviewState[key] || grupo.descricao || 'Sem mensagens recentes')}</div>
+              ${unread > 0 ? `<span class="notification-badge">${unread > 99 ? '99+' : unread}</span>` : ''}
+            </div>
+          </div>
+        `;
+        item.addEventListener('click', () => carregarChat('grupo', grupo.id, grupo.nome));
+        gruposList.appendChild(item);
+      });
     }
 
     async function carregarContatos() {
@@ -724,33 +1036,52 @@
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const usuarios = await response.json();
-
-        const contatosList = document.getElementById('contatosList');
-        contatosList.innerHTML = '';
-
-        usuarios.forEach(usuario => {
-          const item = document.createElement('div');
-          item.className = 'menu-item';
-          item.textContent = '👤 ' + usuario.nome;
-          item.onclick = () => carregarChat('privado', usuario.id, usuario.nome);
-          contatosList.appendChild(item);
-        });
+        contatosCache = usuarios.filter(usuario => usuario.id !== usuarioAtual.id);
+        renderContatos();
       } catch (err) {
-        console.error('Erro ao carrega contatos:', err);
+        console.error('Erro ao carregar contatos:', err);
       }
+    }
+
+    function renderContatos() {
+      const contatosList = document.getElementById('contatosList');
+      contatosList.innerHTML = '';
+
+      contatosCache.forEach(usuario => {
+        const key = getChatKey('privado', usuario.id);
+        const unread = unreadState[key] || 0;
+        const item = document.createElement('div');
+        item.className = `chat-item ${tipoChat === 'privado' && chatIdAtual === usuario.id ? 'active' : ''} ${unread > 0 ? 'unread' : ''}`;
+        item.innerHTML = `
+          <div class="chat-icon private">${escapeHtml(initials(usuario.nome))}</div>
+          <div class="chat-details">
+            <div class="chat-top">
+              <div class="chat-name">${escapeHtml(usuario.nome)}</div>
+              <div class="chat-time">${lastTimeState[key] || ''}</div>
+            </div>
+            <div class="chat-preview-row">
+              <div class="chat-preview">${escapeHtml(lastPreviewState[key] || usuario.email)}</div>
+              ${unread > 0 ? `<span class="notification-badge">${unread > 99 ? '99+' : unread}</span>` : ''}
+            </div>
+          </div>
+        `;
+        item.addEventListener('click', () => carregarChat('privado', usuario.id, usuario.nome));
+        contatosList.appendChild(item);
+      });
     }
 
     async function carregarChat(tipo, id, nome) {
       tipoChat = tipo;
       chatIdAtual = id;
 
-      document.querySelectorAll('.menu-item').forEach(item => {
-        item.classList.remove('active');
-      });
+      const key = getChatKey(tipo, id);
+      unreadState[key] = 0;
+      renderGrupos();
+      renderContatos();
 
-      event.target.closest('.menu-item').classList.add('active');
-
-      document.getElementById('headerTitle').textContent = (tipo === 'grupo' ? '#️⃣ ' : '👤 ') + nome;
+      document.getElementById('headerTitle').textContent = (tipo === 'grupo' ? '# ' : '') + nome;
+      document.getElementById('headerSubtitle').textContent = tipo === 'grupo' ? 'Conversa em grupo' : 'Conversa privada';
+      updateHeaderIcon(tipo);
       document.getElementById('messagesContainer').innerHTML = '';
 
       try {
@@ -764,41 +1095,66 @@
 
         const mensagens = await response.json();
 
-        mensagens.forEach(msg => {
-          const ehMeuMensagem = msg.usuario_id === usuarioAtual.id;
-          adicionarMensagem(msg.conteudo, msg.usuario_nome, !ehMeuMensagem);
-        });
+        if (!Array.isArray(mensagens) || mensagens.length === 0) {
+          document.getElementById('messagesContainer').innerHTML = `
+            <div class="empty-state">
+              <span class="emoji">🗂️</span>
+              <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Nenhuma mensagem ainda</div>
+              <div>Envie a primeira mensagem desta conversa.</div>
+            </div>
+          `;
+        } else {
+          mensagens.forEach(msg => {
+            const ehOutro = msg.usuario_id !== usuarioAtual.id;
+            adicionarMensagem(msg.conteudo, msg.usuario_nome, ehOutro, msg.criado_em || msg.data);
+          });
+        }
 
         if (tipoChat === 'grupo') {
           socket.emit('entrar-grupo', { grupoId: id, usuarioId: usuarioAtual.id });
         }
       } catch (err) {
-        console.error('Erro ao carrega chat:', err);
+        console.error('Erro ao carregar chat:', err);
       }
     }
 
-    function adicionarMensagem(conteudo, usuario, ehOutro) {
+    function adicionarMensagem(conteudo, usuario, ehOutro, dataHora = null) {
       const container = document.getElementById('messagesContainer');
-      const msgDiv = document.createElement('div');
-      msgDiv.className = 'message ' + (ehOutro ? 'other' : 'own');
+      const empty = container.querySelector('.empty-state');
+      if (empty) empty.remove();
 
-      const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const row = document.createElement('div');
+      row.className = `message-row ${ehOutro ? '' : 'own'}`;
 
-      msgDiv.innerHTML = `
-        ${ehOutro ? '<div class="message-sender">' + usuario + '</div>' : ''}
-        ${conteudo}
-        <div class="message-time">${hora}</div>
-      `;
+      const hora = formatTime(dataHora || new Date());
+      row.innerHTML = ehOutro
+        ? `
+          <div class="message-avatar">${escapeHtml(initials(usuario))}</div>
+          <div class="message other">
+            <div class="message-sender">${escapeHtml(usuario)}</div>
+            <div class="message-text">${escapeHtml(conteudo)}</div>
+            <div class="message-time">${hora}</div>
+          </div>
+        `
+        : `
+          <div class="message own">
+            <div class="message-text">${escapeHtml(conteudo)}</div>
+            <div class="message-time">${hora}</div>
+          </div>
+        `;
 
-      container.appendChild(msgDiv);
+      container.appendChild(row);
       container.scrollTop = container.scrollHeight;
     }
 
     function enviarMensagem() {
       const input = document.getElementById('messageInput');
       const conteudo = input.value.trim();
+      if (!conteudo || !tipoChat || !chatIdAtual) return;
 
-      if (!conteudo) return;
+      const key = getChatKey(tipoChat, chatIdAtual);
+      lastPreviewState[key] = `Você: ${conteudo}`;
+      lastTimeState[key] = formatTime();
 
       if (tipoChat === 'grupo') {
         socket.emit('mensagem-grupo', {
@@ -807,6 +1163,8 @@
           usuarioNome: usuarioAtual.nome,
           conteudo
         });
+        adicionarMensagem(conteudo, usuarioAtual.nome, false);
+        renderGrupos();
       } else if (tipoChat === 'privado') {
         socket.emit('mensagem-privada', {
           remetente_id: usuarioAtual.id,
@@ -814,8 +1172,8 @@
           remetenteNome: usuarioAtual.nome,
           conteudo
         });
-
         adicionarMensagem(conteudo, usuarioAtual.nome, false);
+        renderContatos();
       }
 
       input.value = '';
@@ -823,9 +1181,7 @@
     }
 
     function enviarSeEnter(event) {
-      if (event.key === 'Enter') {
-        enviarMensagem();
-      }
+      if (event.key === 'Enter') enviarMensagem();
     }
 
     function abrirPainelAdmin() {
@@ -846,27 +1202,27 @@
         usuarios.forEach(usuario => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td>${usuario.nome}</td>
-            <td>${usuario.email}</td>
+            <td>${escapeHtml(usuario.nome)}</td>
+            <td>${escapeHtml(usuario.email)}</td>
             <td>${usuario.admin ? 'Sim' : 'Não'}</td>
             <td>${usuario.ativo ? 'Ativo' : 'Inativo'}</td>
             <td class="table-actions">
-              ${usuario.id !== usuarioAtual.id ? '<button class="btn-delete" onclick="desativarUsuario(' + usuario.id + ')">Desativar</button>' : '-'}
+              ${usuario.id !== usuarioAtual.id ? `<button class="mini-btn btn-danger" onclick="desativarUsuario(${usuario.id})">Desativar</button>` : '-'}
             </td>
           `;
           tbody.appendChild(tr);
         });
       } catch (err) {
-        console.error('Erro ao carrega usuários:', err);
+        console.error('Erro ao carregar usuários:', err);
       }
     }
 
     async function cadastrarNovoUsuario() {
-      const nome = document.getElementById('adminNovonome').value;
-      const email = document.getElementById('adminNovoEmail').value;
+      const nome = document.getElementById('adminNovonome').value.trim();
+      const email = document.getElementById('adminNovoEmail').value.trim();
 
       if (!nome || !email) {
-        mostrarerro('Preencha todos os campos');
+        mostrarErro('Preencha todos os campos');
         return;
       }
 
@@ -882,16 +1238,17 @@
 
         if (!response.ok) {
           const err = await response.json();
-          mostrarerro(err.erro);
+          mostrarErro(err.erro || 'Erro ao cadastrar');
           return;
         }
 
-        mostrarNotificacao('Usuário cadastrado com sucesso! Senha padrão: Senha123!');
+        mostrarNotificacao('Usuário cadastrado com sucesso. Senha padrão: Senha123!', 'success');
         document.getElementById('adminNovonome').value = '';
         document.getElementById('adminNovoEmail').value = '';
         carregarUsuariosAdmin();
+        carregarContatos();
       } catch (err) {
-        mostrarerro('Erro: ' + err.message);
+        mostrarErro('Erro: ' + err.message);
       }
     }
 
@@ -905,20 +1262,21 @@
         });
 
         if (response.ok) {
-          mostrarNotificacao('Usuário desativado com sucesso');
+          mostrarNotificacao('Usuário desativado com sucesso', 'success');
           carregarUsuariosAdmin();
+          carregarContatos();
         }
       } catch (err) {
-        mostrarerro('Erro: ' + err.message);
+        mostrarErro('Erro: ' + err.message);
       }
     }
 
     async function criarNovoGrupo() {
-      const nome = document.getElementById('adminNovoGrupoNome').value;
-      const descricao = document.getElementById('adminNovoGrupoDesc').value;
+      const nome = document.getElementById('adminNovoGrupoNome').value.trim();
+      const descricao = document.getElementById('adminNovoGrupoDesc').value.trim();
 
       if (!nome) {
-        mostrarerro('Digite o nome do grupo');
+        mostrarErro('Digite o nome do grupo');
         return;
       }
 
@@ -934,29 +1292,29 @@
 
         if (!response.ok) {
           const err = await response.json();
-          mostrarerro(err.erro);
+          mostrarErro(err.erro || 'Erro ao criar grupo');
           return;
         }
 
-        mostrarNotificacao('Grupo criado com sucesso');
+        mostrarNotificacao('Grupo criado com sucesso', 'success');
         document.getElementById('adminNovoGrupoNome').value = '';
         document.getElementById('adminNovoGrupoDesc').value = '';
         carregarGrupos();
       } catch (err) {
-        mostrarerro('Erro: ' + err.message);
+        mostrarErro('Erro: ' + err.message);
       }
     }
 
     function abrirNovoGrupo() {
-      alert('Use o painel admin para criar grupos');
+      abrirPainelAdmin();
     }
 
     function abrirNovoContato() {
-      alert('Todos os contatos cadastrados aparecem na lista');
+      mostrarNotificacao('Todos os contatos cadastrados aparecem na lista', 'success');
     }
 
     function abrirAjustes() {
-      alert('Opções de ajuste virão em breve');
+      mostrarNotificacao('Ajustes avançados podem ser adicionados em seguida', 'success');
     }
 
     function fazerLogout() {
@@ -964,6 +1322,11 @@
       usuarioAtual = null;
       tipoChat = null;
       chatIdAtual = null;
+      gruposCache = [];
+      contatosCache = [];
+      unreadState = {};
+      lastPreviewState = {};
+      lastTimeState = {};
 
       if (socket) socket.disconnect();
 
@@ -971,31 +1334,32 @@
       document.getElementById('chatContainer').classList.add('hidden');
       document.getElementById('loginEmail').value = '';
       document.getElementById('loginSenha').value = '';
+      document.getElementById('messagesContainer').innerHTML = '';
+      document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat';
+      document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
+      updateHeaderIcon(null);
     }
 
-    function mostrarerro(mensagem) {
-      document.getElementById('loginError').textContent = mensagem;
-      setTimeout(() => {
-        document.getElementById('loginError').textContent = '';
-      }, 5000);
+    function mostrarErro(mensagem) {
+      const target = document.getElementById('loginContainer').classList.contains('hidden')
+        ? null
+        : document.getElementById('loginError');
+
+      if (target) {
+        target.textContent = mensagem;
+        setTimeout(() => { target.textContent = ''; }, 5000);
+      } else {
+        mostrarNotificacao(mensagem, 'error');
+      }
     }
 
-    function mostrarNotificacao(mensagem) {
+    function mostrarNotificacao(mensagem, tipo = '') {
       const container = document.getElementById('notificationContainer');
       const notif = document.createElement('div');
-      notif.className = 'notification';
+      notif.className = `notification ${tipo}`.trim();
       notif.textContent = mensagem;
-
       container.appendChild(notif);
-
-      setTimeout(() => {
-        notif.remove();
-      }, 5000);
-
-      // Pedir permissão para notificação desktop
-      if (Notification.permission === 'default') {
-        Notification.requestPermission();
-      }
+      setTimeout(() => notif.remove(), 4500);
     }
 
     function fecharModal(modalId) {
@@ -1003,11 +1367,10 @@
     }
 
     window.onclick = function(event) {
-      const modal = event.target;
-      if (modal.classList.contains('modal')) {
-        modal.classList.remove('active');
+      if (event.target.classList.contains('modal')) {
+        event.target.classList.remove('active');
       }
-    }
+    };
   </script>
 </body>
 </html>
