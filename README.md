@@ -15,48 +15,6 @@ Aplicativo de chat interno para comunicação entre funcionários em rede local.
 ✅ Interface web responsiva
 ✅ Funciona em rede local
 
-## Deploy no Railway
-
-O projeto agora esta pronto para deploy no Railway com persistencia em volume.
-
-### Variaveis de ambiente
-
-Use pelo menos estas variaveis:
-
-```env
-SECRET_KEY=sua-chave-forte
-ADMIN_NOME=Administrador
-ADMIN_EMAIL=admin@empresa.com
-ADMIN_SENHA=TroqueEssaSenha123!
-```
-
-Observacoes:
-- `PORT` e fornecida pelo Railway automaticamente.
-- Se houver volume conectado, o app usa `RAILWAY_VOLUME_MOUNT_PATH` automaticamente.
-- Se ainda nao existir nenhum admin ativo, o servidor cria o primeiro admin com `ADMIN_*` no boot.
-
-### Volume
-
-Crie um Volume no Railway e conecte ao servico.
-
-Sugestao de mount path:
-
-```text
-/app/storage
-```
-
-Com isso, o app salva automaticamente em:
-- `/app/storage/data`
-- `/app/storage/uploads`
-
-### Healthcheck
-
-Use este endpoint para validacao:
-
-```text
-/health
-```
-
 ## Requisitos
 
 - Node.js v14 ou superior

@@ -17,38 +17,19 @@ const io = socketIO(server, {
   }
 });
 
-const STORAGE_ROOT = path.resolve(
-  process.env.STORAGE_ROOT ||
-  process.env.RAILWAY_VOLUME_MOUNT_PATH ||
-  __dirname
-);
-const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(STORAGE_ROOT, 'data'));
-const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || path.join(STORAGE_ROOT, 'uploads'));
-const SECRET_KEY = process.env.SECRET_KEY || 'sua-chave-secreta-aqui-mude-isso';
+const SECRET_KEY = 'sua-chave-secreta-aqui-mude-isso';
+const DATA_DIR = path.join(__dirname, 'data');
+const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png']);
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 
-function ensureDir(dirPath) {
-  if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
-}
-
-ensureDir(DATA_DIR);
-ensureDir(UPLOAD_DIR);
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '.')));
 app.use('/uploads', express.static(UPLOAD_DIR));
-
-app.get('/health', (_req, res) => {
-  res.json({
-    ok: true,
-    storageRoot: STORAGE_ROOT,
-    dataDir: DATA_DIR,
-    uploadDir: UPLOAD_DIR,
-    hasVolume: Boolean(process.env.RAILWAY_VOLUME_MOUNT_PATH)
-  });
-});
 
 class SimpleDB {
   constructor() {
@@ -185,33 +166,6 @@ function sanitizeText(value) {
 
 function findActiveUserById(userId) {
   return db.usuarios.find((u) => u.id === Number(userId) && u.ativo);
-}
-
-async function bootstrapAdmin() {
-  if (db.usuarios.some((u) => u.admin && u.ativo)) return;
-
-  const nome = sanitizeText(process.env.ADMIN_NOME);
-  const email = normalizeEmail(process.env.ADMIN_EMAIL);
-  const senha = String(process.env.ADMIN_SENHA || '').trim();
-
-  if (!nome || !email || !senha) {
-    console.warn('Nenhum administrador ativo encontrado. Defina ADMIN_NOME, ADMIN_EMAIL e ADMIN_SENHA para bootstrap automatico.');
-    return;
-  }
-
-  const senhaHash = await bcrypt.hash(senha, 10);
-  db.usuarios.push({
-    id: Date.now(),
-    email,
-    nome,
-    senha: senhaHash,
-    admin: 1,
-    ativo: 1,
-    criado_em: new Date().toISOString()
-  });
-  db.save();
-
-  console.log(`Administrador bootstrap criado para ${email}`);
 }
 
 app.post('/api/login', async (req, res) => {
@@ -647,22 +601,8 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-
-async function startServer() {
-  await bootstrapAdmin();
-
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`);
-    console.log(`Storage root: ${STORAGE_ROOT}`);
-    console.log(`Arquivos de dados: ${DATA_DIR}`);
-    console.log(`Arquivos enviados: ${UPLOAD_DIR}`);
-    if (!process.env.SECRET_KEY) {
-      console.warn('SECRET_KEY nao definida. Configure uma chave forte antes de publicar em producao.');
-    }
-  });
-}
-
-startServer().catch((err) => {
-  console.error('Falha ao iniciar servidor:', err);
-  process.exit(1);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Servidor rodando em http://localhost:${PORT}`);
+  console.log(`Arquivos de dados: ${DATA_DIR}`);
+  console.log(`Arquivos enviados: ${UPLOAD_DIR}`);
 });
