@@ -1,109 +1,1634 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Chat Interno - Equipe</title>
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<style>
-body { margin:0; font-family:Arial; background:#0f172a; color:white; display:flex; height:100vh }
-.sidebar { width:300px; background:#020617; padding:15px; overflow:auto }
-.chat { flex:1; display:flex; flex-direction:column }
-.item { padding:10px; border-bottom:1px solid #1e293b; cursor:pointer }
-.item:hover { background:#1e293b }
-.badge { background:red; border-radius:50%; padding:3px 7px; font-size:12px; float:right }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat Interno - Equipe</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #111827;
+      --panel-2: #0f172a;
+      --line: #253247;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-2: #2563eb;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --badge: #ef4444;
+      --bubble-own: #2563eb;
+      --bubble-other: #e5e7eb;
+      --bubble-other-text: #0f172a;
+      --shadow: 0 18px 40px rgba(0,0,0,0.28);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(59,130,246,.16), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(37,99,235,.14), transparent 28%),
+        var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    button, input { font: inherit; }
+    .hidden { display: none !important; }
+
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .login-box {
+      width: 100%;
+      max-width: 420px;
+      background: rgba(17,24,39,.96);
+      border: 1px solid rgba(148,163,184,.12);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 32px;
+      backdrop-filter: blur(16px);
+    }
+
+    .login-brand {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    .login-subtitle {
+      text-align: center;
+      color: var(--muted);
+      margin-bottom: 28px;
+      font-size: 14px;
+    }
+
+    .form-group { margin-bottom: 18px; }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #cbd5e1;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .field {
+      width: 100%;
+      border: 1px solid rgba(148,163,184,.18);
+      background: rgba(15,23,42,.88);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 14px 16px;
+      outline: none;
+      transition: .2s ease;
+    }
+
+    .field:focus {
+      border-color: rgba(59,130,246,.8);
+      box-shadow: 0 0 0 4px rgba(59,130,246,.16);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 14px;
+      padding: 13px 16px;
+      cursor: pointer;
+      transition: .2s ease;
+      font-weight: 700;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: white;
+      margin-top: 8px;
+    }
+
+    .btn-primary:hover { filter: brightness(1.05); }
+    .btn-secondary { background: #334155; color: #fff; }
+    .btn-danger { background: var(--danger); color: white; }
+
+    .error-message {
+      color: #fca5a5;
+      font-size: 13px;
+      margin-top: 12px;
+      text-align: center;
+      min-height: 16px;
+    }
+
+    .container {
+      height: 100vh;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 16px;
+    }
+
+    .sidebar, .main-content {
+      border: 1px solid rgba(148,163,184,.12);
+      border-radius: 24px;
+      background: rgba(17,24,39,.92);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .user-info {
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: white;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .presence-dot {
+      position: absolute;
+      right: 1px;
+      bottom: 1px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #64748b;
+      border: 2px solid #111827;
+    }
+
+    .presence-dot.online { background: var(--success); }
+
+    .user-meta { min-width: 0; flex: 1; }
+
+    .user-name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .user-name {
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-email {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .admin-badge {
+      background: rgba(239,68,68,.15);
+      color: #fca5a5;
+      border: 1px solid rgba(239,68,68,.28);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .logout-btn {
+      border: none;
+      background: rgba(255,255,255,.06);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .sidebar-section {
+      padding: 14px 14px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .sidebar-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .menu-btn {
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .menu-list {
+      min-height: 80px;
+      max-height: 34vh;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .chat-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: .2s ease;
+      margin-bottom: 6px;
+      border: 1px solid transparent;
+    }
+
+    .chat-item:hover {
+      background: rgba(255,255,255,.05);
+      border-color: rgba(148,163,184,.08);
+    }
+
+    .chat-item.active {
+      background: rgba(59,130,246,.14);
+      border-color: rgba(59,130,246,.24);
+    }
+
+    .chat-item.unread {
+      background: rgba(255,255,255,.035);
+      border-color: rgba(239,68,68,.16);
+    }
+
+    .chat-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex: 0 0 auto;
+      position: relative;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .chat-icon.group { background: rgba(59,130,246,.18); }
+    .chat-icon.private { background: rgba(34,197,94,.18); }
+
+    .chat-details { flex: 1; min-width: 0; }
+
+    .chat-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .chat-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-time {
+      font-size: 11px;
+      color: var(--muted);
+      flex: 0 0 auto;
+    }
+
+    .chat-preview-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .chat-preview {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .notification-badge {
+      min-width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      padding: 0 7px;
+      background: var(--badge);
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      box-shadow: 0 8px 18px rgba(239,68,68,.28);
+      flex: 0 0 auto;
+    }
+
+    .admin-section {
+      padding: 12px 14px 14px;
+      margin-top: auto;
+      border-top: 1px solid var(--line);
+    }
+
+    .admin-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      border: 1px solid rgba(239,68,68,.16);
+      background: rgba(239,68,68,.08);
+      color: #fca5a5;
+      border-radius: 16px;
+      padding: 12px 14px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      min-height: 84px;
+    }
+
+    .header-main {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .header-title-wrap { min-width: 0; }
+
+    .header h2 {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+      min-height: 16px;
+    }
+
+    .typing-indicator {
+      font-size: 12px;
+      color: #93c5fd;
+      margin-top: 4px;
+      min-height: 16px;
+    }
+
+    .header-actions { display: flex; gap: 10px; }
+
+    .header-btn {
+      border: 1px solid rgba(148,163,184,.14);
+      background: rgba(255,255,255,.05);
+      color: white;
+      padding: 10px 14px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .messages-container {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      background:
+        radial-gradient(circle at top right, rgba(59,130,246,.05), transparent 20%),
+        linear-gradient(180deg, rgba(255,255,255,.01), rgba(255,255,255,.02));
+    }
+
+    .empty-state {
+      margin: auto;
+      text-align: center;
+      color: var(--muted);
+      max-width: 420px;
+    }
+
+    .empty-state .emoji {
+      font-size: 54px;
+      margin-bottom: 14px;
+      display: block;
+    }
+
+    .message-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .message-row.own { justify-content: flex-end; }
+
+    .message-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.08);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+
+    .message {
+      max-width: min(72%, 760px);
+      padding: 12px 14px 10px;
+      border-radius: 18px;
+      word-break: break-word;
+      box-shadow: 0 10px 22px rgba(0,0,0,.08);
+    }
+
+    .message.own {
+      background: linear-gradient(135deg, var(--bubble-own), #1d4ed8);
+      color: white;
+      border-bottom-right-radius: 6px;
+    }
+
+    .message.other {
+      background: var(--bubble-other);
+      color: var(--bubble-other-text);
+      border-bottom-left-radius: 6px;
+    }
+
+    .message-sender {
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 6px;
+      opacity: .82;
+    }
+
+    .message-text {
+      white-space: pre-wrap;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .message-time {
+      font-size: 11px;
+      opacity: .68;
+      margin-top: 6px;
+      text-align: right;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .message-status {
+      font-size: 11px;
+      opacity: .95;
+      font-weight: 700;
+    }
+
+    .message-status.lida { color: #bfdbfe; }
+
+    .input-area {
+      padding: 16px 20px 20px;
+      border-top: 1px solid var(--line);
+      background: rgba(17,24,39,.92);
+    }
+
+    .composer {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(148,163,184,.12);
+      border-radius: 20px;
+      padding: 10px;
+    }
+
+    .composer input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      padding: 8px 10px;
+      min-width: 0;
+    }
+
+    .composer input::placeholder { color: var(--muted); }
+
+    .send-btn {
+      border: none;
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(37,99,235,.22);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.64);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal.active { display: flex; }
+
+    .modal-content {
+      width: min(960px, 96vw);
+      max-height: 88vh;
+      overflow: auto;
+      border-radius: 24px;
+      background: #fff;
+      color: #0f172a;
+      box-shadow: var(--shadow);
+      padding: 26px;
+    }
+
+    .modal-content h3, .modal-content h4 { color: #0f172a; }
+
+    .modal-content .field {
+      background: #fff;
+      color: #0f172a;
+      border-color: #dbe1ea;
+    }
+
+    .modal-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    .table th, .table td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .table thead { background: #f8fafc; }
+
+    .table-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .mini-btn {
+      padding: 7px 10px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .notification-container {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 360px;
+    }
+
+    .notification {
+      background: #fff;
+      color: #0f172a;
+      border-left: 4px solid var(--primary);
+      padding: 14px 14px 14px 16px;
+      border-radius: 16px;
+      box-shadow: 0 18px 40px rgba(2,6,23,.18);
+      animation: slideIn .25s ease;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .notification.error { border-left-color: var(--danger); }
+    .notification.success { border-left-color: var(--success); }
+
+    @keyframes slideIn {
+      from { transform: translateX(18px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148,163,184,.32);
+      border-radius: 999px;
+    }
+
+    @media (max-width: 980px) {
+      .container {
+        grid-template-columns: 1fr;
+        padding: 10px;
+      }
+
+      .sidebar { max-height: 38vh; }
+      .messages-container { padding: 16px; }
+      .message { max-width: 84%; }
+      .header h2 { font-size: 17px; }
+    }
+  </style>
 </head>
 <body>
+  <div id="loginContainer" class="login-container">
+    <div class="login-box">
+      <div class="login-brand"><span>💬</span><span>Chat Interno</span></div>
+      <div class="login-subtitle">Mensagens em tempo real entre a equipe</div>
 
-<div class="sidebar">
-<h3>Grupos</h3>
-<div id="grupos"></div>
+      <div class="form-group">
+        <label for="loginEmail">E-mail</label>
+        <input class="field" type="email" id="loginEmail" placeholder="seu@email.com" />
+      </div>
 
-<h3>Contatos</h3>
-<div id="contatos"></div>
-</div>
+      <div class="form-group">
+        <label for="loginSenha">Senha</label>
+        <input class="field" type="password" id="loginSenha" placeholder="Sua senha" />
+      </div>
 
-<div class="chat">
-<div id="topo">Selecione uma conversa</div>
-<div id="mensagens" style="flex:1; overflow:auto"></div>
-<input id="msg" placeholder="Digite...">
-<button onclick="enviar()">Enviar</button>
-</div>
+      <button class="btn btn-primary" onclick="fazerLogin()">Entrar</button>
+      <div id="loginError" class="error-message"></div>
+    </div>
+  </div>
 
-<script>
-const socket = io();
-fetch('/api/grupos')
-.then(r => r.json())
-.then(data => renderGrupos(data));
+  <div id="chatContainer" class="container hidden">
+    <aside class="sidebar">
+      <div class="user-info">
+        <div class="avatar">
+          <span id="currentUserAvatar">U</span>
+          <span class="presence-dot online"></span>
+        </div>
 
-fetch('/api/usuarios')
-.then(r => r.json())
-.then(data => renderContatos(data));
-let atual = null;
-let tipoAtual = null;
-let unread = {};
-let lastTime = {};
+        <div class="user-meta">
+          <div class="user-name-row">
+            <div class="user-name" id="currentUserName"></div>
+            <span class="admin-badge" id="adminBadge" style="display:none;">ADMIN</span>
+          </div>
+          <div class="user-email" id="currentUserEmail"></div>
+        </div>
 
-function atualizarTitulo(){
- let total = Object.values(unread).reduce((a,b)=>a+b,0);
- document.title = total>0 ? `(${total}) Chat Interno - Equipe` : 'Chat Interno - Equipe';
-}
+        <button class="logout-btn" onclick="fazerLogout()" title="Sair">⎋</button>
+      </div>
 
-function ordenar(lista, tipo){
- return lista.sort((a,b)=>{
-  return (lastTime[b.id]||0)-(lastTime[a.id]||0);
- });
-}
+      <section class="sidebar-section">
+        <div class="sidebar-section-header">
+          <div class="section-title">Grupos</div>
+          <button class="menu-btn" id="novoGrupoBtn" onclick="abrirNovoGrupo()" style="display:none;">+</button>
+        </div>
+        <div class="menu-list" id="gruposList"></div>
+      </section>
 
-function renderGrupos(lista){
- let div = document.getElementById('grupos');
- div.innerHTML='';
- ordenar(lista,'grupo').forEach(g=>{
-  let el = document.createElement('div');
-  el.className='item';
-  el.innerHTML = g.nome + (unread['g'+g.id]?`<span class='badge'>${unread['g'+g.id]}</span>`:'');
-  el.onclick=()=>abrir('grupo',g.id);
-  div.appendChild(el);
- });
-}
+      <section class="sidebar-section">
+        <div class="sidebar-section-header">
+          <div class="section-title">Contatos</div>
+          <button class="menu-btn" onclick="abrirNovoContato()">+</button>
+        </div>
+        <div class="menu-list" id="contatosList"></div>
+      </section>
 
-function renderContatos(lista){
- let div = document.getElementById('contatos');
- div.innerHTML='';
- ordenar(lista,'privado').forEach(c=>{
-  let el = document.createElement('div');
-  el.className='item';
-  el.innerHTML = c.nome + (unread['p'+c.id]?`<span class='badge'>${unread['p'+c.id]}</span>`:'');
-  el.onclick=()=>abrir('privado',c.id);
-  div.appendChild(el);
- });
-}
+      <div class="admin-section hidden" id="adminSection">
+        <button class="admin-menu-item" onclick="abrirPainelAdmin()">⚙️ Painel Admin</button>
+      </div>
+    </aside>
 
-function abrir(tipo,id){
- atual=id; tipoAtual=tipo;
- unread[(tipo==='grupo'?'g':'p')+id]=0;
- atualizarTitulo();
-}
+    <main class="main-content">
+      <div class="header">
+        <div class="header-main">
+          <div class="avatar" id="chatHeaderAvatar">💬</div>
+          <div class="header-title-wrap">
+            <h2 id="headerTitle">Bem-vindo ao Chat</h2>
+            <div class="header-subtitle" id="headerSubtitle">Selecione um grupo ou contato para iniciar</div>
+            <div class="typing-indicator" id="typingIndicator"></div>
+          </div>
+        </div>
 
-function enviar(){
- let texto=document.getElementById('msg').value;
- if(!texto)return;
- socket.emit('mensagem',{tipo:tipoAtual,id:atual,texto});
- document.getElementById('msg').value='';
-}
+        <div class="header-actions">
+          <button class="header-btn hidden" id="ajustesBtn" onclick="abrirAjustes()">⚙️ Ajustes</button>
+        </div>
+      </div>
 
-socket.on('grupos',data=>renderGrupos(data));
-socket.on('usuarios',data=>renderContatos(data));
+      <div class="messages-container" id="messagesContainer">
+        <div class="empty-state">
+          <span class="emoji">💬</span>
+          <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Seu chat está pronto</div>
+          <div>Agora ele pode exibir online, digitando, mensagens lidas e não lidas.</div>
+        </div>
+      </div>
 
-socket.on('mensagem',data=>{
- let key=(data.tipo==='grupo'?'g':'p')+data.id;
- lastTime[data.id]=Date.now();
- if(atual!==data.id){
-  unread[key]=(unread[key]||0)+1;
- }
- atualizarTitulo();
-});
-</script>
+      <div class="input-area">
+        <div class="composer">
+          <input
+            type="text"
+            id="messageInput"
+            placeholder="Digite uma mensagem..."
+            onkeypress="enviarSeEnter(event)"
+            oninput="emitirDigitando()"
+          />
+          <button class="send-btn" onclick="enviarMensagem()" title="Enviar">➤</button>
+        </div>
+      </div>
+    </main>
+  </div>
 
+  <div id="adminModal" class="modal">
+    <div class="modal-content">
+      <h3 style="margin-bottom:18px;">Painel de Administração</h3>
+
+      <div class="modal-grid">
+        <section>
+          <h4 style="margin-bottom:14px;">Cadastrar novo usuário</h4>
+          <div class="form-group">
+            <label for="adminNovonome">Nome</label>
+            <input class="field" type="text" id="adminNovonome" placeholder="Nome do usuário" />
+          </div>
+          <div class="form-group">
+            <label for="adminNovoEmail">E-mail</label>
+            <input class="field" type="email" id="adminNovoEmail" placeholder="email@exemplo.com" />
+          </div>
+          <button class="btn btn-primary" onclick="cadastrarNovoUsuario()">Cadastrar usuário</button>
+        </section>
+
+        <section style="border-top:1px solid #e5e7eb; padding-top:22px;">
+          <h4>Usuários cadastrados</h4>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Admin</th>
+                <th>Status</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody id="adminUsuariosTable"></tbody>
+          </table>
+        </section>
+
+        <section style="border-top:1px solid #e5e7eb; padding-top:22px;">
+          <h4 style="margin-bottom:14px;">Criar novo grupo</h4>
+          <div class="form-group">
+            <label for="adminNovoGrupoNome">Nome do grupo</label>
+            <input class="field" type="text" id="adminNovoGrupoNome" placeholder="Nome do grupo" />
+          </div>
+          <div class="form-group">
+            <label for="adminNovoGrupoDesc">Descrição</label>
+            <input class="field" type="text" id="adminNovoGrupoDesc" placeholder="Descrição do grupo" />
+          </div>
+          <button class="btn btn-primary" onclick="criarNovoGrupo()">Criar grupo</button>
+        </section>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+          <button class="btn btn-secondary" onclick="fecharModal('adminModal')">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="notificationContainer" class="notification-container"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    let socket = null;
+    let token = null;
+    let usuarioAtual = null;
+    let tipoChat = null;
+    let chatIdAtual = null;
+
+    let gruposCache = [];
+    let contatosCache = [];
+    let unreadState = {};
+    let lastPreviewState = {};
+    let lastTimeState = {};
+    let lastTimestampState = {};
+    let onlineState = new Set();
+    let typingUsers = new Map();
+
+    function getChatKey(tipo, id) {
+      return `${tipo}-${id}`;
+    }
+
+    function authHeaders(extra = {}) {
+      return {
+        ...extra,
+        'Authorization': `Bearer ${token}`
+      };
+    }
+
+    function escapeHtml(texto) {
+      return String(texto ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function initials(nome) {
+      if (!nome) return '?';
+      const partes = nome.trim().split(/\s+/).slice(0, 2);
+      return partes.map(p => p[0]?.toUpperCase() || '').join('');
+    }
+
+    function formatTime(date = new Date()) {
+      return new Date(date).toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function toTimestamp(value) {
+      const ts = new Date(value || Date.now()).getTime();
+      return Number.isNaN(ts) ? 0 : ts;
+    }
+
+    function sortByRecent(items, tipo) {
+      if (!Array.isArray(items)) return [];
+      return [...items].sort((a, b) => {
+        const aTs = lastTimestampState[getChatKey(tipo, a.id)] || 0;
+        const bTs = lastTimestampState[getChatKey(tipo, b.id)] || 0;
+        return bTs - aTs;
+      });
+    }
+
+    function getTotalUnread() {
+      return Object.values(unreadState).reduce((acc, cur) => acc + (Number(cur) || 0), 0);
+    }
+
+    function updateBrowserTitle() {
+      const total = getTotalUnread();
+      document.title = total > 0
+        ? `(${total}) Chat Interno - Equipe`
+        : 'Chat Interno - Equipe';
+    }
+
+    function updateHeaderIcon(tipo, nome = '') {
+      const icon = document.getElementById('chatHeaderAvatar');
+      if (tipo === 'grupo') icon.textContent = '#';
+      else if (tipo === 'privado') icon.textContent = initials(nome);
+      else icon.textContent = '💬';
+    }
+
+    function updateHeaderStatus() {
+      const subtitle = document.getElementById('headerSubtitle');
+      if (tipoChat === 'grupo') {
+        subtitle.textContent = 'Conversa em grupo';
+      } else if (tipoChat === 'privado') {
+        const contato = contatosCache.find(c => Number(c.id) === Number(chatIdAtual));
+        subtitle.textContent = contato
+          ? (onlineState.has(Number(contato.id)) ? 'Online agora' : 'Offline')
+          : 'Conversa privada';
+      } else {
+        subtitle.textContent = 'Selecione um grupo ou contato para iniciar';
+      }
+    }
+
+    function renderTypingIndicator() {
+      const el = document.getElementById('typingIndicator');
+      const key = `${tipoChat}-${chatIdAtual}`;
+      const nome = typingUsers.get(key);
+      el.textContent = nome ? `${nome} está digitando...` : '';
+    }
+
+    function mostrarErro(mensagem) {
+      const loginVisivel = !document.getElementById('loginContainer').classList.contains('hidden');
+      if (loginVisivel) {
+        const target = document.getElementById('loginError');
+        target.textContent = mensagem;
+        setTimeout(() => { target.textContent = ''; }, 5000);
+      } else {
+        mostrarNotificacao(mensagem, 'error');
+      }
+    }
+
+    function mostrarNotificacao(mensagem, tipo = '') {
+      const container = document.getElementById('notificationContainer');
+      const notif = document.createElement('div');
+      notif.className = `notification ${tipo}`.trim();
+      notif.textContent = mensagem;
+      container.appendChild(notif);
+      setTimeout(() => notif.remove(), 4500);
+    }
+
+    async function fazerLogin() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const senha = document.getElementById('loginSenha').value;
+
+      if (!email || !senha) {
+        mostrarErro('Digite e-mail e senha');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, senha })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          mostrarErro(data.erro || 'Erro ao fazer login');
+          return;
+        }
+
+        token = data.token;
+        usuarioAtual = data.usuario;
+
+        document.getElementById('loginContainer').classList.add('hidden');
+        document.getElementById('chatContainer').classList.remove('hidden');
+        document.getElementById('currentUserName').textContent = usuarioAtual.nome;
+        document.getElementById('currentUserEmail').textContent = usuarioAtual.email;
+        document.getElementById('currentUserAvatar').textContent = initials(usuarioAtual.nome);
+
+        if (usuarioAtual.admin) {
+          document.getElementById('adminBadge').style.display = 'inline-flex';
+          document.getElementById('adminSection').classList.remove('hidden');
+          document.getElementById('novoGrupoBtn').style.display = 'inline-flex';
+          document.getElementById('ajustesBtn').classList.remove('hidden');
+        }
+
+        conectarSocket();
+        await carregarGrupos();
+        await carregarContatos();
+        await carregarResumoConversas();
+        updateBrowserTitle();
+
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission();
+        }
+      } catch (err) {
+        mostrarErro('Erro na conexão: ' + err.message);
+      }
+    }
+
+    function conectarSocket() {
+      socket = io();
+
+      socket.on('connect', () => {
+        socket.emit('conectar-usuario', usuarioAtual.id);
+      });
+
+      socket.on('presenca-atualizada', (data) => {
+        onlineState = new Set((data.online || []).map(Number));
+        renderContatos();
+        updateHeaderStatus();
+      });
+
+      socket.on('usuario-digitando', (data) => {
+        if (
+          tipoChat === data.tipo &&
+          Number(chatIdAtual) === Number(data.chatId) &&
+          Number(data.usuarioId) !== Number(usuarioAtual.id)
+        ) {
+          typingUsers.set(`${data.tipo}-${data.chatId}`, data.usuarioNome);
+          renderTypingIndicator();
+        }
+      });
+
+      socket.on('usuario-parou-digitacao', (data) => {
+        typingUsers.delete(`${data.tipo}-${data.chatId}`);
+        renderTypingIndicator();
+      });
+
+      socket.on('nova-mensagem-grupo', (data) => {
+        const chatKey = getChatKey('grupo', data.grupoId);
+        const isCurrent = tipoChat === 'grupo' && Number(chatIdAtual) === Number(data.grupoId);
+
+        lastPreviewState[chatKey] = `${data.usuarioNome}: ${data.conteudo}`;
+        lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
+        lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
+
+        if (isCurrent) {
+          adicionarMensagem({
+            id: data.id,
+            conteudo: data.conteudo,
+            usuarioNome: data.usuarioNome,
+            ehOutro: Number(data.usuarioId) !== Number(usuarioAtual.id),
+            criado_em: data.criado_em,
+            lido: 0
+          });
+        } else {
+          unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
+        }
+
+        typingUsers.delete(`grupo-${data.grupoId}`);
+        renderTypingIndicator();
+        renderGrupos();
+        updateBrowserTitle();
+
+        if (Number(data.usuarioId) !== Number(usuarioAtual.id)) {
+          mostrarNotificacao(`${data.usuarioNome} falou no grupo`, 'success');
+        }
+      });
+
+      socket.on('nova-mensagem-privada', (data) => {
+        const chatKey = getChatKey('privado', data.remetente_id);
+        const isCurrent = tipoChat === 'privado' && Number(chatIdAtual) === Number(data.remetente_id);
+
+        lastPreviewState[chatKey] = `${data.remetenteNome}: ${data.conteudo}`;
+        lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
+        lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
+
+        if (isCurrent) {
+          adicionarMensagem({
+            id: data.id,
+            conteudo: data.conteudo,
+            usuarioNome: data.remetenteNome,
+            ehOutro: true,
+            criado_em: data.criado_em,
+            lido: data.lido,
+            usuarioId: data.remetente_id
+          });
+
+          socket.emit('marcar-lidas', {
+            remetenteId: data.remetente_id,
+            destinatarioId: usuarioAtual.id
+          });
+        } else {
+          unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
+        }
+
+        typingUsers.delete(`privado-${data.remetente_id}`);
+        renderTypingIndicator();
+        renderContatos();
+        updateBrowserTitle();
+
+        mostrarNotificacao(`${data.remetenteNome} enviou uma mensagem privada`, 'success');
+
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Nova mensagem privada', {
+            body: `${data.remetenteNome}: ${data.conteudo}`
+          });
+        }
+      });
+
+      socket.on('mensagens-lidas', (data) => {
+        if (tipoChat === 'privado' && Number(chatIdAtual) === Number(data.destinatarioId)) {
+          marcarMensagensComoLidasNaTela(Number(data.remetenteId));
+        }
+      });
+    }
+
+    async function carregarGrupos() {
+      try {
+        const response = await fetch('/api/grupos', {
+          headers: authHeaders()
+        });
+
+        if (!response.ok) throw new Error('Falha ao carregar grupos');
+
+        gruposCache = await response.json();
+        if (!Array.isArray(gruposCache)) gruposCache = [];
+        renderGrupos();
+      } catch (err) {
+        console.error(err);
+        gruposCache = [];
+        renderGrupos();
+      }
+    }
+
+    async function carregarContatos() {
+      try {
+        const response = await fetch('/api/usuarios', {
+          headers: authHeaders()
+        });
+
+        if (!response.ok) throw new Error('Falha ao carregar contatos');
+
+        contatosCache = await response.json();
+        if (!Array.isArray(contatosCache)) contatosCache = [];
+        contatosCache = contatosCache.filter(u => Number(u.id) !== Number(usuarioAtual.id));
+        renderContatos();
+      } catch (err) {
+        console.error(err);
+        contatosCache = [];
+        renderContatos();
+      }
+    }
+
+    async function carregarResumoConversas() {
+      try {
+        const response = await fetch('/api/conversas/privadas/resumo', {
+          headers: authHeaders()
+        });
+
+        if (!response.ok) return;
+
+        const resumo = await response.json();
+        if (!Array.isArray(resumo)) return;
+
+        resumo.forEach(item => {
+          const key = getChatKey('privado', item.usuarioId);
+          unreadState[key] = item.naoLidas || 0;
+          lastPreviewState[key] = item.ultimaMensagem || '';
+          lastTimeState[key] = item.criado_em ? formatTime(item.criado_em) : '';
+          lastTimestampState[key] = item.criado_em ? toTimestamp(item.criado_em) : 0;
+        });
+
+        renderContatos();
+        updateBrowserTitle();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function renderGrupos() {
+      const gruposList = document.getElementById('gruposList');
+      gruposList.innerHTML = '';
+
+      sortByRecent(gruposCache, 'grupo').forEach(grupo => {
+        const key = getChatKey('grupo', grupo.id);
+        const unread = unreadState[key] || 0;
+
+        const item = document.createElement('div');
+        item.className = `chat-item ${tipoChat === 'grupo' && Number(chatIdAtual) === Number(grupo.id) ? 'active' : ''} ${unread > 0 ? 'unread' : ''}`;
+        item.innerHTML = `
+          <div class="chat-icon group">#</div>
+          <div class="chat-details">
+            <div class="chat-top">
+              <div class="chat-name">${escapeHtml(grupo.nome)}</div>
+              <div class="chat-time">${lastTimeState[key] || ''}</div>
+            </div>
+            <div class="chat-preview-row">
+              <div class="chat-preview">${escapeHtml(lastPreviewState[key] || grupo.descricao || 'Sem mensagens recentes')}</div>
+              ${unread > 0 ? `<span class="notification-badge">${unread > 99 ? '99+' : unread}</span>` : ''}
+            </div>
+          </div>
+        `;
+        item.addEventListener('click', () => carregarChat('grupo', grupo.id, grupo.nome));
+        gruposList.appendChild(item);
+      });
+    }
+
+    function renderContatos() {
+      const contatosList = document.getElementById('contatosList');
+      contatosList.innerHTML = '';
+
+      sortByRecent(contatosCache, 'privado').forEach(usuario => {
+        const key = getChatKey('privado', usuario.id);
+        const unread = unreadState[key] || 0;
+        const online = onlineState.has(Number(usuario.id));
+        const preview = lastPreviewState[key] || (online ? 'Online agora' : usuario.email);
+
+        const item = document.createElement('div');
+        item.className = `chat-item ${tipoChat === 'privado' && Number(chatIdAtual) === Number(usuario.id) ? 'active' : ''} ${unread > 0 ? 'unread' : ''}`;
+        item.innerHTML = `
+          <div class="chat-icon private">
+            ${escapeHtml(initials(usuario.nome))}
+            <span class="presence-dot ${online ? 'online' : ''}"></span>
+          </div>
+          <div class="chat-details">
+            <div class="chat-top">
+              <div class="chat-name">${escapeHtml(usuario.nome)}</div>
+              <div class="chat-time">${lastTimeState[key] || ''}</div>
+            </div>
+            <div class="chat-preview-row">
+              <div class="chat-preview">${escapeHtml(preview)}</div>
+              ${unread > 0 ? `<span class="notification-badge">${unread > 99 ? '99+' : unread}</span>` : ''}
+            </div>
+          </div>
+        `;
+        item.addEventListener('click', () => carregarChat('privado', usuario.id, usuario.nome));
+        contatosList.appendChild(item);
+      });
+    }
+
+    async function carregarChat(tipo, id, nome) {
+      tipoChat = tipo;
+      chatIdAtual = id;
+
+      unreadState[getChatKey(tipo, id)] = 0;
+      renderGrupos();
+      renderContatos();
+      updateBrowserTitle();
+
+      typingUsers.delete(`${tipo}-${id}`);
+      renderTypingIndicator();
+
+      document.getElementById('headerTitle').textContent = (tipo === 'grupo' ? '# ' : '') + nome;
+      updateHeaderIcon(tipo, nome);
+      updateHeaderStatus();
+      document.getElementById('messagesContainer').innerHTML = '';
+
+      try {
+        const endpoint = tipo === 'grupo'
+          ? `/api/mensagens/grupo/${id}`
+          : `/api/mensagens/privadas/${id}`;
+
+        const response = await fetch(endpoint, {
+          headers: authHeaders()
+        });
+
+        if (!response.ok) throw new Error('Falha ao carregar mensagens');
+
+        const mensagens = await response.json();
+
+        if (!Array.isArray(mensagens) || mensagens.length === 0) {
+          document.getElementById('messagesContainer').innerHTML = `
+            <div class="empty-state">
+              <span class="emoji">🗂️</span>
+              <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Nenhuma mensagem ainda</div>
+              <div>Envie a primeira mensagem desta conversa.</div>
+            </div>
+          `;
+        } else {
+          mensagens.forEach(msg => {
+            adicionarMensagem({
+              id: msg.id,
+              conteudo: msg.conteudo,
+              usuarioNome: msg.usuario_nome,
+              ehOutro: Number(msg.usuario_id) !== Number(usuarioAtual.id),
+              criado_em: msg.criado_em || msg.data,
+              lido: msg.lido,
+              usuarioId: msg.usuario_id
+            });
+          });
+        }
+
+        if (tipoChat === 'grupo') {
+          socket.emit('entrar-grupo', {
+            grupoId: id,
+            usuarioId: usuarioAtual.id
+          });
+        } else {
+          socket.emit('marcar-lidas', {
+            remetenteId: id,
+            destinatarioId: usuarioAtual.id
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        mostrarNotificacao('Erro ao carregar conversa', 'error');
+      }
+    }
+
+    function adicionarMensagem({ id, conteudo, usuarioNome, ehOutro, criado_em = null, lido = 0, usuarioId = null }) {
+      const container = document.getElementById('messagesContainer');
+      const empty = container.querySelector('.empty-state');
+      if (empty) empty.remove();
+
+      const row = document.createElement('div');
+      row.className = `message-row ${ehOutro ? '' : 'own'}`;
+      row.dataset.messageId = id || '';
+      row.dataset.usuarioId = usuarioId || '';
+
+      const hora = formatTime(criado_em || new Date());
+      const statusHtml = !ehOutro
+        ? `<span class="message-status ${lido ? 'lida' : ''}">${lido ? '✓✓' : '✓'}</span>`
+        : '';
+
+      row.innerHTML = ehOutro
+        ? `
+          <div class="message-avatar">${escapeHtml(initials(usuarioNome))}</div>
+          <div class="message other">
+            <div class="message-sender">${escapeHtml(usuarioNome)}</div>
+            <div class="message-text">${escapeHtml(conteudo)}</div>
+            <div class="message-time">${hora}</div>
+          </div>
+        `
+        : `
+          <div class="message own">
+            <div class="message-text">${escapeHtml(conteudo)}</div>
+            <div class="message-time">${hora} ${statusHtml}</div>
+          </div>
+        `;
+
+      container.appendChild(row);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function marcarMensagensComoLidasNaTela(remetenteId) {
+      document.querySelectorAll('.message-row.own .message-status').forEach(status => {
+        status.textContent = '✓✓';
+        status.classList.add('lida');
+      });
+
+      const key = getChatKey('privado', remetenteId);
+      unreadState[key] = 0;
+      renderContatos();
+      updateBrowserTitle();
+    }
+
+    function emitirDigitando() {
+      if (!socket || !tipoChat || !chatIdAtual) return;
+
+      socket.emit('digitando', {
+        tipo: tipoChat,
+        chatId: chatIdAtual,
+        usuarioId: usuarioAtual.id,
+        usuarioNome: usuarioAtual.nome
+      });
+    }
+
+    function enviarMensagem() {
+      const input = document.getElementById('messageInput');
+      const conteudo = input.value.trim();
+      if (!conteudo || !tipoChat || !chatIdAtual) return;
+
+      const key = getChatKey(tipoChat, chatIdAtual);
+      lastPreviewState[key] = `Você: ${conteudo}`;
+      lastTimeState[key] = formatTime();
+      lastTimestampState[key] = Date.now();
+
+      if (tipoChat === 'grupo') {
+        socket.emit('mensagem-grupo', {
+          grupoId: chatIdAtual,
+          usuarioId: usuarioAtual.id,
+          usuarioNome: usuarioAtual.nome,
+          conteudo
+        });
+        renderGrupos();
+      } else {
+        adicionarMensagem({
+          id: Date.now(),
+          conteudo,
+          usuarioNome: usuarioAtual.nome,
+          ehOutro: false,
+          criado_em: new Date().toISOString(),
+          lido: 0,
+          usuarioId: usuarioAtual.id
+        });
+
+        socket.emit('mensagem-privada', {
+          remetente_id: usuarioAtual.id,
+          destinatario_id: chatIdAtual,
+          remetenteNome: usuarioAtual.nome,
+          conteudo
+        });
+
+        renderContatos();
+      }
+
+      updateBrowserTitle();
+      input.value = '';
+      input.focus();
+    }
+
+    function enviarSeEnter(event) {
+      if (event.key === 'Enter') enviarMensagem();
+    }
+
+    async function carregarUsuariosAdmin() {
+      try {
+        const response = await fetch('/api/admin/usuarios', {
+          headers: authHeaders()
+        });
+
+        if (!response.ok) throw new Error('Falha ao carregar usuários');
+
+        const usuarios = await response.json();
+        const tbody = document.getElementById('adminUsuariosTable');
+        tbody.innerHTML = '';
+
+        usuarios.forEach(usuario => {
+          const tr = document.createElement('tr');
+          const online = onlineState.has(Number(usuario.id));
+          tr.innerHTML = `
+            <td>${escapeHtml(usuario.nome)}</td>
+            <td>${escapeHtml(usuario.email)}</td>
+            <td>${usuario.admin ? 'Sim' : 'Não'}</td>
+            <td>${usuario.ativo ? (online ? 'Ativo / Online' : 'Ativo') : 'Inativo'}</td>
+            <td class="table-actions">
+              ${Number(usuario.id) !== Number(usuarioAtual.id) ? `<button class="mini-btn btn-danger" onclick="desativarUsuario(${usuario.id})">Desativar</button>` : '-'}
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        mostrarNotificacao('Erro ao carregar usuários', 'error');
+      }
+    }
+
+    function abrirPainelAdmin() {
+      carregarUsuariosAdmin();
+      document.getElementById('adminModal').classList.add('active');
+    }
+
+    async function cadastrarNovoUsuario() {
+      const nome = document.getElementById('adminNovonome').value.trim();
+      const email = document.getElementById('adminNovoEmail').value.trim();
+
+      if (!nome || !email) {
+        mostrarErro('Preencha todos os campos');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/admin/criar-usuario', {
+          method: 'POST',
+          headers: authHeaders({
+            'Content-Type': 'application/json'
+          }),
+          body: JSON.stringify({ nome, email, senha: 'Senha123!' })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          mostrarErro(data.erro || 'Erro ao cadastrar');
+          return;
+        }
+
+        mostrarNotificacao('Usuário cadastrado com sucesso. Senha padrão: Senha123!', 'success');
+        document.getElementById('adminNovonome').value = '';
+        document.getElementById('adminNovoEmail').value = '';
+        carregarUsuariosAdmin();
+        carregarContatos();
+      } catch (err) {
+        mostrarErro('Erro: ' + err.message);
+      }
+    }
+
+    async function desativarUsuario(usuarioId) {
+      if (!confirm('Desativar este usuário?')) return;
+
+      try {
+        const response = await fetch(`/api/admin/usuarios/${usuarioId}`, {
+          method: 'DELETE',
+          headers: authHeaders()
+        });
+
+        if (response.ok) {
+          mostrarNotificacao('Usuário desativado com sucesso', 'success');
+          carregarUsuariosAdmin();
+          carregarContatos();
+        }
+      } catch (err) {
+        mostrarErro('Erro: ' + err.message);
+      }
+    }
+
+    async function criarNovoGrupo() {
+      const nome = document.getElementById('adminNovoGrupoNome').value.trim();
+      const descricao = document.getElementById('adminNovoGrupoDesc').value.trim();
+
+      if (!nome) {
+        mostrarErro('Digite o nome do grupo');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/admin/criar-grupo', {
+          method: 'POST',
+          headers: authHeaders({
+            'Content-Type': 'application/json'
+          }),
+          body: JSON.stringify({ nome, descricao })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          mostrarErro(data.erro || 'Erro ao criar grupo');
+          return;
+        }
+
+        mostrarNotificacao('Grupo criado com sucesso', 'success');
+        document.getElementById('adminNovoGrupoNome').value = '';
+        document.getElementById('adminNovoGrupoDesc').value = '';
+        carregarGrupos();
+      } catch (err) {
+        mostrarErro('Erro: ' + err.message);
+      }
+    }
+
+    function abrirNovoGrupo() {
+      abrirPainelAdmin();
+    }
+
+    function abrirNovoContato() {
+      mostrarNotificacao('Todos os contatos cadastrados aparecem na lista', 'success');
+    }
+
+    function abrirAjustes() {
+      mostrarNotificacao('Ajustes avançados podem ser expandidos em seguida', 'success');
+    }
+
+    function fazerLogout() {
+      token = null;
+      usuarioAtual = null;
+      tipoChat = null;
+      chatIdAtual = null;
+      gruposCache = [];
+      contatosCache = [];
+      unreadState = {};
+      lastPreviewState = {};
+      lastTimeState = {};
+      lastTimestampState = {};
+      onlineState = new Set();
+      typingUsers = new Map();
+
+      if (socket) {
+        socket.disconnect();
+        socket = null;
+      }
+
+      document.getElementById('loginContainer').classList.remove('hidden');
+      document.getElementById('chatContainer').classList.add('hidden');
+      document.getElementById('loginEmail').value = '';
+      document.getElementById('loginSenha').value = '';
+      document.getElementById('messagesContainer').innerHTML = '';
+      document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat';
+      document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
+      document.getElementById('typingIndicator').textContent = '';
+      updateHeaderIcon(null);
+      updateBrowserTitle();
+    }
+
+    function fecharModal(modalId) {
+      document.getElementById(modalId).classList.remove('active');
+    }
+
+    window.onclick = function(event) {
+      if (event.target.classList.contains('modal')) {
+        event.target.classList.remove('active');
+      }
+    };
+  </script>
 </body>
 </html>
