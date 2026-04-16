@@ -32,6 +32,13 @@ body { margin:0; font-family:Arial; background:#0f172a; color:white; display:fle
 
 <script>
 const socket = io();
+fetch('/api/grupos')
+.then(r => r.json())
+.then(data => renderGrupos(data));
+
+fetch('/api/usuarios')
+.then(r => r.json())
+.then(data => renderContatos(data));
 let atual = null;
 let tipoAtual = null;
 let unread = {};
