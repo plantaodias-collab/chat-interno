@@ -720,6 +720,8 @@
     let unreadState = {};
     let lastPreviewState = {};
     let lastTimeState = {};
+      lastTimestampState = {};
+    let lastTimestampState = {};
     let onlineState = new Set();
     let typingUsers = new Map();
     let messageStatusMap = new Map();
@@ -743,6 +745,67 @@
 
     function formatTime(date = new Date()) {
       return new Date(date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function toTimestamp(value) {
+      const ts = new Date(value || Date.now()).getTime();
+      return Number.isNaN(ts) ? 0 : ts;
+    }
+
+    function sortByRecent(items, tipo) {
+      return [...items].sort((a, b) => {
+        const aTs = lastTimestampState[getChatKey(tipo, a.id)] || 0;
+        const bTs = lastTimestampState[getChatKey(tipo, b.id)] || 0;
+        return bTs - aTs;
+      });
+    }
+
+    function getTotalUnread() {
+      return Object.values(unreadState).reduce((acc, cur) => acc + (Number(cur) || 0), 0);
+    }
+
+    function updateBrowserNotification() {
+      const totalUnread = getTotalUnread();
+      document.title = totalUnread > 0
+        ? `(${totalUnread}) Chat Interno - Equipe`
+        : 'Chat Interno - Equipe';
+
+      let favicon = document.getElementById('dynamicFavicon');
+      if (!favicon) {
+        favicon = document.createElement('link');
+        favicon.id = 'dynamicFavicon';
+        favicon.rel = 'icon';
+        document.head.appendChild(favicon);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#3b82f6';
+      ctx.beginPath();
+      ctx.arc(32, 32, 26, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 28px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('💬', 32, 34);
+
+      if (totalUnread > 0) {
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(49, 15, 13, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px Arial';
+        ctx.fillText(totalUnread > 99 ? '99+' : String(totalUnread), 49, 15);
+      }
+
+      favicon.href = canvas.toDataURL('image/png');
     }
 
     function updateHeaderIcon(tipo, nome = '') {
@@ -811,6 +874,7 @@
       socket.on('presenca-atualizada', (data) => {
         onlineState = new Set((data.online || []).map(Number));
         renderContatos();
+        updateBrowserNotification();
         atualizarCabecalhoStatus();
       });
 
@@ -831,6 +895,8 @@
         const isCurrent = tipoChat === 'grupo' && Number(chatIdAtual) === Number(data.grupoId);
         lastPreviewState[chatKey] = `${data.usuarioNome}: ${data.conteudo}`;
         lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
+        lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
+        lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
 
         if (isCurrent) {
           adicionarMensagem({
@@ -848,6 +914,8 @@
         typingUsers.delete(`grupo-${data.grupoId}`);
         renderTypingIndicator();
         renderGrupos();
+        updateBrowserNotification();
+        updateBrowserNotification();
         mostrarNotificacao(`${data.usuarioNome} falou no grupo`, 'success');
       });
 
@@ -857,6 +925,7 @@
 
         lastPreviewState[chatKey] = `${data.remetenteNome}: ${data.conteudo}`;
         lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
+        lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
 
         if (isCurrent) {
           adicionarMensagem({
@@ -878,6 +947,7 @@
         typingUsers.delete(`privado-${data.remetente_id}`);
         renderTypingIndicator();
         renderContatos();
+        updateBrowserNotification();
         mostrarNotificacao(`${data.remetenteNome} enviou uma mensagem privada`, 'success');
 
         if ('Notification' in window && Notification.permission === 'granted') {
@@ -912,8 +982,10 @@
           unreadState[key] = item.naoLidas || 0;
           lastPreviewState[key] = item.ultimaMensagem || '';
           lastTimeState[key] = item.criado_em ? formatTime(item.criado_em) : '';
+          lastTimestampState[key] = item.criado_em ? toTimestamp(item.criado_em) : 0;
         });
         renderContatos();
+        updateBrowserNotification();
       } catch (err) {
         console.error('Erro ao carregar resumo de conversas:', err);
       }
@@ -933,7 +1005,7 @@
       const gruposList = document.getElementById('gruposList');
       gruposList.innerHTML = '';
 
-      gruposCache.forEach(grupo => {
+      sortByRecent(gruposCache, 'grupo').forEach(grupo => {
         const key = getChatKey('grupo', grupo.id);
         const unread = unreadState[key] || 0;
         const item = document.createElement('div');
@@ -971,7 +1043,7 @@
       const contatosList = document.getElementById('contatosList');
       contatosList.innerHTML = '';
 
-      contatosCache.forEach(usuario => {
+      sortByRecent(contatosCache, 'privado').forEach(usuario => {
         const key = getChatKey('privado', usuario.id);
         const unread = unreadState[key] || 0;
         const statusText = onlineState.has(Number(usuario.id)) ? 'Online agora' : (lastPreviewState[key] || usuario.email);
@@ -1004,6 +1076,7 @@
       unreadState[getChatKey(tipo, id)] = 0;
       renderGrupos();
       renderContatos();
+      updateBrowserNotification();
       typingUsers.delete(`${tipo}-${id}`);
       renderTypingIndicator();
 
@@ -1116,6 +1189,7 @@
       const key = getChatKey('privado', remetenteId);
       unreadState[key] = 0;
       renderContatos();
+      updateBrowserNotification();
     }
 
     function emitirDigitando() {
@@ -1136,6 +1210,7 @@
       const key = getChatKey(tipoChat, chatIdAtual);
       lastPreviewState[key] = `Você: ${conteudo}`;
       lastTimeState[key] = formatTime();
+      lastTimestampState[key] = Date.now();
 
       if (tipoChat === 'grupo') {
         socket.emit('mensagem-grupo', {
@@ -1305,6 +1380,7 @@
       document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
       document.getElementById('typingIndicator').textContent = '';
       updateHeaderIcon(null);
+      updateBrowserNotification();
     }
 
     function mostrarErro(mensagem) {
