@@ -8,16 +8,21 @@
     "dev": "nodemon server-simple.js",
     "setup": "node setup-simple.js"
   },
-  "keywords": ["chat", "interno", "comunicacao"],
+  "keywords": [
+    "chat",
+    "interno",
+    "comunicacao"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.5.4",
-    "cors": "^2.8.5",
-    "jsonwebtoken": "^9.0.0",
     "bcryptjs": "^2.4.3",
-    "body-parser": "^1.20.2"
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "multer": "^2.1.1",
+    "socket.io": "^4.5.4"
   },
   "devDependencies": {
     "nodemon": "^2.0.20"

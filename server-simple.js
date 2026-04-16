@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 
 const app = express();
 const server = http.createServer(app);
@@ -18,14 +19,17 @@ const io = socketIO(server, {
 
 const SECRET_KEY = 'sua-chave-secreta-aqui-mude-isso';
 const DATA_DIR = path.join(__dirname, 'data');
+const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png']);
+const MAX_FILE_SIZE = 15 * 1024 * 1024;
 
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '.')));
+app.use('/uploads', express.static(UPLOAD_DIR));
 
 class SimpleDB {
   constructor() {
@@ -61,8 +65,8 @@ class SimpleDB {
 }
 
 const db = new SimpleDB();
-const onlineUsers = new Map(); // usuarioId -> Set(socketId)
-const socketUsers = new Map(); // socketId -> usuarioId
+const onlineUsers = new Map();
+const socketUsers = new Map();
 const typingTimeouts = new Map();
 
 function verificarToken(req, res, next) {
@@ -78,6 +82,35 @@ function verificarToken(req, res, next) {
     res.status(401).json({ erro: 'Token inválido' });
   }
 }
+
+function sanitizeFileName(name) {
+  return String(name || 'arquivo')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const base = path.basename(file.originalname || 'arquivo', ext);
+    const safeBase = sanitizeFileName(base);
+    cb(null, `${Date.now()}_${safeBase}${ext}`);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: MAX_FILE_SIZE },
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (!ALLOWED_EXTENSIONS.has(ext)) {
+      return cb(new Error('Tipo de arquivo não permitido'));
+    }
+    cb(null, true);
+  }
+});
 
 function getUsuarioPublico(usuario) {
   return {
@@ -114,6 +147,13 @@ function emitPresence() {
   io.emit('presenca-atualizada', {
     online: Array.from(onlineUsers.keys())
   });
+}
+
+function enrichMessage(m) {
+  return {
+    ...m,
+    usuario_nome: db.usuarios.find((u) => u.id === m.usuario_id)?.nome || 'Desconhecido'
+  };
 }
 
 app.post('/api/login', async (req, res) => {
@@ -258,10 +298,7 @@ app.get('/api/mensagens/grupo/:grupoId', verificarToken, (req, res) => {
   try {
     const mensagens = db.mensagens
       .filter((m) => m.grupo_id === parseInt(req.params.grupoId, 10))
-      .map((m) => ({
-        ...m,
-        usuario_nome: db.usuarios.find((u) => u.id === m.usuario_id)?.nome || 'Desconhecido'
-      }));
+      .map(enrichMessage);
 
     res.json(mensagens);
   } catch (err) {
@@ -280,10 +317,7 @@ app.get('/api/mensagens/privadas/:usuarioId', verificarToken, (req, res) => {
           (m.usuario_id === req.userId && m.usuario_destino_id === outroUsuarioId) ||
           (m.usuario_id === outroUsuarioId && m.usuario_destino_id === req.userId)
       )
-      .map((m) => ({
-        ...m,
-        usuario_nome: db.usuarios.find((u) => u.id === m.usuario_id)?.nome || 'Desconhecido'
-      }));
+      .map(enrichMessage);
 
     res.json(mensagens);
   } catch (err) {
@@ -304,7 +338,7 @@ app.get('/api/conversas/privadas/resumo', verificarToken, (req, res) => {
         if (!resumo[outroId] || new Date(m.criado_em) > new Date(resumo[outroId].criado_em)) {
           resumo[outroId] = {
             usuarioId: outroId,
-            ultimaMensagem: m.conteudo,
+            ultimaMensagem: m.tipo === 'arquivo' ? `Arquivo: ${m.arquivo_nome_original}` : m.conteudo,
             criado_em: m.criado_em,
             naoLidas: 0
           };
@@ -321,9 +355,75 @@ app.get('/api/conversas/privadas/resumo', verificarToken, (req, res) => {
   }
 });
 
-io.on('connection', (socket) => {
-  console.log('Usuário conectado:', socket.id);
+app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => {
+  try {
+    const { tipoChat, chatId } = req.body;
+    if (!req.file) return res.status(400).json({ erro: 'Arquivo não enviado' });
+    if (!tipoChat || !chatId) return res.status(400).json({ erro: 'Destino do arquivo não informado' });
 
+    const msg = {
+      id: Date.now(),
+      usuario_id: Number(req.userId),
+      grupo_id: tipoChat === 'grupo' ? Number(chatId) : null,
+      usuario_destino_id: tipoChat === 'privado' ? Number(chatId) : null,
+      conteudo: '',
+      tipo: 'arquivo',
+      arquivo_nome_original: req.file.originalname,
+      arquivo_nome_salvo: req.file.filename,
+      arquivo_url: `/uploads/${req.file.filename}`,
+      arquivo_mimetype: req.file.mimetype,
+      arquivo_tamanho: req.file.size,
+      lido: 0,
+      criado_em: new Date().toISOString()
+    };
+
+    db.mensagens.push(msg);
+    db.save();
+
+    const payload = {
+      id: msg.id,
+      tipo: 'arquivo',
+      conteudo: '',
+      arquivo_nome_original: msg.arquivo_nome_original,
+      arquivo_url: msg.arquivo_url,
+      arquivo_mimetype: msg.arquivo_mimetype,
+      arquivo_tamanho: msg.arquivo_tamanho,
+      criado_em: msg.criado_em,
+      usuarioId: msg.usuario_id,
+      usuarioNome: db.usuarios.find((u) => u.id === msg.usuario_id)?.nome || 'Desconhecido'
+    };
+
+    if (tipoChat === 'grupo') {
+      payload.grupoId = Number(chatId);
+      io.to(`grupo-${chatId}`).emit('novo-arquivo-grupo', payload);
+    } else {
+      payload.remetente_id = Number(req.userId);
+      payload.remetenteNome = payload.usuarioNome;
+      io.to(`usuario-${chatId}`).emit('novo-arquivo-privado', payload);
+      io.to(`usuario-${req.userId}`).emit('arquivo-enviado-confirmacao', {
+        ...payload,
+        destinatario_id: Number(chatId),
+        status: 'enviado'
+      });
+    }
+
+    res.json(payload);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.use((err, _req, res, _next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ erro: 'Arquivo excede o limite de 15 MB' });
+    }
+  }
+  if (err) return res.status(400).json({ erro: err.message || 'Erro ao processar arquivo' });
+  return res.status(500).json({ erro: 'Erro interno' });
+});
+
+io.on('connection', (socket) => {
   socket.on('conectar-usuario', (usuarioId) => {
     const id = Number(usuarioId);
     socket.join(`usuario-${id}`);
@@ -331,7 +431,6 @@ io.on('connection', (socket) => {
 
     if (!onlineUsers.has(id)) onlineUsers.set(id, new Set());
     onlineUsers.get(id).add(socket.id);
-
     emitPresence();
   });
 
@@ -346,12 +445,7 @@ io.on('connection', (socket) => {
     clearTimeout(typingTimeouts.get(timeoutKey));
 
     if (tipo === 'grupo') {
-      socket.to(`grupo-${chatId}`).emit('usuario-digitando', {
-        tipo,
-        chatId,
-        usuarioId,
-        usuarioNome
-      });
+      socket.to(`grupo-${chatId}`).emit('usuario-digitando', { tipo, chatId, usuarioId, usuarioNome });
     } else if (tipo === 'privado') {
       socket.to(`usuario-${chatId}`).emit('usuario-digitando', {
         tipo,
@@ -363,11 +457,7 @@ io.on('connection', (socket) => {
 
     const timeout = setTimeout(() => {
       if (tipo === 'grupo') {
-        socket.to(`grupo-${chatId}`).emit('usuario-parou-digitacao', {
-          tipo,
-          chatId,
-          usuarioId
-        });
+        socket.to(`grupo-${chatId}`).emit('usuario-parou-digitacao', { tipo, chatId, usuarioId });
       } else if (tipo === 'privado') {
         socket.to(`usuario-${chatId}`).emit('usuario-parou-digitacao', {
           tipo,
@@ -388,6 +478,7 @@ io.on('connection', (socket) => {
       grupo_id: Number(data.grupoId),
       usuario_destino_id: null,
       conteudo: data.conteudo,
+      tipo: 'texto',
       lido: 0,
       criado_em: new Date().toISOString()
     };
@@ -401,7 +492,8 @@ io.on('connection', (socket) => {
       usuarioNome: data.usuarioNome,
       usuarioId: Number(data.usuarioId),
       grupoId: Number(data.grupoId),
-      criado_em: msg.criado_em
+      criado_em: msg.criado_em,
+      tipo: 'texto'
     });
   });
 
@@ -412,6 +504,7 @@ io.on('connection', (socket) => {
       grupo_id: null,
       usuario_destino_id: Number(data.destinatario_id),
       conteudo: data.conteudo,
+      tipo: 'texto',
       lido: 0,
       criado_em: new Date().toISOString()
     };
@@ -425,7 +518,8 @@ io.on('connection', (socket) => {
       remetenteNome: data.remetenteNome,
       remetente_id: Number(data.remetente_id),
       criado_em: msg.criado_em,
-      lido: 0
+      lido: 0,
+      tipo: 'texto'
     });
 
     io.to(`usuario-${data.remetente_id}`).emit('mensagem-enviada-confirmacao', {
@@ -458,10 +552,8 @@ io.on('connection', (socket) => {
         if (set.size === 0) onlineUsers.delete(usuarioId);
       }
     }
-
     socketUsers.delete(socket.id);
     emitPresence();
-    console.log('Usuário desconectado:', socket.id);
   });
 });
 
@@ -469,4 +561,5 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
   console.log(`Arquivos de dados: ${DATA_DIR}`);
+  console.log(`Arquivos enviados: ${UPLOAD_DIR}`);
 });

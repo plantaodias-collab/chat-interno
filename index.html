@@ -8,7 +8,6 @@
     :root {
       --bg: #0b1220;
       --panel: #111827;
-      --panel-2: #0f172a;
       --line: #253247;
       --text: #e5e7eb;
       --muted: #94a3b8;
@@ -21,7 +20,6 @@
       --bubble-other: #e5e7eb;
       --bubble-other-text: #0f172a;
       --shadow: 0 18px 40px rgba(0,0,0,0.28);
-      --radius: 20px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -146,11 +144,7 @@
       overflow: hidden;
     }
 
-    .sidebar {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
+    .sidebar { display: flex; flex-direction: column; min-width: 0; }
 
     .user-info {
       padding: 18px;
@@ -552,6 +546,25 @@
 
     .message-status.lida { color: #bfdbfe; }
 
+    .file-card {
+      display: block;
+      margin-top: 6px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      text-decoration: none;
+      border: 1px solid rgba(148,163,184,.18);
+      background: rgba(255,255,255,.08);
+      color: inherit;
+    }
+
+    .file-card strong { display: block; margin-bottom: 4px; }
+    .file-card small { opacity: .8; }
+
+    .message.other .file-card {
+      background: rgba(15,23,42,.06);
+      border-color: rgba(15,23,42,.12);
+    }
+
     .input-area {
       padding: 16px 20px 20px;
       border-top: 1px solid var(--line);
@@ -568,7 +581,7 @@
       padding: 10px;
     }
 
-    .composer input {
+    .composer input[type="text"] {
       flex: 1;
       background: transparent;
       border: none;
@@ -578,18 +591,35 @@
       min-width: 0;
     }
 
-    .composer input::placeholder { color: var(--muted); }
+    .composer input[type="text"]::placeholder { color: var(--muted); }
 
-    .send-btn {
+    .attach-btn, .send-btn {
       border: none;
       width: 48px;
       height: 48px;
       border-radius: 16px;
-      background: linear-gradient(135deg, var(--primary), var(--primary-2));
       color: white;
       font-size: 18px;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .attach-btn {
+      background: rgba(255,255,255,.08);
+    }
+
+    .send-btn {
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
       box-shadow: 0 10px 24px rgba(37,99,235,.22);
+    }
+
+    .upload-status {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      min-height: 16px;
     }
 
     .modal {
@@ -794,12 +824,14 @@
         <div class="empty-state">
           <span class="emoji">💬</span>
           <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Seu chat está pronto</div>
-          <div>Agora ele pode exibir online, digitando, mensagens lidas e não lidas.</div>
+          <div>Agora ele pode exibir online, digitando, mensagens lidas, não lidas e anexos.</div>
         </div>
       </div>
 
       <div class="input-area">
         <div class="composer">
+          <input type="file" id="fileInput" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" onchange="enviarArquivo()" />
+          <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Anexar">📎</button>
           <input
             type="text"
             id="messageInput"
@@ -809,6 +841,7 @@
           />
           <button class="send-btn" onclick="enviarMensagem()" title="Enviar">➤</button>
         </div>
+        <div class="upload-status" id="uploadStatus"></div>
       </div>
     </main>
   </div>
@@ -924,6 +957,13 @@
       return Number.isNaN(ts) ? 0 : ts;
     }
 
+    function formatFileSize(bytes) {
+      const value = Number(bytes || 0);
+      if (value < 1024) return `${value} B`;
+      if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+      return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
     function sortByRecent(items, tipo) {
       if (!Array.isArray(items)) return [];
       return [...items].sort((a, b) => {
@@ -990,6 +1030,10 @@
       notif.textContent = mensagem;
       container.appendChild(notif);
       setTimeout(() => notif.remove(), 4500);
+    }
+
+    function setUploadStatus(texto) {
+      document.getElementById('uploadStatus').textContent = texto || '';
     }
 
     async function fazerLogin() {
@@ -1077,19 +1121,19 @@
       socket.on('nova-mensagem-grupo', (data) => {
         const chatKey = getChatKey('grupo', data.grupoId);
         const isCurrent = tipoChat === 'grupo' && Number(chatIdAtual) === Number(data.grupoId);
+        const preview = data.tipo === 'arquivo'
+          ? `${data.usuarioNome}: Arquivo: ${data.arquivo_nome_original}`
+          : `${data.usuarioNome}: ${data.conteudo}`;
 
-        lastPreviewState[chatKey] = `${data.usuarioNome}: ${data.conteudo}`;
+        lastPreviewState[chatKey] = preview;
         lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
         lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
 
         if (isCurrent) {
           adicionarMensagem({
-            id: data.id,
-            conteudo: data.conteudo,
+            ...data,
             usuarioNome: data.usuarioNome,
-            ehOutro: Number(data.usuarioId) !== Number(usuarioAtual.id),
-            criado_em: data.criado_em,
-            lido: 0
+            ehOutro: Number(data.usuarioId) !== Number(usuarioAtual.id)
           });
         } else {
           unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
@@ -1101,26 +1145,26 @@
         updateBrowserTitle();
 
         if (Number(data.usuarioId) !== Number(usuarioAtual.id)) {
-          mostrarNotificacao(`${data.usuarioNome} falou no grupo`, 'success');
+          mostrarNotificacao(`${data.usuarioNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem'} no grupo`, 'success');
         }
       });
 
       socket.on('nova-mensagem-privada', (data) => {
         const chatKey = getChatKey('privado', data.remetente_id);
         const isCurrent = tipoChat === 'privado' && Number(chatIdAtual) === Number(data.remetente_id);
+        const preview = data.tipo === 'arquivo'
+          ? `${data.remetenteNome}: Arquivo: ${data.arquivo_nome_original}`
+          : `${data.remetenteNome}: ${data.conteudo}`;
 
-        lastPreviewState[chatKey] = `${data.remetenteNome}: ${data.conteudo}`;
+        lastPreviewState[chatKey] = preview;
         lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
         lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
 
         if (isCurrent) {
           adicionarMensagem({
-            id: data.id,
-            conteudo: data.conteudo,
+            ...data,
             usuarioNome: data.remetenteNome,
             ehOutro: true,
-            criado_em: data.criado_em,
-            lido: data.lido,
             usuarioId: data.remetente_id
           });
 
@@ -1137,13 +1181,23 @@
         renderContatos();
         updateBrowserTitle();
 
-        mostrarNotificacao(`${data.remetenteNome} enviou uma mensagem privada`, 'success');
+        mostrarNotificacao(`${data.remetenteNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem privada'}`, 'success');
 
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('Nova mensagem privada', {
-            body: `${data.remetenteNome}: ${data.conteudo}`
+            body: data.tipo === 'arquivo'
+              ? `${data.remetenteNome}: Arquivo ${data.arquivo_nome_original}`
+              : `${data.remetenteNome}: ${data.conteudo}`
           });
         }
+      });
+
+      socket.on('novo-arquivo-grupo', (data) => {
+        socket.emit('nova-mensagem-grupo', data);
+      });
+
+      socket.on('novo-arquivo-privado', (data) => {
+        socket.emit('nova-mensagem-privada', data);
       });
 
       socket.on('mensagens-lidas', (data) => {
@@ -1155,12 +1209,8 @@
 
     async function carregarGrupos() {
       try {
-        const response = await fetch('/api/grupos', {
-          headers: authHeaders()
-        });
-
+        const response = await fetch('/api/grupos', { headers: authHeaders() });
         if (!response.ok) throw new Error('Falha ao carregar grupos');
-
         gruposCache = await response.json();
         if (!Array.isArray(gruposCache)) gruposCache = [];
         renderGrupos();
@@ -1173,12 +1223,8 @@
 
     async function carregarContatos() {
       try {
-        const response = await fetch('/api/usuarios', {
-          headers: authHeaders()
-        });
-
+        const response = await fetch('/api/usuarios', { headers: authHeaders() });
         if (!response.ok) throw new Error('Falha ao carregar contatos');
-
         contatosCache = await response.json();
         if (!Array.isArray(contatosCache)) contatosCache = [];
         contatosCache = contatosCache.filter(u => Number(u.id) !== Number(usuarioAtual.id));
@@ -1192,12 +1238,8 @@
 
     async function carregarResumoConversas() {
       try {
-        const response = await fetch('/api/conversas/privadas/resumo', {
-          headers: authHeaders()
-        });
-
+        const response = await fetch('/api/conversas/privadas/resumo', { headers: authHeaders() });
         if (!response.ok) return;
-
         const resumo = await response.json();
         if (!Array.isArray(resumo)) return;
 
@@ -1299,10 +1341,7 @@
           ? `/api/mensagens/grupo/${id}`
           : `/api/mensagens/privadas/${id}`;
 
-        const response = await fetch(endpoint, {
-          headers: authHeaders()
-        });
-
+        const response = await fetch(endpoint, { headers: authHeaders() });
         if (!response.ok) throw new Error('Falha ao carregar mensagens');
 
         const mensagens = await response.json();
@@ -1318,27 +1357,18 @@
         } else {
           mensagens.forEach(msg => {
             adicionarMensagem({
-              id: msg.id,
-              conteudo: msg.conteudo,
+              ...msg,
               usuarioNome: msg.usuario_nome,
               ehOutro: Number(msg.usuario_id) !== Number(usuarioAtual.id),
-              criado_em: msg.criado_em || msg.data,
-              lido: msg.lido,
               usuarioId: msg.usuario_id
             });
           });
         }
 
-        if (tipoChat === 'grupo') {
-          socket.emit('entrar-grupo', {
-            grupoId: id,
-            usuarioId: usuarioAtual.id
-          });
+        if (tipo === 'grupo') {
+          socket.emit('entrar-grupo', { grupoId: id, usuarioId: usuarioAtual.id });
         } else {
-          socket.emit('marcar-lidas', {
-            remetenteId: id,
-            destinatarioId: usuarioAtual.id
-          });
+          socket.emit('marcar-lidas', { remetenteId: id, destinatarioId: usuarioAtual.id });
         }
       } catch (err) {
         console.error(err);
@@ -1346,7 +1376,21 @@
       }
     }
 
-    function adicionarMensagem({ id, conteudo, usuarioNome, ehOutro, criado_em = null, lido = 0, usuarioId = null }) {
+    function adicionarMensagem(msg) {
+      const {
+        id,
+        conteudo,
+        usuarioNome,
+        ehOutro,
+        criado_em = null,
+        lido = 0,
+        usuarioId = null,
+        tipo = 'texto',
+        arquivo_nome_original,
+        arquivo_url,
+        arquivo_tamanho
+      } = msg;
+
       const container = document.getElementById('messagesContainer');
       const empty = container.querySelector('.empty-state');
       if (empty) empty.remove();
@@ -1361,18 +1405,25 @@
         ? `<span class="message-status ${lido ? 'lida' : ''}">${lido ? '✓✓' : '✓'}</span>`
         : '';
 
+      const innerContent = tipo === 'arquivo'
+        ? `<a class="file-card" href="${escapeHtml(arquivo_url)}" target="_blank" rel="noopener noreferrer">
+             <strong>📎 ${escapeHtml(arquivo_nome_original)}</strong>
+             <small>${escapeHtml(formatFileSize(arquivo_tamanho))}</small>
+           </a>`
+        : `<div class="message-text">${escapeHtml(conteudo)}</div>`;
+
       row.innerHTML = ehOutro
         ? `
           <div class="message-avatar">${escapeHtml(initials(usuarioNome))}</div>
           <div class="message other">
             <div class="message-sender">${escapeHtml(usuarioNome)}</div>
-            <div class="message-text">${escapeHtml(conteudo)}</div>
+            ${innerContent}
             <div class="message-time">${hora}</div>
           </div>
         `
         : `
           <div class="message own">
-            <div class="message-text">${escapeHtml(conteudo)}</div>
+            ${innerContent}
             <div class="message-time">${hora} ${statusHtml}</div>
           </div>
         `;
@@ -1430,7 +1481,8 @@
           ehOutro: false,
           criado_em: new Date().toISOString(),
           lido: 0,
-          usuarioId: usuarioAtual.id
+          usuarioId: usuarioAtual.id,
+          tipo: 'texto'
         });
 
         socket.emit('mensagem-privada', {
@@ -1448,18 +1500,70 @@
       input.focus();
     }
 
+    async function enviarArquivo() {
+      const input = document.getElementById('fileInput');
+      const arquivo = input.files[0];
+      if (!arquivo) return;
+      if (!tipoChat || !chatIdAtual) {
+        mostrarNotificacao('Selecione um grupo ou contato antes de enviar arquivo', 'error');
+        input.value = '';
+        return;
+      }
+
+      try {
+        setUploadStatus(`Enviando ${arquivo.name}...`);
+        const formData = new FormData();
+        formData.append('arquivo', arquivo);
+        formData.append('tipoChat', tipoChat);
+        formData.append('chatId', chatIdAtual);
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.erro || 'Erro ao enviar arquivo');
+        }
+
+        const key = getChatKey(tipoChat, chatIdAtual);
+        lastPreviewState[key] = `Você: Arquivo: ${data.arquivo_nome_original}`;
+        lastTimeState[key] = formatTime(data.criado_em || new Date());
+        lastTimestampState[key] = toTimestamp(data.criado_em || new Date());
+
+        adicionarMensagem({
+          ...data,
+          usuarioNome: usuarioAtual.nome,
+          ehOutro: false,
+          usuarioId: usuarioAtual.id,
+          tipo: 'arquivo'
+        });
+
+        if (tipoChat === 'grupo') renderGrupos();
+        else renderContatos();
+
+        setUploadStatus(`Arquivo enviado: ${arquivo.name}`);
+        setTimeout(() => setUploadStatus(''), 4000);
+      } catch (err) {
+        setUploadStatus('');
+        mostrarNotificacao(err.message, 'error');
+      } finally {
+        input.value = '';
+      }
+    }
+
     function enviarSeEnter(event) {
       if (event.key === 'Enter') enviarMensagem();
     }
 
     async function carregarUsuariosAdmin() {
       try {
-        const response = await fetch('/api/admin/usuarios', {
-          headers: authHeaders()
-        });
-
+        const response = await fetch('/api/admin/usuarios', { headers: authHeaders() });
         if (!response.ok) throw new Error('Falha ao carregar usuários');
-
         const usuarios = await response.json();
         const tbody = document.getElementById('adminUsuariosTable');
         tbody.innerHTML = '';
@@ -1501,14 +1605,11 @@
       try {
         const response = await fetch('/api/admin/criar-usuario', {
           method: 'POST',
-          headers: authHeaders({
-            'Content-Type': 'application/json'
-          }),
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ nome, email, senha: 'Senha123!' })
         });
 
         const data = await response.json();
-
         if (!response.ok) {
           mostrarErro(data.erro || 'Erro ao cadastrar');
           return;
@@ -1555,14 +1656,11 @@
       try {
         const response = await fetch('/api/admin/criar-grupo', {
           method: 'POST',
-          headers: authHeaders({
-            'Content-Type': 'application/json'
-          }),
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ nome, descricao })
         });
 
         const data = await response.json();
-
         if (!response.ok) {
           mostrarErro(data.erro || 'Erro ao criar grupo');
           return;
@@ -1577,17 +1675,9 @@
       }
     }
 
-    function abrirNovoGrupo() {
-      abrirPainelAdmin();
-    }
-
-    function abrirNovoContato() {
-      mostrarNotificacao('Todos os contatos cadastrados aparecem na lista', 'success');
-    }
-
-    function abrirAjustes() {
-      mostrarNotificacao('Ajustes avançados podem ser expandidos em seguida', 'success');
-    }
+    function abrirNovoGrupo() { abrirPainelAdmin(); }
+    function abrirNovoContato() { mostrarNotificacao('Todos os contatos cadastrados aparecem na lista', 'success'); }
+    function abrirAjustes() { mostrarNotificacao('Ajustes avançados podem ser expandidos em seguida', 'success'); }
 
     function fazerLogout() {
       token = null;
@@ -1616,6 +1706,8 @@
       document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat';
       document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
       document.getElementById('typingIndicator').textContent = '';
+      document.getElementById('fileInput').value = '';
+      setUploadStatus('');
       updateHeaderIcon(null);
       updateBrowserTitle();
     }
