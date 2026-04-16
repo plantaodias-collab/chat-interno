@@ -8,8 +8,6 @@
     :root {
       --bg: #0b1220;
       --panel: #111827;
-      --panel-2: #172033;
-      --panel-3: #1f2a40;
       --line: #263247;
       --text: #e5e7eb;
       --muted: #94a3b8;
@@ -17,17 +15,14 @@
       --primary-2: #2563eb;
       --success: #22c55e;
       --danger: #ef4444;
-      --warning: #f59e0b;
       --bubble-own: #2563eb;
       --bubble-other: #e5e7eb;
       --bubble-other-text: #0f172a;
       --badge: #ef4444;
       --shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
-      --radius: 18px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
       background:
@@ -38,9 +33,7 @@
       height: 100vh;
       overflow: hidden;
     }
-
     button, input { font: inherit; }
-
     .hidden { display: none !important; }
 
     .login-container {
@@ -50,7 +43,6 @@
       justify-content: center;
       padding: 24px;
     }
-
     .login-box {
       width: 100%;
       max-width: 420px;
@@ -61,7 +53,6 @@
       padding: 32px;
       backdrop-filter: blur(16px);
     }
-
     .login-brand {
       display: flex;
       align-items: center;
@@ -71,16 +62,13 @@
       font-size: 28px;
       font-weight: 800;
     }
-
     .login-subtitle {
       text-align: center;
       color: var(--muted);
       margin-bottom: 28px;
       font-size: 14px;
     }
-
     .form-group { margin-bottom: 18px; }
-
     .form-group label {
       display: block;
       margin-bottom: 8px;
@@ -88,7 +76,6 @@
       font-weight: 600;
       font-size: 14px;
     }
-
     .field {
       width: 100%;
       border: 1px solid rgba(148,163,184,0.18);
@@ -99,12 +86,10 @@
       outline: none;
       transition: 0.2s ease;
     }
-
     .field:focus {
       border-color: rgba(59,130,246,0.8);
       box-shadow: 0 0 0 4px rgba(59,130,246,0.16);
     }
-
     .btn {
       border: none;
       border-radius: 14px;
@@ -113,26 +98,14 @@
       transition: 0.2s ease;
       font-weight: 700;
     }
-
     .btn-primary {
       width: 100%;
       background: linear-gradient(135deg, var(--primary), var(--primary-2));
       color: white;
       margin-top: 8px;
     }
-
-    .btn-primary:hover { transform: translateY(-1px); filter: brightness(1.04); }
-
-    .btn-secondary {
-      background: #334155;
-      color: #fff;
-    }
-
-    .btn-danger {
-      background: var(--danger);
-      color: white;
-    }
-
+    .btn-secondary { background: #334155; color: #fff; }
+    .btn-danger { background: var(--danger); color: white; }
     .error-message {
       color: #fca5a5;
       font-size: 13px;
@@ -148,9 +121,7 @@
       grid-template-columns: 360px 1fr;
       gap: 16px;
     }
-
-    .sidebar,
-    .main-content {
+    .sidebar, .main-content {
       border: 1px solid rgba(148,163,184,0.12);
       border-radius: 24px;
       background: rgba(17,24,39,0.92);
@@ -158,13 +129,7 @@
       box-shadow: var(--shadow);
       overflow: hidden;
     }
-
-    .sidebar {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-
+    .sidebar { display: flex; flex-direction: column; min-width: 0; }
     .user-info {
       padding: 18px;
       border-bottom: 1px solid var(--line);
@@ -172,7 +137,6 @@
       align-items: center;
       gap: 12px;
     }
-
     .avatar {
       width: 46px;
       height: 46px;
@@ -184,24 +148,27 @@
       color: white;
       background: linear-gradient(135deg, #3b82f6, #1d4ed8);
       flex: 0 0 auto;
+      position: relative;
     }
-
+    .presence-dot {
+      position: absolute;
+      right: 1px;
+      bottom: 1px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #64748b;
+      border: 2px solid #111827;
+    }
+    .presence-dot.online { background: var(--success); }
     .user-meta { min-width: 0; flex: 1; }
-
-    .user-name-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
-    }
-
+    .user-name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
     .user-name {
       font-weight: 800;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
     .user-email {
       font-size: 12px;
       color: var(--muted);
@@ -209,7 +176,6 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
     .admin-badge {
       background: rgba(239,68,68,0.15);
       color: #fca5a5;
@@ -219,7 +185,6 @@
       font-size: 11px;
       font-weight: 700;
     }
-
     .logout-btn {
       border: none;
       background: rgba(255,255,255,0.06);
@@ -230,19 +195,16 @@
       cursor: pointer;
       flex: 0 0 auto;
     }
-
     .sidebar-section {
       padding: 14px 14px 8px;
       border-bottom: 1px solid var(--line);
     }
-
     .sidebar-section-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 10px;
     }
-
     .section-title {
       font-size: 12px;
       font-weight: 800;
@@ -250,7 +212,6 @@
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
-
     .menu-btn {
       border: none;
       width: 32px;
@@ -261,14 +222,12 @@
       cursor: pointer;
       font-size: 18px;
     }
-
     .menu-list {
       min-height: 80px;
       max-height: 34vh;
       overflow-y: auto;
       padding-right: 4px;
     }
-
     .chat-item {
       display: flex;
       align-items: center;
@@ -280,22 +239,18 @@
       margin-bottom: 6px;
       border: 1px solid transparent;
     }
-
     .chat-item:hover {
       background: rgba(255,255,255,0.05);
       border-color: rgba(148,163,184,0.08);
     }
-
     .chat-item.active {
       background: rgba(59,130,246,0.14);
       border-color: rgba(59,130,246,0.24);
     }
-
     .chat-item.unread {
       background: rgba(255,255,255,0.035);
       border-color: rgba(239,68,68,0.16);
     }
-
     .chat-icon {
       width: 44px;
       height: 44px;
@@ -306,16 +261,13 @@
       font-size: 18px;
       flex: 0 0 auto;
       background: rgba(59,130,246,0.14);
+      position: relative;
+      font-weight: 700;
+      color: #fff;
     }
-
     .chat-icon.private { background: rgba(34,197,94,0.14); }
     .chat-icon.group { background: rgba(59,130,246,0.14); }
-
-    .chat-details {
-      flex: 1;
-      min-width: 0;
-    }
-
+    .chat-details { flex: 1; min-width: 0; }
     .chat-top {
       display: flex;
       justify-content: space-between;
@@ -323,7 +275,6 @@
       gap: 8px;
       margin-bottom: 4px;
     }
-
     .chat-name {
       font-size: 14px;
       font-weight: 700;
@@ -332,20 +283,13 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
-    .chat-time {
-      font-size: 11px;
-      color: var(--muted);
-      flex: 0 0 auto;
-    }
-
+    .chat-time { font-size: 11px; color: var(--muted); flex: 0 0 auto; }
     .chat-preview-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
     }
-
     .chat-preview {
       font-size: 12px;
       color: var(--muted);
@@ -355,7 +299,6 @@
       min-width: 0;
       flex: 1;
     }
-
     .notification-badge {
       min-width: 22px;
       height: 22px;
@@ -371,13 +314,11 @@
       box-shadow: 0 8px 18px rgba(239,68,68,0.28);
       flex: 0 0 auto;
     }
-
     .admin-section {
       padding: 12px 14px 14px;
       margin-top: auto;
       border-top: 1px solid var(--line);
     }
-
     .admin-menu-item {
       display: flex;
       align-items: center;
@@ -392,12 +333,7 @@
       font-weight: 700;
     }
 
-    .main-content {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-
+    .main-content { display: flex; flex-direction: column; min-width: 0; }
     .header {
       padding: 18px 20px;
       border-bottom: 1px solid var(--line);
@@ -407,16 +343,8 @@
       gap: 16px;
       min-height: 84px;
     }
-
-    .header-main {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      min-width: 0;
-    }
-
+    .header-main { display: flex; align-items: center; gap: 14px; min-width: 0; }
     .header-title-wrap { min-width: 0; }
-
     .header h2 {
       font-size: 20px;
       font-weight: 800;
@@ -425,15 +353,14 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
-    .header-subtitle {
+    .header-subtitle { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .typing-indicator {
       font-size: 12px;
-      color: var(--muted);
+      color: #93c5fd;
       margin-top: 4px;
+      min-height: 16px;
     }
-
     .header-actions { display: flex; gap: 10px; }
-
     .header-btn {
       border: 1px solid rgba(148,163,184,0.14);
       background: rgba(255,255,255,0.05);
@@ -456,30 +383,10 @@
         radial-gradient(circle at top right, rgba(59,130,246,0.05), transparent 20%),
         linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));
     }
-
-    .empty-state {
-      margin: auto;
-      text-align: center;
-      color: var(--muted);
-      max-width: 420px;
-    }
-
-    .empty-state .emoji {
-      font-size: 54px;
-      margin-bottom: 14px;
-      display: block;
-    }
-
-    .message-row {
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-    }
-
-    .message-row.own {
-      justify-content: flex-end;
-    }
-
+    .empty-state { margin: auto; text-align: center; color: var(--muted); max-width: 420px; }
+    .empty-state .emoji { font-size: 54px; margin-bottom: 14px; display: block; }
+    .message-row { display: flex; gap: 10px; align-items: flex-end; }
+    .message-row.own { justify-content: flex-end; }
     .message-avatar {
       width: 34px;
       height: 34px;
@@ -493,53 +400,53 @@
       font-weight: 700;
       flex: 0 0 auto;
     }
-
     .message {
       max-width: min(72%, 760px);
       padding: 12px 14px 10px;
       border-radius: 18px;
       word-break: break-word;
       box-shadow: 0 10px 22px rgba(0,0,0,0.08);
+      position: relative;
     }
-
     .message.own {
       background: linear-gradient(135deg, var(--bubble-own), #1d4ed8);
       color: white;
       border-bottom-right-radius: 6px;
     }
-
     .message.other {
       background: var(--bubble-other);
       color: var(--bubble-other-text);
       border-bottom-left-radius: 6px;
     }
-
     .message-sender {
       font-size: 12px;
       font-weight: 800;
       margin-bottom: 6px;
       opacity: 0.82;
     }
-
-    .message-text {
-      white-space: pre-wrap;
-      line-height: 1.45;
-      font-size: 14px;
-    }
-
+    .message-text { white-space: pre-wrap; line-height: 1.45; font-size: 14px; }
     .message-time {
       font-size: 11px;
       opacity: 0.68;
       margin-top: 6px;
       text-align: right;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
     }
+    .message-status {
+      font-size: 11px;
+      opacity: 0.95;
+      font-weight: 700;
+    }
+    .message-status.lida { color: #bfdbfe; }
 
     .input-area {
       padding: 16px 20px 20px;
       border-top: 1px solid var(--line);
       background: rgba(17,24,39,0.92);
     }
-
     .composer {
       display: flex;
       align-items: center;
@@ -549,7 +456,6 @@
       border-radius: 20px;
       padding: 10px;
     }
-
     .composer input {
       flex: 1;
       background: transparent;
@@ -559,9 +465,7 @@
       padding: 8px 10px;
       min-width: 0;
     }
-
     .composer input::placeholder { color: var(--muted); }
-
     .send-btn {
       border: none;
       width: 48px;
@@ -585,9 +489,7 @@
       justify-content: center;
       padding: 20px;
     }
-
     .modal.active { display: flex; }
-
     .modal-content {
       width: min(960px, 96vw);
       max-height: 88vh;
@@ -598,44 +500,22 @@
       box-shadow: var(--shadow);
       padding: 26px;
     }
-
-    .modal-content h3,
-    .modal-content h4 { color: #0f172a; }
-
+    .modal-content h3, .modal-content h4 { color: #0f172a; }
     .modal-content .field {
       background: #fff;
       color: #0f172a;
       border-color: #dbe1ea;
     }
-
-    .modal-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 24px;
-    }
-
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 12px;
-      font-size: 14px;
-    }
-
+    .modal-grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
+    .table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
     .table th, .table td {
       padding: 12px 10px;
       border-bottom: 1px solid #e5e7eb;
       text-align: left;
       vertical-align: middle;
     }
-
     .table thead { background: #f8fafc; }
-
-    .table-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
+    .table-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .mini-btn {
       padding: 7px 10px;
       border: none;
@@ -655,7 +535,6 @@
       gap: 10px;
       max-width: 360px;
     }
-
     .notification {
       background: #fff;
       color: #0f172a;
@@ -667,29 +546,19 @@
       font-size: 14px;
       line-height: 1.35;
     }
-
     .notification.error { border-left-color: var(--danger); }
     .notification.success { border-left-color: var(--success); }
-
     @keyframes slideIn {
       from { transform: translateX(18px); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
-
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.32); border-radius: 999px; }
 
     @media (max-width: 980px) {
-      .container {
-        grid-template-columns: 1fr;
-        padding: 10px;
-      }
-
-      .sidebar {
-        max-height: 38vh;
-      }
-
+      .container { grid-template-columns: 1fr; padding: 10px; }
+      .sidebar { max-height: 38vh; }
       .messages-container { padding: 16px; }
       .message { max-width: 84%; }
       .header h2 { font-size: 17px; }
@@ -699,10 +568,7 @@
 <body>
   <div id="loginContainer" class="login-container">
     <div class="login-box">
-      <div class="login-brand">
-        <span>💬</span>
-        <span>Chat Interno</span>
-      </div>
+      <div class="login-brand"><span>💬</span><span>Chat Interno</span></div>
       <div class="login-subtitle">Mensagens em tempo real entre a equipe</div>
       <div class="form-group">
         <label for="loginEmail">E-mail</label>
@@ -720,7 +586,10 @@
   <div id="chatContainer" class="container hidden">
     <aside class="sidebar">
       <div class="user-info">
-        <div class="avatar" id="currentUserAvatar">U</div>
+        <div class="avatar" id="currentUserAvatarWrap">
+          <span id="currentUserAvatar">U</span>
+          <span class="presence-dot online"></span>
+        </div>
         <div class="user-meta">
           <div class="user-name-row">
             <div class="user-name" id="currentUserName"></div>
@@ -759,6 +628,7 @@
           <div class="header-title-wrap">
             <h2 id="headerTitle">Bem-vindo ao Chat</h2>
             <div class="header-subtitle" id="headerSubtitle">Selecione um grupo ou contato para iniciar</div>
+            <div class="typing-indicator" id="typingIndicator"></div>
           </div>
         </div>
         <div class="header-actions">
@@ -770,13 +640,13 @@
         <div class="empty-state">
           <span class="emoji">💬</span>
           <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Seu chat está pronto</div>
-          <div>As conversas não abertas podem exibir contador vermelho, horário e prévia da última mensagem, no estilo que você pediu.</div>
+          <div>Agora ele pode exibir online, digitando, mensagens lidas e não lidas.</div>
         </div>
       </div>
 
       <div class="input-area">
         <div class="composer">
-          <input type="text" id="messageInput" placeholder="Digite uma mensagem..." onkeypress="enviarSeEnter(event)" />
+          <input type="text" id="messageInput" placeholder="Digite uma mensagem..." onkeypress="enviarSeEnter(event)" oninput="emitirDigitando()" />
           <button class="send-btn" onclick="enviarMensagem()" title="Enviar">➤</button>
         </div>
       </div>
@@ -786,7 +656,6 @@
   <div id="adminModal" class="modal">
     <div class="modal-content">
       <h3 style="margin-bottom: 18px;">Painel de Administração</h3>
-
       <div class="modal-grid">
         <section>
           <h4 style="margin-bottom: 14px;">Cadastrar novo usuário</h4>
@@ -851,10 +720,11 @@
     let unreadState = {};
     let lastPreviewState = {};
     let lastTimeState = {};
+    let onlineState = new Set();
+    let typingUsers = new Map();
+    let messageStatusMap = new Map();
 
-    function getChatKey(tipo, id) {
-      return `${tipo}-${id}`;
-    }
+    function getChatKey(tipo, id) { return `${tipo}-${id}`; }
 
     function escapeHtml(texto) {
       return String(texto)
@@ -875,25 +745,21 @@
       return new Date(date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     }
 
-    function updateHeaderIcon(tipo) {
+    function updateHeaderIcon(tipo, nome = '') {
       const icon = document.getElementById('chatHeaderAvatar');
-      if (tipo === 'grupo') {
-        icon.textContent = '#';
-      } else if (tipo === 'privado') {
-        icon.textContent = '👤';
-      } else {
-        icon.textContent = '💬';
-      }
+      if (tipo === 'grupo') icon.textContent = '#';
+      else if (tipo === 'privado') icon.textContent = initials(nome);
+      else icon.textContent = '💬';
+    }
+
+    function getStatusLabel(usuarioId) {
+      return onlineState.has(Number(usuarioId)) ? 'Online agora' : 'Offline';
     }
 
     async function fazerLogin() {
       const email = document.getElementById('loginEmail').value.trim();
       const senha = document.getElementById('loginSenha').value;
-
-      if (!email || !senha) {
-        mostrarErro('Digite e-mail e senha');
-        return;
-      }
+      if (!email || !senha) return mostrarErro('Digite e-mail e senha');
 
       try {
         const response = await fetch('/api/login', {
@@ -901,13 +767,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, senha })
         });
-
         const data = await response.json();
-
-        if (!response.ok) {
-          mostrarErro(data.erro || 'Erro ao fazer login');
-          return;
-        }
+        if (!response.ok) return mostrarErro(data.erro || 'Erro ao fazer login');
 
         token = data.token;
         usuarioAtual = data.usuario;
@@ -927,6 +788,7 @@
         conectarSocket();
         await carregarGrupos();
         await carregarContatos();
+        await carregarResumoConversas();
         solicitarPermissaoNotificacao();
       } catch (err) {
         mostrarErro('Erro na conexão: ' + err.message);
@@ -946,43 +808,91 @@
         socket.emit('conectar-usuario', usuarioAtual.id);
       });
 
+      socket.on('presenca-atualizada', (data) => {
+        onlineState = new Set((data.online || []).map(Number));
+        renderContatos();
+        atualizarCabecalhoStatus();
+      });
+
+      socket.on('usuario-digitando', (data) => {
+        if (tipoChat === data.tipo && Number(chatIdAtual) === Number(data.chatId) && Number(data.usuarioId) !== Number(usuarioAtual.id)) {
+          typingUsers.set(`${data.tipo}-${data.chatId}`, data.usuarioNome);
+          renderTypingIndicator();
+        }
+      });
+
+      socket.on('usuario-parou-digitacao', (data) => {
+        typingUsers.delete(`${data.tipo}-${data.chatId}`);
+        renderTypingIndicator();
+      });
+
       socket.on('nova-mensagem-grupo', (data) => {
         const chatKey = getChatKey('grupo', data.grupoId);
-        const isCurrent = tipoChat === 'grupo' && chatIdAtual === data.grupoId;
-
+        const isCurrent = tipoChat === 'grupo' && Number(chatIdAtual) === Number(data.grupoId);
         lastPreviewState[chatKey] = `${data.usuarioNome}: ${data.conteudo}`;
-        lastTimeState[chatKey] = formatTime();
+        lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
 
         if (isCurrent) {
-          adicionarMensagem(data.conteudo, data.usuarioNome, false);
+          adicionarMensagem({
+            id: data.id,
+            conteudo: data.conteudo,
+            usuarioNome: data.usuarioNome,
+            ehOutro: Number(data.usuarioId) !== Number(usuarioAtual.id),
+            criado_em: data.criado_em,
+            lido: 0
+          });
         } else {
           unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
         }
 
+        typingUsers.delete(`grupo-${data.grupoId}`);
+        renderTypingIndicator();
         renderGrupos();
         mostrarNotificacao(`${data.usuarioNome} falou no grupo`, 'success');
       });
 
       socket.on('nova-mensagem-privada', (data) => {
         const chatKey = getChatKey('privado', data.remetente_id);
-        const isCurrent = tipoChat === 'privado' && chatIdAtual === data.remetente_id;
+        const isCurrent = tipoChat === 'privado' && Number(chatIdAtual) === Number(data.remetente_id);
 
         lastPreviewState[chatKey] = `${data.remetenteNome}: ${data.conteudo}`;
-        lastTimeState[chatKey] = formatTime();
+        lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
 
         if (isCurrent) {
-          adicionarMensagem(data.conteudo, data.remetenteNome, true);
+          adicionarMensagem({
+            id: data.id,
+            conteudo: data.conteudo,
+            usuarioNome: data.remetenteNome,
+            ehOutro: true,
+            criado_em: data.criado_em,
+            lido: data.lido
+          });
+          socket.emit('marcar-lidas', {
+            remetenteId: data.remetente_id,
+            destinatarioId: usuarioAtual.id
+          });
         } else {
           unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
         }
 
+        typingUsers.delete(`privado-${data.remetente_id}`);
+        renderTypingIndicator();
         renderContatos();
         mostrarNotificacao(`${data.remetenteNome} enviou uma mensagem privada`, 'success');
 
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('Nova mensagem privada', {
-            body: `${data.remetenteNome}: ${data.conteudo}`
-          });
+          new Notification('Nova mensagem privada', { body: `${data.remetenteNome}: ${data.conteudo}` });
+        }
+      });
+
+      socket.on('mensagem-enviada-confirmacao', (data) => {
+        messageStatusMap.set(String(data.id), 'enviada');
+        atualizarStatusMensagem(data.id, '✓');
+      });
+
+      socket.on('mensagens-lidas', (data) => {
+        if (tipoChat === 'privado' && Number(chatIdAtual) === Number(data.destinatarioId)) {
+          marcarMensagensComoLidasNaTela(Number(data.remetenteId));
         }
       });
 
@@ -991,11 +901,27 @@
       });
     }
 
-    async function carregarGrupos() {
+    async function carregarResumoConversas() {
       try {
-        const response = await fetch('/api/grupos', {
+        const response = await fetch('/api/conversas/privadas/resumo', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        const resumo = await response.json();
+        (resumo || []).forEach(item => {
+          const key = getChatKey('privado', item.usuarioId);
+          unreadState[key] = item.naoLidas || 0;
+          lastPreviewState[key] = item.ultimaMensagem || '';
+          lastTimeState[key] = item.criado_em ? formatTime(item.criado_em) : '';
+        });
+        renderContatos();
+      } catch (err) {
+        console.error('Erro ao carregar resumo de conversas:', err);
+      }
+    }
+
+    async function carregarGrupos() {
+      try {
+        const response = await fetch('/api/grupos', { headers: { 'Authorization': `Bearer ${token}` } });
         gruposCache = await response.json();
         renderGrupos();
       } catch (err) {
@@ -1011,7 +937,7 @@
         const key = getChatKey('grupo', grupo.id);
         const unread = unreadState[key] || 0;
         const item = document.createElement('div');
-        item.className = `chat-item ${tipoChat === 'grupo' && chatIdAtual === grupo.id ? 'active' : ''} ${unread > 0 ? 'unread' : ''}`;
+        item.className = `chat-item ${tipoChat === 'grupo' && Number(chatIdAtual) === Number(grupo.id) ? 'active' : ''} ${unread > 0 ? 'unread' : ''}`;
         item.innerHTML = `
           <div class="chat-icon group">#</div>
           <div class="chat-details">
@@ -1032,11 +958,9 @@
 
     async function carregarContatos() {
       try {
-        const response = await fetch('/api/usuarios', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await fetch('/api/usuarios', { headers: { 'Authorization': `Bearer ${token}` } });
         const usuarios = await response.json();
-        contatosCache = usuarios.filter(usuario => usuario.id !== usuarioAtual.id);
+        contatosCache = usuarios.filter(usuario => Number(usuario.id) !== Number(usuarioAtual.id));
         renderContatos();
       } catch (err) {
         console.error('Erro ao carregar contatos:', err);
@@ -1050,17 +974,21 @@
       contatosCache.forEach(usuario => {
         const key = getChatKey('privado', usuario.id);
         const unread = unreadState[key] || 0;
+        const statusText = onlineState.has(Number(usuario.id)) ? 'Online agora' : (lastPreviewState[key] || usuario.email);
         const item = document.createElement('div');
-        item.className = `chat-item ${tipoChat === 'privado' && chatIdAtual === usuario.id ? 'active' : ''} ${unread > 0 ? 'unread' : ''}`;
+        item.className = `chat-item ${tipoChat === 'privado' && Number(chatIdAtual) === Number(usuario.id) ? 'active' : ''} ${unread > 0 ? 'unread' : ''}`;
         item.innerHTML = `
-          <div class="chat-icon private">${escapeHtml(initials(usuario.nome))}</div>
+          <div class="chat-icon private">
+            ${escapeHtml(initials(usuario.nome))}
+            <span class="presence-dot ${onlineState.has(Number(usuario.id)) ? 'online' : ''}"></span>
+          </div>
           <div class="chat-details">
             <div class="chat-top">
               <div class="chat-name">${escapeHtml(usuario.nome)}</div>
               <div class="chat-time">${lastTimeState[key] || ''}</div>
             </div>
             <div class="chat-preview-row">
-              <div class="chat-preview">${escapeHtml(lastPreviewState[key] || usuario.email)}</div>
+              <div class="chat-preview">${escapeHtml(statusText)}</div>
               ${unread > 0 ? `<span class="notification-badge">${unread > 99 ? '99+' : unread}</span>` : ''}
             </div>
           </div>
@@ -1073,26 +1001,20 @@
     async function carregarChat(tipo, id, nome) {
       tipoChat = tipo;
       chatIdAtual = id;
-
-      const key = getChatKey(tipo, id);
-      unreadState[key] = 0;
+      unreadState[getChatKey(tipo, id)] = 0;
       renderGrupos();
       renderContatos();
+      typingUsers.delete(`${tipo}-${id}`);
+      renderTypingIndicator();
 
       document.getElementById('headerTitle').textContent = (tipo === 'grupo' ? '# ' : '') + nome;
-      document.getElementById('headerSubtitle').textContent = tipo === 'grupo' ? 'Conversa em grupo' : 'Conversa privada';
-      updateHeaderIcon(tipo);
+      updateHeaderIcon(tipo, nome);
+      atualizarCabecalhoStatus();
       document.getElementById('messagesContainer').innerHTML = '';
 
       try {
-        const endpoint = tipo === 'grupo'
-          ? `/api/mensagens/grupo/${id}`
-          : `/api/mensagens/privadas/${id}`;
-
-        const response = await fetch(endpoint, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
+        const endpoint = tipo === 'grupo' ? `/api/mensagens/grupo/${id}` : `/api/mensagens/privadas/${id}`;
+        const response = await fetch(endpoint, { headers: { 'Authorization': `Bearer ${token}` } });
         const mensagens = await response.json();
 
         if (!Array.isArray(mensagens) || mensagens.length === 0) {
@@ -1105,33 +1027,67 @@
           `;
         } else {
           mensagens.forEach(msg => {
-            const ehOutro = msg.usuario_id !== usuarioAtual.id;
-            adicionarMensagem(msg.conteudo, msg.usuario_nome, ehOutro, msg.criado_em || msg.data);
+            adicionarMensagem({
+              id: msg.id,
+              conteudo: msg.conteudo,
+              usuarioNome: msg.usuario_nome,
+              ehOutro: Number(msg.usuario_id) !== Number(usuarioAtual.id),
+              criado_em: msg.criado_em || msg.data,
+              lido: msg.lido,
+              usuarioId: msg.usuario_id
+            });
           });
         }
 
         if (tipoChat === 'grupo') {
           socket.emit('entrar-grupo', { grupoId: id, usuarioId: usuarioAtual.id });
+        } else {
+          socket.emit('marcar-lidas', { remetenteId: id, destinatarioId: usuarioAtual.id });
         }
       } catch (err) {
         console.error('Erro ao carregar chat:', err);
       }
     }
 
-    function adicionarMensagem(conteudo, usuario, ehOutro, dataHora = null) {
+    function atualizarCabecalhoStatus() {
+      const subtitle = document.getElementById('headerSubtitle');
+      if (tipoChat === 'grupo') {
+        subtitle.textContent = 'Conversa em grupo';
+      } else if (tipoChat === 'privado') {
+        const contato = contatosCache.find(c => Number(c.id) === Number(chatIdAtual));
+        subtitle.textContent = contato ? getStatusLabel(contato.id) : 'Conversa privada';
+      } else {
+        subtitle.textContent = 'Selecione um grupo ou contato para iniciar';
+      }
+    }
+
+    function renderTypingIndicator() {
+      const el = document.getElementById('typingIndicator');
+      const key = `${tipoChat}-${chatIdAtual}`;
+      const nome = typingUsers.get(key);
+      el.textContent = nome ? `${nome} está digitando...` : '';
+    }
+
+    function adicionarMensagem({ id, conteudo, usuarioNome, ehOutro, criado_em = null, lido = 0, usuarioId = null }) {
       const container = document.getElementById('messagesContainer');
       const empty = container.querySelector('.empty-state');
       if (empty) empty.remove();
 
       const row = document.createElement('div');
       row.className = `message-row ${ehOutro ? '' : 'own'}`;
+      row.dataset.messageId = id || '';
+      row.dataset.usuarioId = usuarioId || '';
 
-      const hora = formatTime(dataHora || new Date());
+      const hora = formatTime(criado_em || new Date());
+      const statusHtml = !ehOutro
+        ? `<span class="message-status ${lido ? 'lida' : ''}">${lido ? '✓✓' : '✓'}</span>`
+        : '';
+
       row.innerHTML = ehOutro
         ? `
-          <div class="message-avatar">${escapeHtml(initials(usuario))}</div>
+          <div class="message-avatar">${escapeHtml(initials(usuarioNome))}</div>
           <div class="message other">
-            <div class="message-sender">${escapeHtml(usuario)}</div>
+            <div class="message-sender">${escapeHtml(usuarioNome)}</div>
             <div class="message-text">${escapeHtml(conteudo)}</div>
             <div class="message-time">${hora}</div>
           </div>
@@ -1139,12 +1095,37 @@
         : `
           <div class="message own">
             <div class="message-text">${escapeHtml(conteudo)}</div>
-            <div class="message-time">${hora}</div>
+            <div class="message-time">${hora} ${statusHtml}</div>
           </div>
         `;
 
       container.appendChild(row);
       container.scrollTop = container.scrollHeight;
+    }
+
+    function atualizarStatusMensagem(messageId, texto) {
+      const row = document.querySelector(`[data-message-id="${messageId}"] .message-status`);
+      if (row) row.textContent = texto;
+    }
+
+    function marcarMensagensComoLidasNaTela(remetenteId) {
+      document.querySelectorAll('.message-row.own .message-status').forEach(status => {
+        status.textContent = '✓✓';
+        status.classList.add('lida');
+      });
+      const key = getChatKey('privado', remetenteId);
+      unreadState[key] = 0;
+      renderContatos();
+    }
+
+    function emitirDigitando() {
+      if (!socket || !tipoChat || !chatIdAtual) return;
+      socket.emit('digitando', {
+        tipo: tipoChat,
+        chatId: chatIdAtual,
+        usuarioId: usuarioAtual.id,
+        usuarioNome: usuarioAtual.nome
+      });
     }
 
     function enviarMensagem() {
@@ -1163,16 +1144,24 @@
           usuarioNome: usuarioAtual.nome,
           conteudo
         });
-        adicionarMensagem(conteudo, usuarioAtual.nome, false);
         renderGrupos();
-      } else if (tipoChat === 'privado') {
+      } else {
+        const tempId = Date.now();
+        adicionarMensagem({
+          id: tempId,
+          conteudo,
+          usuarioNome: usuarioAtual.nome,
+          ehOutro: false,
+          criado_em: new Date().toISOString(),
+          lido: 0,
+          usuarioId: usuarioAtual.id
+        });
         socket.emit('mensagem-privada', {
           remetente_id: usuarioAtual.id,
           destinatario_id: chatIdAtual,
           remetenteNome: usuarioAtual.nome,
           conteudo
         });
-        adicionarMensagem(conteudo, usuarioAtual.nome, false);
         renderContatos();
       }
 
@@ -1180,9 +1169,7 @@
       input.focus();
     }
 
-    function enviarSeEnter(event) {
-      if (event.key === 'Enter') enviarMensagem();
-    }
+    function enviarSeEnter(event) { if (event.key === 'Enter') enviarMensagem(); }
 
     function abrirPainelAdmin() {
       carregarUsuariosAdmin();
@@ -1191,11 +1178,8 @@
 
     async function carregarUsuariosAdmin() {
       try {
-        const response = await fetch('/api/admin/usuarios', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await fetch('/api/admin/usuarios', { headers: { 'Authorization': `Bearer ${token}` } });
         const usuarios = await response.json();
-
         const tbody = document.getElementById('adminUsuariosTable');
         tbody.innerHTML = '';
 
@@ -1205,9 +1189,9 @@
             <td>${escapeHtml(usuario.nome)}</td>
             <td>${escapeHtml(usuario.email)}</td>
             <td>${usuario.admin ? 'Sim' : 'Não'}</td>
-            <td>${usuario.ativo ? 'Ativo' : 'Inativo'}</td>
+            <td>${usuario.ativo ? (usuario.online ? 'Ativo / Online' : 'Ativo') : 'Inativo'}</td>
             <td class="table-actions">
-              ${usuario.id !== usuarioAtual.id ? `<button class="mini-btn btn-danger" onclick="desativarUsuario(${usuario.id})">Desativar</button>` : '-'}
+              ${Number(usuario.id) !== Number(usuarioAtual.id) ? `<button class="mini-btn btn-danger" onclick="desativarUsuario(${usuario.id})">Desativar</button>` : '-'}
             </td>
           `;
           tbody.appendChild(tr);
@@ -1220,11 +1204,7 @@
     async function cadastrarNovoUsuario() {
       const nome = document.getElementById('adminNovonome').value.trim();
       const email = document.getElementById('adminNovoEmail').value.trim();
-
-      if (!nome || !email) {
-        mostrarErro('Preencha todos os campos');
-        return;
-      }
+      if (!nome || !email) return mostrarErro('Preencha todos os campos');
 
       try {
         const response = await fetch('/api/admin/criar-usuario', {
@@ -1238,8 +1218,7 @@
 
         if (!response.ok) {
           const err = await response.json();
-          mostrarErro(err.erro || 'Erro ao cadastrar');
-          return;
+          return mostrarErro(err.erro || 'Erro ao cadastrar');
         }
 
         mostrarNotificacao('Usuário cadastrado com sucesso. Senha padrão: Senha123!', 'success');
@@ -1254,13 +1233,11 @@
 
     async function desativarUsuario(usuarioId) {
       if (!confirm('Desativar este usuário?')) return;
-
       try {
         const response = await fetch(`/api/admin/usuarios/${usuarioId}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
-
         if (response.ok) {
           mostrarNotificacao('Usuário desativado com sucesso', 'success');
           carregarUsuariosAdmin();
@@ -1274,11 +1251,7 @@
     async function criarNovoGrupo() {
       const nome = document.getElementById('adminNovoGrupoNome').value.trim();
       const descricao = document.getElementById('adminNovoGrupoDesc').value.trim();
-
-      if (!nome) {
-        mostrarErro('Digite o nome do grupo');
-        return;
-      }
+      if (!nome) return mostrarErro('Digite o nome do grupo');
 
       try {
         const response = await fetch('/api/admin/criar-grupo', {
@@ -1292,8 +1265,7 @@
 
         if (!response.ok) {
           const err = await response.json();
-          mostrarErro(err.erro || 'Erro ao criar grupo');
-          return;
+          return mostrarErro(err.erro || 'Erro ao criar grupo');
         }
 
         mostrarNotificacao('Grupo criado com sucesso', 'success');
@@ -1305,17 +1277,9 @@
       }
     }
 
-    function abrirNovoGrupo() {
-      abrirPainelAdmin();
-    }
-
-    function abrirNovoContato() {
-      mostrarNotificacao('Todos os contatos cadastrados aparecem na lista', 'success');
-    }
-
-    function abrirAjustes() {
-      mostrarNotificacao('Ajustes avançados podem ser adicionados em seguida', 'success');
-    }
+    function abrirNovoGrupo() { abrirPainelAdmin(); }
+    function abrirNovoContato() { mostrarNotificacao('Todos os contatos cadastrados aparecem na lista', 'success'); }
+    function abrirAjustes() { mostrarNotificacao('Ajustes avançados já podem ser expandidos', 'success'); }
 
     function fazerLogout() {
       token = null;
@@ -1327,7 +1291,9 @@
       unreadState = {};
       lastPreviewState = {};
       lastTimeState = {};
-
+      onlineState = new Set();
+      typingUsers = new Map();
+      messageStatusMap = new Map();
       if (socket) socket.disconnect();
 
       document.getElementById('loginContainer').classList.remove('hidden');
@@ -1337,14 +1303,12 @@
       document.getElementById('messagesContainer').innerHTML = '';
       document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat';
       document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
+      document.getElementById('typingIndicator').textContent = '';
       updateHeaderIcon(null);
     }
 
     function mostrarErro(mensagem) {
-      const target = document.getElementById('loginContainer').classList.contains('hidden')
-        ? null
-        : document.getElementById('loginError');
-
+      const target = document.getElementById('loginContainer').classList.contains('hidden') ? null : document.getElementById('loginError');
       if (target) {
         target.textContent = mensagem;
         setTimeout(() => { target.textContent = ''; }, 5000);
@@ -1362,14 +1326,9 @@
       setTimeout(() => notif.remove(), 4500);
     }
 
-    function fecharModal(modalId) {
-      document.getElementById(modalId).classList.remove('active');
-    }
-
+    function fecharModal(modalId) { document.getElementById(modalId).classList.remove('active'); }
     window.onclick = function(event) {
-      if (event.target.classList.contains('modal')) {
-        event.target.classList.remove('active');
-      }
+      if (event.target.classList.contains('modal')) event.target.classList.remove('active');
     };
   </script>
 </body>
