@@ -527,7 +527,26 @@
       min-height: 16px;
     }
 
-    .header-actions { display: flex; gap: 10px; }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+
+    .header-search {
+      width: min(240px, 34vw);
+      border: 1px solid rgba(148,163,184,.14);
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    .header-search::placeholder {
+      color: var(--muted);
+    }
+
+    .header-search:focus {
+      border-color: rgba(59,130,246,.4);
+      box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+    }
 
     .header-btn {
       border: 1px solid rgba(148,163,184,.14);
@@ -593,6 +612,7 @@
       border-radius: 18px;
       word-break: break-word;
       box-shadow: 0 10px 22px rgba(0,0,0,.08);
+      position: relative;
     }
 
     .message.own {
@@ -620,6 +640,38 @@
       font-size: 14px;
     }
 
+    .message-reply-preview {
+      border-left: 3px solid rgba(255,255,255,.45);
+      background: rgba(255,255,255,.08);
+      border-radius: 12px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+
+    .message.other .message-reply-preview {
+      background: rgba(15,23,42,.06);
+      border-left-color: rgba(37,99,235,.45);
+    }
+
+    .reply-author {
+      font-weight: 800;
+      margin-bottom: 2px;
+    }
+
+    .reply-snippet {
+      opacity: .82;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .message-edited {
+      font-size: 11px;
+      opacity: .72;
+      font-style: italic;
+    }
+
     .message-time {
       font-size: 11px;
       opacity: .68;
@@ -629,6 +681,28 @@
       align-items: center;
       justify-content: flex-end;
       gap: 6px;
+    }
+
+    .message-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-right: 4px;
+    }
+
+    .message-action-btn {
+      border: none;
+      background: transparent;
+      color: inherit;
+      opacity: .74;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      padding: 0 2px;
+    }
+
+    .message-action-btn:hover {
+      opacity: 1;
     }
 
     .message-status {
@@ -654,6 +728,60 @@
       opacity: 1;
     }
 
+    .message-reactions {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .reaction-chip {
+      border: 1px solid rgba(148,163,184,.16);
+      background: rgba(255,255,255,.08);
+      color: inherit;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .message.other .reaction-chip {
+      background: rgba(15,23,42,.06);
+    }
+
+    .reaction-chip.active {
+      border-color: rgba(59,130,246,.38);
+      background: rgba(59,130,246,.18);
+    }
+
+    .reaction-picker {
+      display: inline-flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .reaction-picker-btn {
+      border: none;
+      background: rgba(255,255,255,.08);
+      border-radius: 10px;
+      min-width: 34px;
+      height: 34px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .message.other .reaction-picker-btn {
+      background: rgba(15,23,42,.06);
+    }
+
+    mark.message-search-hit {
+      background: rgba(250,204,21,.35);
+      color: inherit;
+      padding: 0 2px;
+      border-radius: 4px;
+    }
+
     .file-card {
       display: block;
       margin-top: 6px;
@@ -677,6 +805,49 @@
       padding: 16px 20px 20px;
       border-top: 1px solid var(--line);
       background: rgba(17,24,39,.92);
+    }
+
+    .message-context {
+      margin-bottom: 10px;
+      border: 1px solid rgba(148,163,184,.14);
+      border-radius: 16px;
+      background: rgba(255,255,255,.04);
+      padding: 10px 12px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .message-context-body {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .message-context-label {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #93c5fd;
+      margin-bottom: 4px;
+    }
+
+    .message-context-text {
+      font-size: 13px;
+      color: #cbd5e1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .message-context-close {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px;
     }
 
     .composer {
@@ -961,6 +1132,7 @@
         </div>
 
         <div class="header-actions">
+          <input class="header-search" id="messageSearchInput" type="text" placeholder="Buscar na conversa" oninput="atualizarBuscaMensagens(this.value)" />
           <button class="header-btn hidden" id="ajustesBtn" onclick="abrirAjustes()">⚙️ Ajustes</button>
         </div>
       </div>
@@ -974,6 +1146,13 @@
       </div>
 
       <div class="input-area">
+        <div class="message-context hidden" id="messageContextBar">
+          <div class="message-context-body">
+            <div class="message-context-label" id="messageContextLabel"></div>
+            <div class="message-context-text" id="messageContextText"></div>
+          </div>
+          <button class="message-context-close" onclick="limparContextoMensagem()" title="Fechar">✕</button>
+        </div>
         <div class="composer">
           <input type="file" id="fileInput" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" onchange="enviarArquivo()" />
           <button class="emoji-btn" id="emojiToggleBtn" onclick="alternarEmojis(event)" title="Emojis">😊</button>
@@ -1119,6 +1298,11 @@
     let onlineState = new Set();
     let typingUsers = new Map();
     let adminUsuariosCache = [];
+    let currentMessagesCache = [];
+    let activeReplyMessageId = null;
+    let editingMessageId = null;
+    let currentMessageSearch = '';
+    const REACTION_OPTIONS = ['👍', '❤️', '😂', '👏', '🔥', '👀'];
     const STORAGE_KEY = 'chatinterno.session';
 
     function getChatKey(tipo, id) {
@@ -1164,6 +1348,111 @@
       if (value < 1024) return `${value} B`;
       if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
       return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function normalizeMessage(msg) {
+      return {
+        ...msg,
+        id: Number(msg.id),
+        usuario_id: Number(msg.usuario_id ?? msg.usuarioId ?? msg.remetente_id ?? 0),
+        usuarioId: Number(msg.usuarioId ?? msg.usuario_id ?? msg.remetente_id ?? 0),
+        lido: Number(msg.lido || 0),
+        tipo: msg.tipo || 'texto',
+        reacoes: typeof msg.reacoes === 'object' && msg.reacoes ? msg.reacoes : {},
+        reply_preview: msg.reply_preview || null,
+        reply_to_id: Number(msg.reply_to_id || 0) || null,
+        usuario_nome: msg.usuario_nome || msg.usuarioNome || msg.remetenteNome || '',
+        usuarioNome: msg.usuarioNome || msg.usuario_nome || msg.remetenteNome || ''
+      };
+    }
+
+    function getMessageSnippet(message) {
+      if (!message) return '';
+      if (message.tipo === 'arquivo') {
+        return `Arquivo: ${message.arquivo_nome_original || 'anexo'}`;
+      }
+      return String(message.conteudo || '').trim() || 'Mensagem';
+    }
+
+    function getMessageByIdFromCache(messageId) {
+      return currentMessagesCache.find((msg) => Number(msg.id) === Number(messageId)) || null;
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function highlightText(text, query) {
+      const raw = String(text ?? '');
+      if (!query) return escapeHtml(raw);
+      const pattern = new RegExp(`(${escapeRegExp(query)})`, 'ig');
+      return escapeHtml(raw).replace(pattern, '<mark class=\"message-search-hit\">$1</mark>');
+    }
+
+    function isMessageMatch(message, query) {
+      if (!query) return true;
+      const needle = query.toLowerCase();
+      return [
+        message.usuarioNome,
+        message.usuario_nome,
+        message.conteudo,
+        message.arquivo_nome_original,
+        message.reply_preview?.conteudo,
+        message.reply_preview?.usuario_nome
+      ].some((value) => String(value || '').toLowerCase().includes(needle));
+    }
+
+    function atualizarBarraContexto() {
+      const bar = document.getElementById('messageContextBar');
+      const label = document.getElementById('messageContextLabel');
+      const text = document.getElementById('messageContextText');
+
+      if (editingMessageId) {
+        const message = getMessageByIdFromCache(editingMessageId);
+        label.textContent = 'Editando mensagem';
+        text.textContent = getMessageSnippet(message);
+        bar.classList.remove('hidden');
+        return;
+      }
+
+      if (activeReplyMessageId) {
+        const message = getMessageByIdFromCache(activeReplyMessageId);
+        label.textContent = 'Respondendo mensagem';
+        text.textContent = message ? `${message.usuarioNome || message.usuario_nome}: ${getMessageSnippet(message)}` : 'Mensagem selecionada';
+        bar.classList.remove('hidden');
+        return;
+      }
+
+      bar.classList.add('hidden');
+    }
+
+    function limparContextoMensagem() {
+      activeReplyMessageId = null;
+      editingMessageId = null;
+      document.getElementById('messageInput').value = '';
+      atualizarBarraContexto();
+    }
+
+    function responderMensagem(messageId) {
+      editingMessageId = null;
+      activeReplyMessageId = Number(messageId);
+      atualizarBarraContexto();
+      document.getElementById('messageInput').focus();
+    }
+
+    function prepararEdicaoMensagem(messageId) {
+      const message = getMessageByIdFromCache(messageId);
+      if (!message || message.tipo !== 'texto' || Number(message.usuarioId) !== Number(usuarioAtual.id)) return;
+      activeReplyMessageId = null;
+      editingMessageId = Number(messageId);
+      document.getElementById('messageInput').value = message.conteudo || '';
+      atualizarBarraContexto();
+      document.getElementById('messageInput').focus();
+    }
+
+    function atualizarBuscaMensagens(value) {
+      currentMessageSearch = String(value || '').trim();
+      renderMessages();
     }
 
     function sortByRecent(items, tipo) {
@@ -1354,6 +1643,11 @@
     }
 
     function processarMensagemGrupo(data) {
+      const message = normalizeMessage({
+        ...data,
+        usuarioNome: data.usuarioNome,
+        usuarioId: data.usuarioId
+      });
       const chatKey = getChatKey('grupo', data.grupoId);
       const isCurrent = tipoChat === 'grupo' && Number(chatIdAtual) === Number(data.grupoId);
       const preview = data.tipo === 'arquivo'
@@ -1365,11 +1659,7 @@
       lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
 
       if (isCurrent) {
-        adicionarMensagem({
-          ...data,
-          usuarioNome: data.usuarioNome,
-          ehOutro: Number(data.usuarioId) !== Number(usuarioAtual.id)
-        });
+        upsertMessageInCache(message);
       } else {
         unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
       }
@@ -1385,6 +1675,11 @@
     }
 
     function processarMensagemPrivada(data) {
+      const message = normalizeMessage({
+        ...data,
+        usuarioNome: data.remetenteNome,
+        usuarioId: data.remetente_id
+      });
       const chatKey = getChatKey('privado', data.remetente_id);
       const isCurrent = tipoChat === 'privado' && Number(chatIdAtual) === Number(data.remetente_id);
       const preview = data.tipo === 'arquivo'
@@ -1396,12 +1691,7 @@
       lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
 
       if (isCurrent) {
-        adicionarMensagem({
-          ...data,
-          usuarioNome: data.remetenteNome,
-          ehOutro: true,
-          usuarioId: data.remetente_id
-        });
+        upsertMessageInCache(message);
 
         socket.emit('marcar-lidas', {
           remetenteId: data.remetente_id,
@@ -1507,12 +1797,18 @@
       socket.on('novo-arquivo-privado', (data) => {
         processarMensagemPrivada(data);
       });
-
       socket.on('mensagem-enviada-confirmacao', (data) => {
         const chatKey = getChatKey('privado', data.destinatario_id);
         lastPreviewState[chatKey] = `VocÃª: ${data.conteudo}`;
         lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
         lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
+        if (tipoChat === 'privado' && Number(chatIdAtual) === Number(data.destinatario_id)) {
+          replaceTemporaryMessage(data.client_temp_id, {
+            ...data,
+            usuarioNome: usuarioAtual.nome,
+            usuarioId: usuarioAtual.id
+          });
+        }
         renderContatos();
       });
 
@@ -1542,6 +1838,28 @@
       socket.on('mensagens-lidas', (data) => {
         if (tipoChat === 'privado' && Number(chatIdAtual) === Number(data.destinatarioId)) {
           marcarMensagensComoLidasNaTela(Number(data.remetenteId));
+        }
+      });
+
+      socket.on('mensagem-atualizada', (data) => {
+        const chatCorreto = data.tipoChat === 'grupo'
+          ? (tipoChat === 'grupo' && Number(chatIdAtual) === Number(data.grupoId))
+          : (tipoChat === 'privado' && [Number(data.remetenteId), Number(data.destinatarioId)].includes(Number(chatIdAtual)));
+
+        if (chatCorreto && data.message) {
+          upsertMessageInCache({
+            ...data.message,
+            usuarioNome: data.message.usuario_nome,
+            usuarioId: data.message.usuario_id,
+            showReactionPicker: false
+          });
+        }
+
+        if (data.tipoChat === 'grupo') {
+          carregarGrupos();
+        } else {
+          carregarResumoConversas();
+          carregarContatos();
         }
       });
     }
@@ -1698,6 +2016,13 @@
     async function carregarChat(tipo, id, nome) {
       tipoChat = tipo;
       chatIdAtual = id;
+      currentMessageSearch = '';
+      currentMessagesCache = [];
+      activeReplyMessageId = null;
+      editingMessageId = null;
+      document.getElementById('messageSearchInput').value = '';
+      document.getElementById('messageInput').value = '';
+      atualizarBarraContexto();
 
       unreadState[getChatKey(tipo, id)] = 0;
       renderGrupos();
@@ -1721,25 +2046,15 @@
         if (!response.ok) throw new Error('Falha ao carregar mensagens');
 
         const mensagens = await response.json();
-
-        if (!Array.isArray(mensagens) || mensagens.length === 0) {
-          document.getElementById('messagesContainer').innerHTML = `
-            <div class="empty-state">
-              <span class="emoji">🗂️</span>
-              <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Nenhuma mensagem ainda</div>
-              <div>Envie a primeira mensagem desta conversa.</div>
-            </div>
-          `;
-        } else {
-          mensagens.forEach(msg => {
-            adicionarMensagem({
+        currentMessagesCache = Array.isArray(mensagens)
+          ? mensagens.map((msg) => normalizeMessage({
               ...msg,
               usuarioNome: msg.usuario_nome,
-              ehOutro: Number(msg.usuario_id) !== Number(usuarioAtual.id),
-              usuarioId: msg.usuario_id
-            });
-          });
-        }
+              usuarioId: msg.usuario_id,
+              showReactionPicker: false
+            }))
+          : [];
+        renderMessages();
 
         if (tipo === 'grupo') {
           socket.emit('entrar-grupo', { grupoId: id, usuarioId: usuarioAtual.id });
@@ -1752,70 +2067,138 @@
       }
     }
 
-    function adicionarMensagem(msg) {
-      const {
-        id,
-        conteudo,
-        usuarioNome,
-        ehOutro,
-        criado_em = null,
-        lido = 0,
-        usuarioId = null,
-        tipo = 'texto',
-        arquivo_nome_original,
-        arquivo_url,
-        arquivo_tamanho
-      } = msg;
+    function getReactionUsers(emojiMap, emoji) {
+      const users = emojiMap?.[emoji];
+      return Array.isArray(users) ? users.map(Number) : [];
+    }
 
-      const container = document.getElementById('messagesContainer');
-      const empty = container.querySelector('.empty-state');
-      if (empty) empty.remove();
-
-      const row = document.createElement('div');
-      row.className = `message-row ${ehOutro ? '' : 'own'}`;
-      row.dataset.messageId = id || '';
-      row.dataset.usuarioId = usuarioId || '';
-
-      const hora = formatTime(criado_em || new Date());
-      const statusHtml = !ehOutro
-        ? `<span class="message-status ${lido ? 'lida' : ''}">${lido ? '✓✓' : '✓'}</span>`
-        : '';
-      const deleteHtml = !ehOutro && id
-        ? `<button class="message-delete-btn" onclick="apagarMensagem(${Number(id)})" title="Apagar mensagem">🗑️</button>`
-        : '';
-
-      const innerContent = tipo === 'arquivo'
-        ? `<a class="file-card" href="${escapeHtml(arquivo_url)}" target="_blank" rel="noopener noreferrer">
-             <strong>📎 ${escapeHtml(arquivo_nome_original)}</strong>
-             <small>${escapeHtml(formatFileSize(arquivo_tamanho))}</small>
-           </a>`
-        : `<div class="message-text">${escapeHtml(conteudo)}</div>`;
-
-      row.innerHTML = ehOutro
+    function renderMessageRow(message) {
+      const ehOutro = Number(message.usuarioId) !== Number(usuarioAtual.id);
+      const hora = formatTime(message.criado_em || new Date());
+      const query = currentMessageSearch;
+      const replyHtml = message.reply_preview
         ? `
-          <div class="message-avatar">${escapeHtml(initials(usuarioNome))}</div>
+          <div class="message-reply-preview">
+            <div class="reply-author">${escapeHtml(message.reply_preview.usuario_nome || 'Mensagem')}</div>
+            <div class="reply-snippet">${highlightText(message.reply_preview.conteudo || '', query)}</div>
+          </div>
+        `
+        : '';
+      const editedHtml = message.editado_em ? `<span class="message-edited">(editada)</span>` : '';
+      const innerContent = message.tipo === 'arquivo'
+        ? `<a class="file-card" href="${escapeHtml(message.arquivo_url)}" target="_blank" rel="noopener noreferrer">
+             <strong>📎 ${highlightText(message.arquivo_nome_original, query)}</strong>
+             <small>${escapeHtml(formatFileSize(message.arquivo_tamanho))}</small>
+           </a>`
+        : `<div class="message-text">${highlightText(message.conteudo, query)}</div>`;
+
+      const reactions = Object.entries(message.reacoes || {});
+      const reactionsHtml = reactions.length
+        ? `<div class="message-reactions">
+            ${reactions.map(([emoji, users]) => {
+              const userIds = Array.isArray(users) ? users.map(Number) : [];
+              const active = userIds.includes(Number(usuarioAtual.id));
+              return `<button class="reaction-chip ${active ? 'active' : ''}" onclick="alternarReacao(${Number(message.id)}, '${escapeHtml(emoji).replace(/'/g, '&#039;')}')">${escapeHtml(emoji)} ${userIds.length}</button>`;
+            }).join('')}
+          </div>`
+        : '';
+
+      const actionButtons = `
+        <span class="message-actions">
+          <button class="message-action-btn" onclick="responderMensagem(${Number(message.id)})" title="Responder">↩</button>
+          ${!ehOutro && message.tipo === 'texto' ? `<button class="message-action-btn" onclick="prepararEdicaoMensagem(${Number(message.id)})" title="Editar">✏️</button>` : ''}
+          <button class="message-action-btn" onclick="alternarReacaoRapida(${Number(message.id)})" title="Reagir">😊</button>
+          ${!ehOutro ? `<button class="message-delete-btn" onclick="apagarMensagem(${Number(message.id)})" title="Apagar mensagem">🗑️</button>` : ''}
+        </span>
+      `;
+
+      const pickerHtml = message.showReactionPicker
+        ? `<div class="reaction-picker">
+            ${REACTION_OPTIONS.map((emoji) => `<button class="reaction-picker-btn" onclick="alternarReacao(${Number(message.id)}, '${emoji}')" title="Reagir com ${emoji}">${emoji}</button>`).join('')}
+          </div>`
+        : '';
+
+      return ehOutro
+        ? `
+          <div class="message-avatar">${escapeHtml(initials(message.usuarioNome || message.usuario_nome))}</div>
           <div class="message other">
-            <div class="message-sender">${escapeHtml(usuarioNome)}</div>
+            <div class="message-sender">${escapeHtml(message.usuarioNome || message.usuario_nome)}</div>
+            ${replyHtml}
             ${innerContent}
-            <div class="message-time">${hora}</div>
+            ${reactionsHtml}
+            ${pickerHtml}
+            <div class="message-time">${actionButtons} ${editedHtml} ${hora}</div>
           </div>
         `
         : `
           <div class="message own">
+            ${replyHtml}
             ${innerContent}
-            <div class="message-time">${deleteHtml} ${hora} ${statusHtml}</div>
+            ${reactionsHtml}
+            ${pickerHtml}
+            <div class="message-time">${actionButtons} ${editedHtml} ${hora} <span class="message-status ${message.lido ? 'lida' : ''}">${message.lido ? '✓✓' : '✓'}</span></div>
           </div>
         `;
+    }
 
-      container.appendChild(row);
+    function renderMessages() {
+      const container = document.getElementById('messagesContainer');
+      const filtered = currentMessagesCache.filter((message) => isMessageMatch(message, currentMessageSearch));
+
+      if (!filtered.length) {
+        container.innerHTML = currentMessageSearch
+          ? `
+            <div class="empty-state">
+              <span class="emoji">🔎</span>
+              <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Nenhum resultado</div>
+              <div>Tente buscar por outro termo nesta conversa.</div>
+            </div>
+          `
+          : `
+            <div class="empty-state">
+              <span class="emoji">🗂️</span>
+              <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Nenhuma mensagem ainda</div>
+              <div>Envie a primeira mensagem desta conversa.</div>
+            </div>
+          `;
+        return;
+      }
+
+      container.innerHTML = filtered.map((message) => {
+        const ehOutro = Number(message.usuarioId) !== Number(usuarioAtual.id);
+        return `<div class="message-row ${ehOutro ? '' : 'own'}" data-message-id="${Number(message.id)}" data-usuario-id="${Number(message.usuarioId || 0)}">${renderMessageRow(message)}</div>`;
+      }).join('');
       container.scrollTop = container.scrollHeight;
     }
 
+    function upsertMessageInCache(message) {
+      const normalized = normalizeMessage(message);
+      const index = currentMessagesCache.findIndex((item) => Number(item.id) === Number(normalized.id));
+      if (index >= 0) currentMessagesCache[index] = { ...currentMessagesCache[index], ...normalized };
+      else currentMessagesCache.push(normalized);
+      currentMessagesCache.sort((a, b) => toTimestamp(a.criado_em) - toTimestamp(b.criado_em));
+      renderMessages();
+    }
+
+    function replaceTemporaryMessage(clientTempId, message) {
+      const normalized = normalizeMessage(message);
+      const index = currentMessagesCache.findIndex((item) => String(item.client_temp_id || '') === String(clientTempId || ''));
+      if (index >= 0) {
+        currentMessagesCache[index] = { ...currentMessagesCache[index], ...normalized, client_temp_id: null };
+      } else {
+        currentMessagesCache.push(normalized);
+      }
+      currentMessagesCache.sort((a, b) => toTimestamp(a.criado_em) - toTimestamp(b.criado_em));
+      renderMessages();
+    }
+
     function marcarMensagensComoLidasNaTela(remetenteId) {
-      document.querySelectorAll('.message-row.own .message-status').forEach(status => {
-        status.textContent = '✓✓';
-        status.classList.add('lida');
-      });
+      currentMessagesCache = currentMessagesCache.map((message) => (
+        Number(message.usuarioId) === Number(usuarioAtual.id)
+          ? { ...message, lido: 1 }
+          : message
+      ));
+      renderMessages();
 
       const key = getChatKey('privado', remetenteId);
       unreadState[key] = 0;
@@ -1824,19 +2207,11 @@
     }
 
     function removerMensagemDaTela(messageId) {
-      const row = document.querySelector(`.message-row[data-message-id="${messageId}"]`);
-      if (row) row.remove();
-
-      const container = document.getElementById('messagesContainer');
-      if (!container.children.length) {
-        container.innerHTML = `
-          <div class="empty-state">
-            <span class="emoji">🗂️</span>
-            <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Nenhuma mensagem ainda</div>
-            <div>Envie a primeira mensagem desta conversa.</div>
-          </div>
-        `;
-      }
+      currentMessagesCache = currentMessagesCache.filter((message) => Number(message.id) !== Number(messageId));
+      if (Number(activeReplyMessageId) === Number(messageId)) activeReplyMessageId = null;
+      if (Number(editingMessageId) === Number(messageId)) editingMessageId = null;
+      atualizarBarraContexto();
+      renderMessages();
     }
 
     async function atualizarChatAposExclusao(data) {
@@ -1874,6 +2249,65 @@
       }
     }
 
+    function alternarReacaoRapida(messageId) {
+      currentMessagesCache = currentMessagesCache.map((message) => ({
+        ...message,
+        showReactionPicker: Number(message.id) === Number(messageId) ? !message.showReactionPicker : false
+      }));
+      renderMessages();
+    }
+
+    async function alternarReacao(messageId, emoji) {
+      try {
+        const response = await fetch(`/api/mensagens/${messageId}/reacoes`, {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ emoji })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          mostrarNotificacao(data.erro || 'Erro ao reagir à mensagem', 'error');
+          return;
+        }
+
+        upsertMessageInCache({ ...data.message, showReactionPicker: false });
+      } catch (err) {
+        mostrarNotificacao('Erro ao reagir: ' + err.message, 'error');
+      }
+    }
+
+    async function salvarEdicaoMensagem() {
+      const conteudo = document.getElementById('messageInput').value.trim();
+      if (!editingMessageId || !conteudo) return;
+
+      try {
+        const response = await fetch(`/api/mensagens/${editingMessageId}`, {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ conteudo })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          mostrarNotificacao(data.erro || 'Erro ao editar mensagem', 'error');
+          return;
+        }
+
+        upsertMessageInCache(data.message);
+        const key = getChatKey(tipoChat, chatIdAtual);
+        lastPreviewState[key] = `Você: ${conteudo}`;
+        lastTimeState[key] = formatTime(data.message.editado_em || data.message.criado_em);
+        lastTimestampState[key] = toTimestamp(data.message.editado_em || data.message.criado_em);
+        if (tipoChat === 'grupo') renderGrupos();
+        else renderContatos();
+        limparContextoMensagem();
+        mostrarNotificacao('Mensagem editada com sucesso', 'success');
+      } catch (err) {
+        mostrarNotificacao('Erro ao editar: ' + err.message, 'error');
+      }
+    }
+
     function emitirDigitando() {
       if (!socket || !tipoChat || !chatIdAtual) return;
 
@@ -1888,38 +2322,55 @@
     function enviarMensagem() {
       const input = document.getElementById('messageInput');
       const conteudo = input.value.trim();
-      if (!conteudo || !tipoChat || !chatIdAtual) return;
+      if (!tipoChat || !chatIdAtual) return;
+      if (editingMessageId) {
+        salvarEdicaoMensagem();
+        return;
+      }
+      if (!conteudo) return;
 
       const key = getChatKey(tipoChat, chatIdAtual);
-      lastPreviewState[key] = `Você: ${conteudo}`;
+      lastPreviewState[key] = `Voc�: ${conteudo}`;
       lastTimeState[key] = formatTime();
       lastTimestampState[key] = Date.now();
+      const replyToId = activeReplyMessageId ? Number(activeReplyMessageId) : null;
 
       if (tipoChat === 'grupo') {
         socket.emit('mensagem-grupo', {
           grupoId: chatIdAtual,
           usuarioId: usuarioAtual.id,
           usuarioNome: usuarioAtual.nome,
-          conteudo
+          conteudo,
+          replyToId
         });
         renderGrupos();
       } else {
-        adicionarMensagem({
+        const clientTempId = `temp-${Date.now()}`;
+        const replyMessage = replyToId ? getMessageByIdFromCache(replyToId) : null;
+        upsertMessageInCache({
           id: Date.now(),
+          client_temp_id: clientTempId,
           conteudo,
           usuarioNome: usuarioAtual.nome,
-          ehOutro: false,
           criado_em: new Date().toISOString(),
           lido: 0,
           usuarioId: usuarioAtual.id,
-          tipo: 'texto'
+          tipo: 'texto',
+          reply_to_id: replyToId,
+          reply_preview: replyMessage ? {
+            id: replyMessage.id,
+            usuario_nome: replyMessage.usuarioNome || replyMessage.usuario_nome || 'Mensagem',
+            conteudo: getMessageSnippet(replyMessage)
+          } : null
         });
 
         socket.emit('mensagem-privada', {
           remetente_id: usuarioAtual.id,
           destinatario_id: chatIdAtual,
           remetenteNome: usuarioAtual.nome,
-          conteudo
+          conteudo,
+          replyToId,
+          client_temp_id: clientTempId
         });
 
         renderContatos();
@@ -1929,6 +2380,8 @@
       input.value = '';
       input.focus();
       fecharEmojiPicker();
+      activeReplyMessageId = null;
+      atualizarBarraContexto();
     }
 
     async function enviarArquivo() {
@@ -1966,12 +2419,12 @@
         lastTimeState[key] = formatTime(data.criado_em || new Date());
         lastTimestampState[key] = toTimestamp(data.criado_em || new Date());
 
-        adicionarMensagem({
+        upsertMessageInCache({
           ...data,
           usuarioNome: usuarioAtual.nome,
-          ehOutro: false,
           usuarioId: usuarioAtual.id,
-          tipo: 'arquivo'
+          tipo: 'arquivo',
+          showReactionPicker: false
         });
 
         if (tipoChat === 'grupo') renderGrupos();
@@ -1979,6 +2432,8 @@
 
         setUploadStatus(`Arquivo enviado: ${arquivo.name}`);
         setTimeout(() => setUploadStatus(''), 4000);
+        activeReplyMessageId = null;
+        atualizarBarraContexto();
       } catch (err) {
         setUploadStatus('');
         mostrarNotificacao(err.message, 'error');
@@ -2243,3 +2698,10 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+
+

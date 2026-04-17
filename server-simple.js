@@ -166,10 +166,73 @@ function emitPresence() {
 }
 
 function enrichMessage(m) {
+  const replyTarget = m.reply_to_id
+    ? db.mensagens.find((item) => Number(item.id) === Number(m.reply_to_id))
+    : null;
+
   return {
     ...m,
-    usuario_nome: db.usuarios.find((u) => u.id === m.usuario_id)?.nome || 'Desconhecido'
+    usuario_nome: db.usuarios.find((u) => u.id === m.usuario_id)?.nome || 'Desconhecido',
+    reacoes: typeof m.reacoes === 'object' && m.reacoes ? m.reacoes : {},
+    reply_preview: replyTarget ? {
+      id: replyTarget.id,
+      usuario_nome: db.usuarios.find((u) => u.id === replyTarget.usuario_id)?.nome || 'Desconhecido',
+      tipo: replyTarget.tipo || 'texto',
+      conteudo: replyTarget.tipo === 'arquivo'
+        ? (replyTarget.arquivo_nome_original || 'Arquivo')
+        : String(replyTarget.conteudo || '').slice(0, 120)
+    } : null
   };
+}
+
+function getMessageById(messageId) {
+  return db.mensagens.find((m) => Number(m.id) === Number(messageId));
+}
+
+function isSamePrivateConversation(message, userA, userB) {
+  const ids = [Number(userA), Number(userB)];
+  return !message.grupo_id &&
+    ids.includes(Number(message.usuario_id)) &&
+    ids.includes(Number(message.usuario_destino_id));
+}
+
+function canUserAccessMessage(userId, message) {
+  if (!message) return false;
+  if (message.grupo_id) return usuarioPodeAcessarGrupo(userId, message.grupo_id);
+  return Number(message.usuario_id) === Number(userId) || Number(message.usuario_destino_id) === Number(userId);
+}
+
+function isValidReplyTarget({ replyToId, tipoChat, chatId, userId }) {
+  if (!replyToId) return true;
+  const target = getMessageById(replyToId);
+  if (!target) return false;
+  if (!canUserAccessMessage(userId, target)) return false;
+
+  if (tipoChat === 'grupo') {
+    return Number(target.grupo_id) === Number(chatId);
+  }
+
+  return isSamePrivateConversation(target, userId, chatId);
+}
+
+function emitMessageUpdated(message, extra = {}) {
+  const payload = {
+    message: enrichMessage(message),
+    tipoChat: message.grupo_id ? 'grupo' : 'privado',
+    grupoId: message.grupo_id || null,
+    remetenteId: Number(message.usuario_id),
+    destinatarioId: message.usuario_destino_id || null,
+    ...extra
+  };
+
+  if (message.grupo_id) {
+    io.to(`grupo-${message.grupo_id}`).emit('mensagem-atualizada', payload);
+  } else {
+    io.to(`usuario-${message.usuario_id}`).emit('mensagem-atualizada', payload);
+    if (message.usuario_destino_id) {
+      io.to(`usuario-${message.usuario_destino_id}`).emit('mensagem-atualizada', payload);
+    }
+  }
 }
 
 function normalizeEmail(email) {
@@ -591,10 +654,76 @@ app.delete('/api/mensagens/:id', verificarToken, (req, res) => {
   }
 });
 
+app.put('/api/mensagens/:id', verificarToken, (req, res) => {
+  try {
+    const messageId = parseInt(req.params.id, 10);
+    const mensagem = getMessageById(messageId);
+    if (!mensagem) return res.status(404).json({ erro: 'Mensagem não encontrada' });
+    if (Number(mensagem.usuario_id) !== Number(req.userId)) {
+      return res.status(403).json({ erro: 'Você só pode editar mensagens enviadas por você' });
+    }
+    if (mensagem.tipo && mensagem.tipo !== 'texto') {
+      return res.status(400).json({ erro: 'Somente mensagens de texto podem ser editadas' });
+    }
+
+    const conteudo = sanitizeText(req.body?.conteudo);
+    if (!conteudo) return res.status(400).json({ erro: 'Digite uma mensagem para salvar' });
+
+    mensagem.conteudo = conteudo;
+    mensagem.editado_em = new Date().toISOString();
+    db.save();
+
+    emitMessageUpdated(mensagem, { acao: 'editada' });
+    res.json({ mensagem: 'Mensagem editada com sucesso', message: enrichMessage(mensagem) });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.post('/api/mensagens/:id/reacoes', verificarToken, (req, res) => {
+  try {
+    const messageId = parseInt(req.params.id, 10);
+    const emoji = String(req.body?.emoji || '').trim();
+    const mensagem = getMessageById(messageId);
+
+    if (!mensagem) return res.status(404).json({ erro: 'Mensagem não encontrada' });
+    if (!canUserAccessMessage(req.userId, mensagem)) {
+      return res.status(403).json({ erro: 'Acesso negado a esta mensagem' });
+    }
+    if (!emoji || emoji.length > 8) {
+      return res.status(400).json({ erro: 'Emoji inválido' });
+    }
+
+    if (!mensagem.reacoes || typeof mensagem.reacoes !== 'object') {
+      mensagem.reacoes = {};
+    }
+
+    const atuais = Array.isArray(mensagem.reacoes[emoji])
+      ? mensagem.reacoes[emoji].map(Number)
+      : [];
+
+    const jaTem = atuais.includes(Number(req.userId));
+    mensagem.reacoes[emoji] = jaTem
+      ? atuais.filter((id) => Number(id) !== Number(req.userId))
+      : [...atuais, Number(req.userId)];
+
+    if (!mensagem.reacoes[emoji].length) {
+      delete mensagem.reacoes[emoji];
+    }
+
+    db.save();
+    emitMessageUpdated(mensagem, { acao: 'reacao' });
+    res.json({ mensagem: 'Reação atualizada com sucesso', message: enrichMessage(mensagem) });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => {
   try {
     const tipoChat = sanitizeText(req.body?.tipoChat);
     const chatId = Number(req.body?.chatId);
+    const replyToId = Number(req.body?.replyToId || 0);
     if (!req.file) return res.status(400).json({ erro: 'Arquivo não enviado' });
     if (!tipoChat || !chatId) return res.status(400).json({ erro: 'Destino do arquivo não informado' });
 
@@ -610,6 +739,9 @@ app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => 
     if (tipoChat === 'privado' && !findActiveUserById(chatId)) {
       return res.status(404).json({ erro: 'UsuÃ¡rio de destino nÃ£o encontrado' });
     }
+    if (!isValidReplyTarget({ replyToId, tipoChat, chatId, userId: req.userId })) {
+      return res.status(400).json({ erro: 'Mensagem respondida invÃ¡lida para esta conversa' });
+    }
 
     const msg = {
       id: Date.now(),
@@ -618,6 +750,8 @@ app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => 
       usuario_destino_id: tipoChat === 'privado' ? chatId : null,
       conteudo: '',
       tipo: 'arquivo',
+      reply_to_id: replyToId || null,
+      reacoes: {},
       arquivo_nome_original: req.file.originalname,
       arquivo_nome_salvo: req.file.filename,
       arquivo_url: `/uploads/${req.file.filename}`,
@@ -631,14 +765,7 @@ app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => 
     db.save();
 
     const payload = {
-      id: msg.id,
-      tipo: 'arquivo',
-      conteudo: '',
-      arquivo_nome_original: msg.arquivo_nome_original,
-      arquivo_url: msg.arquivo_url,
-      arquivo_mimetype: msg.arquivo_mimetype,
-      arquivo_tamanho: msg.arquivo_tamanho,
-      criado_em: msg.criado_em,
+      ...enrichMessage(msg),
       usuarioId: msg.usuario_id,
       usuarioNome: db.usuarios.find((u) => u.id === msg.usuario_id)?.nome || 'Desconhecido'
     };
@@ -731,6 +858,9 @@ io.on('connection', (socket) => {
     if (!usuarioPodeAcessarGrupo(data.usuarioId, data.grupoId)) {
       return;
     }
+    if (!isValidReplyTarget({ replyToId: Number(data.replyToId || 0), tipoChat: 'grupo', chatId: data.grupoId, userId: data.usuarioId })) {
+      return;
+    }
 
     const msg = {
       id: Date.now(),
@@ -739,6 +869,8 @@ io.on('connection', (socket) => {
       usuario_destino_id: null,
       conteudo: data.conteudo,
       tipo: 'texto',
+      reply_to_id: Number(data.replyToId || 0) || null,
+      reacoes: {},
       lido: 0,
       criado_em: new Date().toISOString()
     };
@@ -747,17 +879,18 @@ io.on('connection', (socket) => {
     db.save();
 
     io.to(`grupo-${data.grupoId}`).emit('nova-mensagem-grupo', {
-      id: msg.id,
-      conteudo: data.conteudo,
+      ...enrichMessage(msg),
       usuarioNome: data.usuarioNome,
       usuarioId: Number(data.usuarioId),
-      grupoId: Number(data.grupoId),
-      criado_em: msg.criado_em,
-      tipo: 'texto'
+      grupoId: Number(data.grupoId)
     });
   });
 
   socket.on('mensagem-privada', (data) => {
+    if (!isValidReplyTarget({ replyToId: Number(data.replyToId || 0), tipoChat: 'privado', chatId: data.destinatario_id, userId: data.remetente_id })) {
+      return;
+    }
+
     const msg = {
       id: Date.now(),
       usuario_id: Number(data.remetente_id),
@@ -765,6 +898,8 @@ io.on('connection', (socket) => {
       usuario_destino_id: Number(data.destinatario_id),
       conteudo: data.conteudo,
       tipo: 'texto',
+      reply_to_id: Number(data.replyToId || 0) || null,
+      reacoes: {},
       lido: 0,
       criado_em: new Date().toISOString()
     };
@@ -772,21 +907,18 @@ io.on('connection', (socket) => {
     db.mensagens.push(msg);
     db.save();
 
-    io.to(`usuario-${data.destinatario_id}`).emit('nova-mensagem-privada', {
-      id: msg.id,
-      conteudo: data.conteudo,
+    const payload = {
+      ...enrichMessage(msg),
       remetenteNome: data.remetenteNome,
-      remetente_id: Number(data.remetente_id),
-      criado_em: msg.criado_em,
-      lido: 0,
-      tipo: 'texto'
-    });
+      remetente_id: Number(data.remetente_id)
+    };
+
+    io.to(`usuario-${data.destinatario_id}`).emit('nova-mensagem-privada', payload);
 
     io.to(`usuario-${data.remetente_id}`).emit('mensagem-enviada-confirmacao', {
-      id: msg.id,
+      ...payload,
+      client_temp_id: data.client_temp_id || null,
       destinatario_id: Number(data.destinatario_id),
-      conteudo: data.conteudo,
-      criado_em: msg.criado_em,
       status: 'enviada'
     });
   });
@@ -832,3 +964,8 @@ server.listen(PORT, '0.0.0.0', () => {
     console.warn('AVISO: storage efemero em uso. Configure STORAGE_ROOT ou RAILWAY_VOLUME_MOUNT_PATH com um volume persistente no Railway.');
   }
 });
+
+
+
+
+
