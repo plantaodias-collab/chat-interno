@@ -260,8 +260,7 @@
     .menu-list {
       min-height: 80px;
       max-height: 34vh;
-      overflow-y: auto;
-      padding-right: 4px;
+      overflow: hidden;
     }
 
     .contact-groups {
@@ -275,6 +274,17 @@
       border-radius: 18px;
       padding: 10px;
       background: rgba(15,23,42,.32);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .contact-group.online-group {
+      flex: 0 0 auto;
+    }
+
+    .contact-group.offline-group {
+      flex: 1 1 auto;
+      min-height: 140px;
     }
 
     .contact-group-header {
@@ -305,6 +315,19 @@
       font-weight: 800;
       color: var(--text);
       background: rgba(255,255,255,.07);
+    }
+
+    .contact-group-items {
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .contact-group.online-group .contact-group-items {
+      max-height: 22vh;
+    }
+
+    .contact-group.offline-group .contact-group-items {
+      max-height: 16vh;
     }
 
     .contact-group-items:empty::after {
@@ -1596,9 +1619,9 @@
       const gruposContatos = document.createElement('div');
       gruposContatos.className = 'contact-groups';
 
-      const criarGrupoContatos = (titulo, quantidade, container) => {
+      const criarGrupoContatos = (titulo, quantidade, container, extraClass = '') => {
         const group = document.createElement('div');
-        group.className = 'contact-group';
+        group.className = `contact-group ${extraClass}`.trim();
         group.innerHTML = `
           <div class="contact-group-header">
             <div class="contact-group-title">${titulo}</div>
@@ -1648,8 +1671,8 @@
         offlineContainer.appendChild(criarItemContato(usuario, false));
       });
 
-      gruposContatos.appendChild(criarGrupoContatos('Online', contatosOnline.length, onlineContainer));
-      gruposContatos.appendChild(criarGrupoContatos('Offline', contatosOffline.length, offlineContainer));
+      gruposContatos.appendChild(criarGrupoContatos('Online', contatosOnline.length, onlineContainer, 'online-group'));
+      gruposContatos.appendChild(criarGrupoContatos('Offline', contatosOffline.length, offlineContainer, 'offline-group'));
       contatosList.appendChild(gruposContatos);
     }
 
