@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const multer = require('multer');
 
 const app = express();
@@ -20,12 +21,14 @@ const io = socketIO(server, {
 
 const SECRET_KEY = 'sua-chave-secreta-aqui-mude-isso';
 const DATA_DIR = path.join(__dirname, 'data');
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'chat.db');
+const STORAGE_ROOT = process.env.STORAGE_ROOT || process.env.RAILWAY_VOLUME_MOUNT_PATH || (process.env.RAILWAY_ENVIRONMENT ? path.join(os.tmpdir(), 'chatinterno') : __dirname);
+const UPLOAD_DIR = path.join(STORAGE_ROOT, 'uploads');
+const DB_PATH = process.env.DB_PATH || path.join(STORAGE_ROOT, 'chat.db');
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png']);
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(STORAGE_ROOT)) fs.mkdirSync(STORAGE_ROOT, { recursive: true });
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 app.use(cors());
@@ -864,4 +867,6 @@ const PORT = process.env.PORT || 3000;
     process.exit(1);
   }
 })();
+
+
 
