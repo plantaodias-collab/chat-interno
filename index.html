@@ -546,6 +546,21 @@
 
     .message-status.lida { color: #bfdbfe; }
 
+    .message-delete-btn {
+      border: none;
+      background: transparent;
+      color: inherit;
+      opacity: .72;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .message-delete-btn:hover {
+      opacity: 1;
+    }
+
     .file-card {
       display: block;
       margin-top: 6px;
@@ -956,6 +971,37 @@
     </div>
   </div>
 
+  <div id="ajustesModal" class="modal">
+    <div class="modal-content" style="max-width:640px;">
+      <h3 style="margin-bottom:18px;">Ajustes da Conta</h3>
+
+      <div class="form-group">
+        <label for="ajustesNome">Nome</label>
+        <input class="field" type="text" id="ajustesNome" placeholder="Seu nome" />
+      </div>
+
+      <div class="form-group">
+        <label for="ajustesEmail">E-mail</label>
+        <input class="field" type="email" id="ajustesEmail" placeholder="seu@email.com" />
+      </div>
+
+      <div class="form-group">
+        <label for="ajustesSenhaAtual">Senha atual</label>
+        <input class="field" type="password" id="ajustesSenhaAtual" placeholder="Digite sua senha atual para alterar a senha" />
+      </div>
+
+      <div class="form-group">
+        <label for="ajustesNovaSenha">Nova senha</label>
+        <input class="field" type="password" id="ajustesNovaSenha" placeholder="Deixe em branco para manter a senha atual" />
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button class="btn btn-secondary" onclick="fecharModal('ajustesModal')">Fechar</button>
+        <button class="btn btn-primary" style="width:auto;" onclick="salvarAjustesConta()">Salvar ajustes</button>
+      </div>
+    </div>
+  </div>
+
   <div id="notificationContainer" class="notification-container"></div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -1091,6 +1137,13 @@
 
     function setUploadStatus(texto) {
       document.getElementById('uploadStatus').textContent = texto || '';
+    }
+
+    function preencherFormularioAjustes() {
+      document.getElementById('ajustesNome').value = usuarioAtual?.nome || '';
+      document.getElementById('ajustesEmail').value = usuarioAtual?.email || '';
+      document.getElementById('ajustesSenhaAtual').value = '';
+      document.getElementById('ajustesNovaSenha').value = '';
     }
 
     function fecharEmojiPicker() {
@@ -1343,6 +1396,21 @@
         renderContatos();
       });
 
+      socket.on('mensagem-excluida', async (data) => {
+        const chatCorreto = data.tipoChat === 'grupo'
+          ? (tipoChat === 'grupo' && Number(chatIdAtual) === Number(data.grupoId))
+          : (tipoChat === 'privado' && Number(chatIdAtual) === Number(data.remetenteId === usuarioAtual.id ? data.destinatarioId : data.remetenteId));
+
+        if (chatCorreto) {
+          await atualizarChatAposExclusao(data);
+        } else if (data.tipoChat === 'grupo') {
+          await carregarGrupos();
+        } else {
+          await carregarResumoConversas();
+          await carregarContatos();
+        }
+      });
+
       socket.on('mensagens-lidas', (data) => {
         if (tipoChat === 'privado' && Number(chatIdAtual) === Number(data.destinatarioId)) {
           marcarMensagensComoLidasNaTela(Number(data.remetenteId));
@@ -1547,6 +1615,9 @@
       const statusHtml = !ehOutro
         ? `<span class="message-status ${lido ? 'lida' : ''}">${lido ? '✓✓' : '✓'}</span>`
         : '';
+      const deleteHtml = !ehOutro && id
+        ? `<button class="message-delete-btn" onclick="apagarMensagem(${Number(id)})" title="Apagar mensagem">🗑️</button>`
+        : '';
 
       const innerContent = tipo === 'arquivo'
         ? `<a class="file-card" href="${escapeHtml(arquivo_url)}" target="_blank" rel="noopener noreferrer">
@@ -1567,7 +1638,7 @@
         : `
           <div class="message own">
             ${innerContent}
-            <div class="message-time">${hora} ${statusHtml}</div>
+            <div class="message-time">${deleteHtml} ${hora} ${statusHtml}</div>
           </div>
         `;
 
@@ -1585,6 +1656,57 @@
       unreadState[key] = 0;
       renderContatos();
       updateBrowserTitle();
+    }
+
+    function removerMensagemDaTela(messageId) {
+      const row = document.querySelector(`.message-row[data-message-id="${messageId}"]`);
+      if (row) row.remove();
+
+      const container = document.getElementById('messagesContainer');
+      if (!container.children.length) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <span class="emoji">🗂️</span>
+            <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Nenhuma mensagem ainda</div>
+            <div>Envie a primeira mensagem desta conversa.</div>
+          </div>
+        `;
+      }
+    }
+
+    async function atualizarChatAposExclusao(data) {
+      removerMensagemDaTela(data.messageId);
+
+      if (data.tipoChat === 'grupo') {
+        await carregarGrupos();
+      } else {
+        await carregarResumoConversas();
+        await carregarContatos();
+      }
+
+      updateBrowserTitle();
+    }
+
+    async function apagarMensagem(messageId) {
+      if (!confirm('Apagar esta mensagem?')) return;
+
+      try {
+        const response = await fetch(`/api/mensagens/${messageId}`, {
+          method: 'DELETE',
+          headers: authHeaders()
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          mostrarNotificacao(data.erro || 'Erro ao apagar mensagem', 'error');
+          return;
+        }
+
+        await atualizarChatAposExclusao(data);
+        mostrarNotificacao('Mensagem apagada com sucesso', 'success');
+      } catch (err) {
+        mostrarNotificacao('Erro ao apagar mensagem: ' + err.message, 'error');
+      }
     }
 
     function emitirDigitando() {
@@ -1737,6 +1859,48 @@
       document.getElementById('adminModal').classList.add('active');
     }
 
+    function abrirAjustes() {
+      preencherFormularioAjustes();
+      document.getElementById('ajustesModal').classList.add('active');
+    }
+
+    async function salvarAjustesConta() {
+      const nome = document.getElementById('ajustesNome').value.trim();
+      const email = document.getElementById('ajustesEmail').value.trim();
+      const senhaAtual = document.getElementById('ajustesSenhaAtual').value;
+      const novaSenha = document.getElementById('ajustesNovaSenha').value;
+
+      if (!nome || !email) {
+        mostrarNotificacao('Preencha nome e e-mail', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/me', {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ nome, email, senhaAtual, novaSenha })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          mostrarNotificacao(data.erro || 'Erro ao salvar ajustes', 'error');
+          return;
+        }
+
+        token = data.token;
+        usuarioAtual = data.usuario;
+        salvarSessao();
+        aplicarSessaoUsuario();
+        preencherFormularioAjustes();
+        renderContatos();
+        mostrarNotificacao('Ajustes salvos com sucesso', 'success');
+        fecharModal('ajustesModal');
+      } catch (err) {
+        mostrarNotificacao('Erro ao salvar ajustes: ' + err.message, 'error');
+      }
+    }
+
     async function cadastrarNovoUsuario() {
       const nome = document.getElementById('adminNovonome').value.trim();
       const email = document.getElementById('adminNovoEmail').value.trim();
@@ -1821,7 +1985,6 @@
 
     function abrirNovoGrupo() { abrirPainelAdmin(); }
     function abrirNovoContato() { mostrarNotificacao('Todos os contatos cadastrados aparecem na lista', 'success'); }
-    function abrirAjustes() { mostrarNotificacao('Ajustes avançados podem ser expandidos em seguida', 'success'); }
 
     function fazerLogout() {
       limparSessao();

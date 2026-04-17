@@ -168,6 +168,18 @@ function findActiveUserById(userId) {
   return db.usuarios.find((u) => u.id === Number(userId) && u.ativo);
 }
 
+function removeFileIfExists(fileName) {
+  if (!fileName) return;
+  const filePath = path.join(UPLOAD_DIR, fileName);
+  if (fs.existsSync(filePath)) {
+    try {
+      fs.unlinkSync(filePath);
+    } catch (_err) {
+      // Ignore file deletion failures to avoid blocking message removal.
+    }
+  }
+}
+
 app.post('/api/login', async (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email);
@@ -197,6 +209,76 @@ app.post('/api/login', async (req, res) => {
         nome: usuario.nome,
         admin: usuario.admin
       }
+    });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.get('/api/me', verificarToken, (req, res) => {
+  try {
+    const usuario = findActiveUserById(req.userId);
+    if (!usuario) return res.status(404).json({ erro: 'UsuÃ¡rio nÃ£o encontrado' });
+    res.json(getUsuarioPublico(usuario));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.put('/api/me', verificarToken, async (req, res) => {
+  try {
+    const usuario = findActiveUserById(req.userId);
+    if (!usuario) return res.status(404).json({ erro: 'UsuÃ¡rio nÃ£o encontrado' });
+
+    const nome = sanitizeText(req.body?.nome);
+    const email = normalizeEmail(req.body?.email);
+    const senhaAtual = String(req.body?.senhaAtual || '');
+    const novaSenha = String(req.body?.novaSenha || '').trim();
+
+    if (!nome || !email) {
+      return res.status(400).json({ erro: 'Nome e email sÃ£o obrigatÃ³rios' });
+    }
+
+    if (!email.includes('@')) {
+      return res.status(400).json({ erro: 'Email invÃ¡lido' });
+    }
+
+    const emailEmUso = db.usuarios.find((u) => normalizeEmail(u.email) === email && u.id !== usuario.id);
+    if (emailEmUso) {
+      return res.status(400).json({ erro: 'Email jÃ¡ cadastrado por outro usuÃ¡rio' });
+    }
+
+    if (novaSenha) {
+      if (!senhaAtual) {
+        return res.status(400).json({ erro: 'Informe a senha atual para definir uma nova senha' });
+      }
+
+      const senhaValida = await bcrypt.compare(senhaAtual, usuario.senha);
+      if (!senhaValida) {
+        return res.status(401).json({ erro: 'Senha atual invÃ¡lida' });
+      }
+
+      if (novaSenha.length < 6) {
+        return res.status(400).json({ erro: 'A nova senha deve ter pelo menos 6 caracteres' });
+      }
+
+      usuario.senha = await bcrypt.hash(novaSenha, 10);
+    }
+
+    usuario.nome = nome;
+    usuario.email = email;
+    db.save();
+
+    const token = jwt.sign(
+      { id: usuario.id, email: usuario.email, admin: usuario.admin },
+      SECRET_KEY,
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      mensagem: 'Ajustes salvos com sucesso',
+      token,
+      usuario: getUsuarioPublico(usuario)
     });
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -382,6 +464,46 @@ app.get('/api/conversas/privadas/resumo', verificarToken, (req, res) => {
       });
 
     res.json(Object.values(resumo));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.delete('/api/mensagens/:id', verificarToken, (req, res) => {
+  try {
+    const messageId = parseInt(req.params.id, 10);
+    const index = db.mensagens.findIndex((m) => m.id === messageId);
+    if (index === -1) return res.status(404).json({ erro: 'Mensagem nÃ£o encontrada' });
+
+    const mensagem = db.mensagens[index];
+    if (Number(mensagem.usuario_id) !== Number(req.userId)) {
+      return res.status(403).json({ erro: 'VocÃª sÃ³ pode apagar mensagens enviadas por vocÃª' });
+    }
+
+    db.mensagens.splice(index, 1);
+    db.save();
+    if (mensagem.tipo === 'arquivo') {
+      removeFileIfExists(mensagem.arquivo_nome_salvo);
+    }
+
+    const payload = {
+      messageId,
+      tipoChat: mensagem.grupo_id ? 'grupo' : 'privado',
+      grupoId: mensagem.grupo_id || null,
+      remetenteId: Number(mensagem.usuario_id),
+      destinatarioId: mensagem.usuario_destino_id || null
+    };
+
+    if (mensagem.grupo_id) {
+      io.to(`grupo-${mensagem.grupo_id}`).emit('mensagem-excluida', payload);
+    } else {
+      io.to(`usuario-${mensagem.usuario_id}`).emit('mensagem-excluida', payload);
+      if (mensagem.usuario_destino_id) {
+        io.to(`usuario-${mensagem.usuario_destino_id}`).emit('mensagem-excluida', payload);
+      }
+    }
+
+    res.json({ mensagem: 'Mensagem apagada com sucesso', ...payload });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
