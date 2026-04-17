@@ -1125,8 +1125,9 @@
         <div class="header-main">
           <div class="avatar" id="chatHeaderAvatar">ðŸ’¬</div>
           <div class="header-title-wrap">
-            <h2 id="headerTitle">Bem-vindo ao Chat</h2>
+            <h2 id="headerTitle">Bem-vindo ao Chat do Cartório Dias de Castro</h2>
             <div class="header-subtitle" id="headerSubtitle">Selecione um grupo ou contato para iniciar</div>
+            <div class="header-motivation" id="headerMotivation">Cada ato que fazemos transforma vidas — vamos fazer sempre o nosso melhor.</div>
             <div class="typing-indicator" id="typingIndicator"></div>
           </div>
         </div>
@@ -1484,15 +1485,19 @@
 
     function updateHeaderStatus() {
       const subtitle = document.getElementById('headerSubtitle');
+      const motivation = document.getElementById('headerMotivation');
       if (tipoChat === 'grupo') {
         subtitle.textContent = 'Conversa em grupo';
+        motivation.classList.add('hidden');
       } else if (tipoChat === 'privado') {
         const contato = contatosCache.find(c => Number(c.id) === Number(chatIdAtual));
         subtitle.textContent = contato
           ? (onlineState.has(Number(contato.id)) ? 'Online agora' : 'Offline')
           : 'Conversa privada';
+        motivation.classList.add('hidden');
       } else {
         subtitle.textContent = 'Selecione um grupo ou contato para iniciar';
+        motivation.classList.remove('hidden');
       }
     }
 
@@ -2672,8 +2677,9 @@
       document.getElementById('novoGrupoBtn').style.display = 'none';
       document.getElementById('ajustesBtn').classList.add('hidden');
       document.getElementById('messagesContainer').innerHTML = '';
-      document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat';
+      document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat do Cartório Dias de Castro';
       document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
+      document.getElementById('headerMotivation').classList.remove('hidden');
       document.getElementById('typingIndicator').textContent = '';
       document.getElementById('fileInput').value = '';
       setUploadStatus('');
@@ -2698,6 +2704,7 @@
   </script>
 </body>
 </html>
+
 
 
 
