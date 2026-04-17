@@ -1,9 +1,11 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const bcrypt = require('bcryptjs');
 const readline = require('readline');
 
-const DATA_DIR = path.join(__dirname, 'data');
+const STORAGE_ROOT = process.env.STORAGE_ROOT || process.env.RAILWAY_VOLUME_MOUNT_PATH || (process.env.RAILWAY_ENVIRONMENT ? path.join(os.tmpdir(), 'chatinterno') : __dirname);
+const DATA_DIR = path.join(STORAGE_ROOT, 'data');
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -129,3 +131,6 @@ const main = async () => {
 };
 
 main();
+
+
+

@@ -18,9 +18,11 @@ const io = socketIO(server, {
   }
 });
 
-const SECRET_KEY = 'sua-chave-secreta-aqui-mude-isso';
+const DEFAULT_SECRET_KEY = 'sua-chave-secreta-aqui-mude-isso';
+const SECRET_KEY = process.env.SECRET_KEY || DEFAULT_SECRET_KEY;
 const SEED_DATA_DIR = path.join(__dirname, 'data');
 const STORAGE_ROOT = process.env.STORAGE_ROOT || process.env.RAILWAY_VOLUME_MOUNT_PATH || (process.env.RAILWAY_ENVIRONMENT ? path.join(os.tmpdir(), 'chatinterno') : __dirname);
+const IS_EPHEMERAL_STORAGE = !process.env.STORAGE_ROOT && !process.env.RAILWAY_VOLUME_MOUNT_PATH && Boolean(process.env.RAILWAY_ENVIRONMENT);
 const DATA_DIR = path.join(STORAGE_ROOT, 'data');
 const UPLOAD_DIR = path.join(STORAGE_ROOT, 'uploads');
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png']);
@@ -34,6 +36,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '.')));
 app.use('/uploads', express.static(UPLOAD_DIR));
+
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, storageRoot: STORAGE_ROOT, persistentStorage: !IS_EPHEMERAL_STORAGE });
+});
 
 class SimpleDB {
   constructor() {
@@ -814,7 +820,15 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
+  console.log(`Storage root: ${STORAGE_ROOT}`);
   console.log(`Arquivos de dados: ${DATA_DIR}`);
   console.log(`Arquivos enviados: ${UPLOAD_DIR}`);
-});
 
+  if (SECRET_KEY === DEFAULT_SECRET_KEY) {
+    console.warn('AVISO: SECRET_KEY nao configurada. Configure uma SECRET_KEY no ambiente para producao.');
+  }
+
+  if (IS_EPHEMERAL_STORAGE) {
+    console.warn('AVISO: storage efemero em uso. Configure STORAGE_ROOT ou RAILWAY_VOLUME_MOUNT_PATH com um volume persistente no Railway.');
+  }
+});
