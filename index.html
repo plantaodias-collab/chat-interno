@@ -231,6 +231,13 @@
       border-bottom: 1px solid var(--line);
     }
 
+    .contacts-section {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
     .sidebar-section-header {
       display: flex;
       justify-content: space-between;
@@ -263,10 +270,20 @@
       overflow: hidden;
     }
 
+    .contacts-section .menu-list {
+      flex: 1;
+      min-height: 0;
+      max-height: none;
+      display: flex;
+      flex-direction: column;
+    }
+
     .contact-groups {
       display: flex;
       flex-direction: column;
       gap: 12px;
+      flex: 1;
+      min-height: 0;
     }
 
     .contact-group {
@@ -283,7 +300,8 @@
     }
 
     .contact-group.offline-group {
-      flex: 0 0 auto;
+      flex: 1;
+      min-height: 0;
     }
 
     .contact-group-header {
@@ -326,7 +344,9 @@
     }
 
     .contact-group.offline-group .contact-group-items {
-      max-height: 16vh;
+      flex: 1;
+      min-height: 0;
+      max-height: none;
     }
 
     .contact-group-items:empty::after {
@@ -916,7 +936,7 @@
         <div class="menu-list" id="gruposList"></div>
       </section>
 
-      <section class="sidebar-section">
+      <section class="sidebar-section contacts-section">
         <div class="sidebar-section-header">
           <div class="section-title">Contatos</div>
           <button class="menu-btn" onclick="abrirNovoContato()">+</button>
