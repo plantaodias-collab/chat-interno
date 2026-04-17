@@ -264,6 +264,57 @@
       padding-right: 4px;
     }
 
+    .contact-groups {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .contact-group {
+      border: 1px solid rgba(148,163,184,.12);
+      border-radius: 18px;
+      padding: 10px;
+      background: rgba(15,23,42,.32);
+    }
+
+    .contact-group-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding: 0 2px;
+    }
+
+    .contact-group-title {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #cbd5e1;
+    }
+
+    .contact-group-count {
+      min-width: 24px;
+      height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--text);
+      background: rgba(255,255,255,.07);
+    }
+
+    .contact-group-items:empty::after {
+      content: 'Nenhum contato';
+      display: block;
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
     .chat-item {
       display: flex;
       align-items: center;
@@ -1536,10 +1587,35 @@
       const contatosList = document.getElementById('contatosList');
       contatosList.innerHTML = '';
 
-      sortByRecent(contatosCache, 'privado').forEach(usuario => {
+      const onlineContainer = document.createElement('div');
+      onlineContainer.className = 'contact-group-items';
+
+      const offlineContainer = document.createElement('div');
+      offlineContainer.className = 'contact-group-items';
+
+      const gruposContatos = document.createElement('div');
+      gruposContatos.className = 'contact-groups';
+
+      const criarGrupoContatos = (titulo, quantidade, container) => {
+        const group = document.createElement('div');
+        group.className = 'contact-group';
+        group.innerHTML = `
+          <div class="contact-group-header">
+            <div class="contact-group-title">${titulo}</div>
+            <span class="contact-group-count">${quantidade}</span>
+          </div>
+        `;
+        group.appendChild(container);
+        return group;
+      };
+
+      const contatosOrdenados = sortByRecent(contatosCache, 'privado');
+      const contatosOnline = contatosOrdenados.filter(usuario => onlineState.has(Number(usuario.id)));
+      const contatosOffline = contatosOrdenados.filter(usuario => !onlineState.has(Number(usuario.id)));
+
+      const criarItemContato = (usuario, online) => {
         const key = getChatKey('privado', usuario.id);
         const unread = unreadState[key] || 0;
-        const online = onlineState.has(Number(usuario.id));
         const preview = lastPreviewState[key] || (online ? 'Online agora' : usuario.email);
 
         const item = document.createElement('div');
@@ -1561,8 +1637,20 @@
           </div>
         `;
         item.addEventListener('click', () => carregarChat('privado', usuario.id, usuario.nome));
-        contatosList.appendChild(item);
+        return item;
+      };
+
+      contatosOnline.forEach(usuario => {
+        onlineContainer.appendChild(criarItemContato(usuario, true));
       });
+
+      contatosOffline.forEach(usuario => {
+        offlineContainer.appendChild(criarItemContato(usuario, false));
+      });
+
+      gruposContatos.appendChild(criarGrupoContatos('Online', contatosOnline.length, onlineContainer));
+      gruposContatos.appendChild(criarGrupoContatos('Offline', contatosOffline.length, offlineContainer));
+      contatosList.appendChild(gruposContatos);
     }
 
     async function carregarChat(tipo, id, nome) {
