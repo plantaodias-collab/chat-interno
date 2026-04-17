@@ -168,6 +168,26 @@ function findActiveUserById(userId) {
   return db.usuarios.find((u) => u.id === Number(userId) && u.ativo);
 }
 
+function getMembrosDoGrupo(grupoId) {
+  return db.membros_grupo
+    .filter((m) => Number(m.grupo_id) === Number(grupoId))
+    .map((m) => Number(m.usuario_id));
+}
+
+function grupoEhRestrito(grupoId) {
+  return getMembrosDoGrupo(grupoId).length > 0;
+}
+
+function usuarioPodeAcessarGrupo(userId, grupoId) {
+  const membros = getMembrosDoGrupo(grupoId);
+  if (!membros.length) return true;
+  return membros.includes(Number(userId));
+}
+
+function listarGruposVisiveisParaUsuario(userId) {
+  return db.grupos.filter((grupo) => usuarioPodeAcessarGrupo(userId, grupo.id));
+}
+
 function removeFileIfExists(fileName) {
   if (!fileName) return;
   const filePath = path.join(UPLOAD_DIR, fileName);
@@ -356,6 +376,28 @@ app.delete('/api/admin/usuarios/:id', verificarToken, (req, res) => {
   }
 });
 
+app.put('/api/admin/usuarios/:id/senha', verificarToken, async (req, res) => {
+  try {
+    const usuarioAdmin = db.usuarios.find((u) => u.id === req.userId);
+    if (!usuarioAdmin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
+
+    const usuario = db.usuarios.find((u) => u.id === parseInt(req.params.id, 10) && u.ativo);
+    if (!usuario) return res.status(404).json({ erro: 'UsuÃ¡rio nÃ£o encontrado' });
+
+    const novaSenha = String(req.body?.novaSenha || '').trim();
+    if (novaSenha.length < 6) {
+      return res.status(400).json({ erro: 'A nova senha deve ter pelo menos 6 caracteres' });
+    }
+
+    usuario.senha = await bcrypt.hash(novaSenha, 10);
+    db.save();
+
+    res.json({ mensagem: 'Senha redefinida com sucesso' });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.post('/api/admin/criar-grupo', verificarToken, (req, res) => {
   try {
     const usuarioAdmin = db.usuarios.find((u) => u.id === req.userId);
@@ -363,6 +405,9 @@ app.post('/api/admin/criar-grupo', verificarToken, (req, res) => {
 
     const nome = sanitizeText(req.body?.nome);
     const descricao = sanitizeText(req.body?.descricao);
+    const memberIds = Array.isArray(req.body?.memberIds)
+      ? req.body.memberIds.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+      : [];
     if (!nome) {
       return res.status(400).json({ erro: 'Nome do grupo Ã© obrigatÃ³rio' });
     }
@@ -375,6 +420,16 @@ app.post('/api/admin/criar-grupo', verificarToken, (req, res) => {
     };
 
     db.grupos.push(novoGrupo);
+    const membrosUnicos = Array.from(new Set([Number(req.userId), ...memberIds]));
+    membrosUnicos.forEach((usuarioId) => {
+      if (findActiveUserById(usuarioId)) {
+        db.membros_grupo.push({
+          id: Date.now() + usuarioId,
+          grupo_id: novoGrupo.id,
+          usuario_id: usuarioId
+        });
+      }
+    });
     db.save();
 
     res.json({ id: novoGrupo.id, mensagem: 'Grupo criado com sucesso' });
@@ -385,7 +440,13 @@ app.post('/api/admin/criar-grupo', verificarToken, (req, res) => {
 
 app.get('/api/grupos', verificarToken, (req, res) => {
   try {
-    res.json(db.grupos);
+    res.json(
+      listarGruposVisiveisParaUsuario(req.userId).map((grupo) => ({
+        ...grupo,
+        restrito: grupoEhRestrito(grupo.id),
+        membros: getMembrosDoGrupo(grupo.id)
+      }))
+    );
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -410,8 +471,13 @@ app.get('/api/usuarios', verificarToken, (req, res) => {
 
 app.get('/api/mensagens/grupo/:grupoId', verificarToken, (req, res) => {
   try {
+    const grupoId = parseInt(req.params.grupoId, 10);
+    if (!usuarioPodeAcessarGrupo(req.userId, grupoId)) {
+      return res.status(403).json({ erro: 'Acesso negado a este grupo' });
+    }
+
     const mensagens = db.mensagens
-      .filter((m) => m.grupo_id === parseInt(req.params.grupoId, 10))
+      .filter((m) => m.grupo_id === grupoId)
       .map(enrichMessage);
 
     res.json(mensagens);
@@ -522,6 +588,9 @@ app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => 
     if (tipoChat === 'grupo' && !db.grupos.some((g) => g.id === chatId)) {
       return res.status(404).json({ erro: 'Grupo nÃ£o encontrado' });
     }
+    if (tipoChat === 'grupo' && !usuarioPodeAcessarGrupo(req.userId, chatId)) {
+      return res.status(403).json({ erro: 'Acesso negado a este grupo' });
+    }
     if (tipoChat === 'privado' && !findActiveUserById(chatId)) {
       return res.status(404).json({ erro: 'UsuÃ¡rio de destino nÃ£o encontrado' });
     }
@@ -600,12 +669,18 @@ io.on('connection', (socket) => {
   });
 
   socket.on('entrar-grupo', (data) => {
-    socket.join(`grupo-${data.grupoId}`);
+    if (usuarioPodeAcessarGrupo(data.usuarioId, data.grupoId)) {
+      socket.join(`grupo-${data.grupoId}`);
+    }
   });
 
   socket.on('digitando', (data) => {
     const { tipo, chatId, usuarioId, usuarioNome } = data;
     const timeoutKey = `${socket.id}-${tipo}-${chatId}`;
+
+    if (tipo === 'grupo' && !usuarioPodeAcessarGrupo(usuarioId, chatId)) {
+      return;
+    }
 
     clearTimeout(typingTimeouts.get(timeoutKey));
 
@@ -637,6 +712,10 @@ io.on('connection', (socket) => {
   });
 
   socket.on('mensagem-grupo', (data) => {
+    if (!usuarioPodeAcessarGrupo(data.usuarioId, data.grupoId)) {
+      return;
+    }
+
     const msg = {
       id: Date.now(),
       usuario_id: Number(data.usuarioId),

@@ -961,6 +961,11 @@
             <label for="adminNovoGrupoDesc">Descrição</label>
             <input class="field" type="text" id="adminNovoGrupoDesc" placeholder="Descrição do grupo" />
           </div>
+          <div class="form-group">
+            <label>Membros do grupo</label>
+            <div id="adminGrupoMembros" style="border:1px solid #dbe1ea; border-radius:14px; padding:12px; max-height:220px; overflow:auto;"></div>
+            <div style="font-size:12px; color:#64748b; margin-top:6px;">Somente os membros selecionados verão este grupo e suas conversas.</div>
+          </div>
           <button class="btn btn-primary" onclick="criarNovoGrupo()">Criar grupo</button>
         </section>
 
@@ -1020,6 +1025,7 @@
     let lastTimestampState = {};
     let onlineState = new Set();
     let typingUsers = new Map();
+    let adminUsuariosCache = [];
     const STORAGE_KEY = 'chatinterno.session';
 
     function getChatKey(tipo, id) {
@@ -1146,6 +1152,35 @@
       document.getElementById('ajustesNovaSenha').value = '';
     }
 
+    function renderGrupoMembrosSelector() {
+      const container = document.getElementById('adminGrupoMembros');
+      if (!container) return;
+
+      const ativos = adminUsuariosCache.filter((usuario) => usuario.ativo);
+      container.innerHTML = '';
+
+      if (!ativos.length) {
+        container.textContent = 'Nenhum usuário disponível.';
+        return;
+      }
+
+      ativos.forEach((usuario) => {
+        const item = document.createElement('label');
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.gap = '10px';
+        item.style.marginBottom = '8px';
+        item.style.cursor = 'pointer';
+
+        const isCurrent = Number(usuario.id) === Number(usuarioAtual?.id);
+        item.innerHTML = `
+          <input type="checkbox" class="admin-grupo-membro" value="${usuario.id}" ${isCurrent ? 'checked disabled' : ''} />
+          <span>${escapeHtml(usuario.nome)} <small style="color:#64748b;">(${escapeHtml(usuario.email)})</small></span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
     function fecharEmojiPicker() {
       document.getElementById('emojiPicker').classList.add('hidden');
     }
@@ -1201,7 +1236,7 @@
       document.getElementById('adminBadge').style.display = isAdmin ? 'inline-flex' : 'none';
       document.getElementById('adminSection').classList.toggle('hidden', !isAdmin);
       document.getElementById('novoGrupoBtn').style.display = isAdmin ? 'inline-flex' : 'none';
-      document.getElementById('ajustesBtn').classList.toggle('hidden', !isAdmin);
+      document.getElementById('ajustesBtn').classList.remove('hidden');
     }
 
     async function restaurarSessao() {
@@ -1831,10 +1866,12 @@
         const response = await fetch('/api/admin/usuarios', { headers: authHeaders() });
         if (!response.ok) throw new Error('Falha ao carregar usuários');
         const usuarios = await response.json();
+        adminUsuariosCache = Array.isArray(usuarios) ? usuarios : [];
+        renderGrupoMembrosSelector();
         const tbody = document.getElementById('adminUsuariosTable');
         tbody.innerHTML = '';
 
-        usuarios.forEach(usuario => {
+        adminUsuariosCache.forEach(usuario => {
           const tr = document.createElement('tr');
           const online = onlineState.has(Number(usuario.id));
           tr.innerHTML = `
@@ -1843,6 +1880,7 @@
             <td>${usuario.admin ? 'Sim' : 'Não'}</td>
             <td>${usuario.ativo ? (online ? 'Ativo / Online' : 'Ativo') : 'Inativo'}</td>
             <td class="table-actions">
+              <button class="mini-btn btn-secondary" onclick="redefinirSenhaUsuario(${usuario.id}, '${escapeHtml(usuario.nome).replace(/'/g, "\\'")}')">Senha</button>
               ${Number(usuario.id) !== Number(usuarioAtual.id) ? `<button class="mini-btn btn-danger" onclick="desativarUsuario(${usuario.id})">Desativar</button>` : '-'}
             </td>
           `;
@@ -1952,9 +1990,39 @@
       }
     }
 
+    async function redefinirSenhaUsuario(usuarioId, nomeUsuario) {
+      const novaSenha = prompt(`Digite a nova senha para ${nomeUsuario}:`);
+      if (novaSenha === null) return;
+
+      if (novaSenha.trim().length < 6) {
+        mostrarNotificacao('A nova senha deve ter pelo menos 6 caracteres', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/admin/usuarios/${usuarioId}/senha`, {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ novaSenha: novaSenha.trim() })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          mostrarNotificacao(data.erro || 'Erro ao redefinir senha', 'error');
+          return;
+        }
+
+        mostrarNotificacao('Senha redefinida com sucesso', 'success');
+      } catch (err) {
+        mostrarNotificacao('Erro ao redefinir senha: ' + err.message, 'error');
+      }
+    }
+
     async function criarNovoGrupo() {
       const nome = document.getElementById('adminNovoGrupoNome').value.trim();
       const descricao = document.getElementById('adminNovoGrupoDesc').value.trim();
+      const memberIds = Array.from(document.querySelectorAll('.admin-grupo-membro:checked'))
+        .map((checkbox) => Number(checkbox.value));
 
       if (!nome) {
         mostrarErro('Digite o nome do grupo');
@@ -1965,7 +2033,7 @@
         const response = await fetch('/api/admin/criar-grupo', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ nome, descricao })
+          body: JSON.stringify({ nome, descricao, memberIds })
         });
 
         const data = await response.json();
@@ -1977,6 +2045,7 @@
         mostrarNotificacao('Grupo criado com sucesso', 'success');
         document.getElementById('adminNovoGrupoNome').value = '';
         document.getElementById('adminNovoGrupoDesc').value = '';
+        renderGrupoMembrosSelector();
         carregarGrupos();
       } catch (err) {
         mostrarErro('Erro: ' + err.message);
