@@ -593,7 +593,7 @@
 
     .composer input[type="text"]::placeholder { color: var(--muted); }
 
-    .attach-btn, .send-btn {
+    .attach-btn, .emoji-btn, .send-btn {
       border: none;
       width: 48px;
       height: 48px;
@@ -610,9 +610,46 @@
       background: rgba(255,255,255,.08);
     }
 
+    .emoji-btn {
+      background: rgba(255,255,255,.08);
+    }
+
     .send-btn {
       background: linear-gradient(135deg, var(--primary), var(--primary-2));
       box-shadow: 0 10px 24px rgba(37,99,235,.22);
+    }
+
+    .emoji-picker {
+      position: absolute;
+      left: 58px;
+      bottom: 62px;
+      width: min(320px, calc(100vw - 52px));
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(148,163,184,.18);
+      background: rgba(15,23,42,.98);
+      box-shadow: 0 18px 40px rgba(0,0,0,.28);
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 8px;
+      z-index: 30;
+    }
+
+    .emoji-picker.hidden { display: none; }
+
+    .emoji-option {
+      border: none;
+      height: 38px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.06);
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .emoji-option:hover {
+      background: rgba(59,130,246,.18);
+      transform: translateY(-1px);
     }
 
     .upload-status {
@@ -831,6 +868,25 @@
       <div class="input-area">
         <div class="composer">
           <input type="file" id="fileInput" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" onchange="enviarArquivo()" />
+          <button class="emoji-btn" id="emojiToggleBtn" onclick="alternarEmojis(event)" title="Emojis">😊</button>
+          <div class="emoji-picker hidden" id="emojiPicker">
+            <button type="button" class="emoji-option" onclick="inserirEmoji('😀')">😀</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('😂')">😂</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('🥰')">🥰</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('😍')">😍</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('😉')">😉</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('🙌')">🙌</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('👏')">👏</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('✅')">✅</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('📢')">📢</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('👀')">👀</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('🤝')">🤝</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('👍')">👍</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('👎')">👎</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('🔥')">🔥</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('❤️')">❤️</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('🎉')">🎉</button>
+          </div>
           <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Anexar">📎</button>
           <input
             type="text"
@@ -1035,6 +1091,27 @@
 
     function setUploadStatus(texto) {
       document.getElementById('uploadStatus').textContent = texto || '';
+    }
+
+    function fecharEmojiPicker() {
+      document.getElementById('emojiPicker').classList.add('hidden');
+    }
+
+    function alternarEmojis(event) {
+      event.stopPropagation();
+      document.getElementById('emojiPicker').classList.toggle('hidden');
+    }
+
+    function inserirEmoji(emoji) {
+      const input = document.getElementById('messageInput');
+      const start = input.selectionStart ?? input.value.length;
+      const end = input.selectionEnd ?? input.value.length;
+      input.value = `${input.value.slice(0, start)}${emoji}${input.value.slice(end)}`;
+      const novaPosicao = start + emoji.length;
+      input.focus();
+      input.setSelectionRange(novaPosicao, novaPosicao);
+      fecharEmojiPicker();
+      emitirDigitando();
     }
 
     function salvarSessao() {
@@ -1564,6 +1641,7 @@
       updateBrowserTitle();
       input.value = '';
       input.focus();
+      fecharEmojiPicker();
     }
 
     async function enviarArquivo() {
@@ -1791,6 +1869,9 @@
     }
 
     window.onclick = function(event) {
+      if (!event.target.closest('.composer')) {
+        fecharEmojiPicker();
+      }
       if (event.target.classList.contains('modal')) {
         event.target.classList.remove('active');
       }
