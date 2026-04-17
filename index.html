@@ -596,7 +596,7 @@
       width: 34px;
       height: 34px;
       border-radius: 50%;
-      background: rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
       color: white;
       display: flex;
       align-items: center;
@@ -642,7 +642,7 @@
 
     .message-reply-preview {
       border-left: 3px solid rgba(255,255,255,.45);
-      background: rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
       border-radius: 12px;
       padding: 8px 10px;
       margin-bottom: 8px;
@@ -737,7 +737,7 @@
 
     .reaction-chip {
       border: 1px solid rgba(148,163,184,.16);
-      background: rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
       color: inherit;
       border-radius: 999px;
       padding: 4px 8px;
@@ -763,7 +763,7 @@
 
     .reaction-picker-btn {
       border: none;
-      background: rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
       border-radius: 10px;
       min-width: 34px;
       height: 34px;
@@ -789,7 +789,7 @@
       border-radius: 12px;
       text-decoration: none;
       border: 1px solid rgba(148,163,184,.18);
-      background: rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
       color: inherit;
     }
 
@@ -886,11 +886,11 @@
     }
 
     .attach-btn {
-      background: rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
     }
 
     .emoji-btn {
-      background: rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
     }
 
     .send-btn {
@@ -1015,28 +1015,101 @@
       z-index: 2000;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      max-width: 360px;
+      gap: 12px;
+      max-width: min(380px, calc(100vw - 28px));
     }
 
     .notification {
-      background: #fff;
-      color: #0f172a;
-      border-left: 4px solid var(--primary);
-      padding: 14px 14px 14px 16px;
-      border-radius: 16px;
-      box-shadow: 0 18px 40px rgba(2,6,23,.18);
-      animation: slideIn .25s ease;
-      font-size: 14px;
-      line-height: 1.35;
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      gap: 12px;
+      align-items: start;
+      padding: 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(148,163,184,.16);
+      background: linear-gradient(180deg, rgba(11,19,35,.98), rgba(8,14,27,.96));
+      color: var(--text);
+      box-shadow: var(--shadow);
+      animation: slideIn .28s ease;
+      backdrop-filter: blur(16px);
+      position: relative;
+      overflow: hidden;
     }
 
-    .notification.error { border-left-color: var(--danger); }
-    .notification.success { border-left-color: var(--success); }
+    .notification::before {
+      content: '';
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: var(--primary);
+    }
+
+    .notification.success::before { background: var(--success); }
+    .notification.error::before { background: var(--danger); }
+    .notification.warning::before { background: var(--warning); }
+    .notification.info::before { background: var(--accent); }
+
+    .notification-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(148,163,184,.14);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+    }
+
+    .notification.success .notification-icon { color: #86efac; }
+    .notification.error .notification-icon { color: #fca5a5; }
+    .notification.warning .notification-icon { color: #fcd34d; }
+    .notification.info .notification-icon { color: #99f6e4; }
+
+    .notification-body {
+      min-width: 0;
+    }
+
+    .notification-title {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #c7d6ef;
+      margin-bottom: 4px;
+    }
+
+    .notification-message {
+      font-size: 14px;
+      line-height: 1.45;
+      color: #eef4ff;
+    }
+
+    .notification-close {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 15px;
+      line-height: 1;
+      padding: 4px;
+      border-radius: 10px;
+    }
+
+    .notification-close:hover {
+      background: rgba(255,255,255,.06);
+      color: white;
+    }
 
     @keyframes slideIn {
-      from { transform: translateX(18px); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
+      from { transform: translateX(24px) scale(.98); opacity: 0; }
+      to { transform: translateX(0) scale(1); opacity: 1; }
+    }
+
+    @keyframes fadeOutToast {
+      from { transform: translateX(0) scale(1); opacity: 1; }
+      to { transform: translateX(12px) scale(.98); opacity: 0; }
     }
 
     ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -1519,13 +1592,35 @@
       }
     }
 
-    function mostrarNotificacao(mensagem, tipo = '') {
+    function mostrarNotificacao(mensagem, tipo = 'info') {
       const container = document.getElementById('notificationContainer');
       const notif = document.createElement('div');
-      notif.className = `notification ${tipo}`.trim();
-      notif.textContent = mensagem;
+      const kind = tipo || 'info';
+      const config = {
+        success: { icon: '?', title: 'Sucesso' },
+        error: { icon: '!', title: 'Erro' },
+        warning: { icon: '•', title: 'Aviso' },
+        info: { icon: 'i', title: 'Informação' }
+      }[kind] || { icon: 'i', title: 'Informação' };
+
+      notif.className = `notification ${kind}`.trim();
+      notif.innerHTML = `
+        <div class="notification-icon">${config.icon}</div>
+        <div class="notification-body">
+          <div class="notification-title">${config.title}</div>
+          <div class="notification-message">${escapeHtml(mensagem)}</div>
+        </div>
+        <button class="notification-close" type="button" aria-label="Fechar" title="Fechar">x</button>
+      `;
+
+      const close = () => {
+        notif.style.animation = 'fadeOutToast .18s ease forwards';
+        setTimeout(() => notif.remove(), 180);
+      };
+
+      notif.querySelector('.notification-close').addEventListener('click', close);
       container.appendChild(notif);
-      setTimeout(() => notif.remove(), 4500);
+      setTimeout(close, 4500);
     }
 
     function setUploadStatus(texto) {
@@ -2704,6 +2799,10 @@
   </script>
 </body>
 </html>
+
+
+
+
 
 
 
