@@ -713,6 +713,17 @@
 
     .message-status.lida { color: #bfdbfe; }
 
+    .message-read-summary {
+      margin-top: 4px;
+      font-size: 11px;
+      opacity: .78;
+      text-align: right;
+    }
+
+    .message-read-summary strong {
+      font-weight: 800;
+    }
+
     .message-delete-btn {
       border: none;
       background: transparent;
@@ -1485,6 +1496,10 @@
       color: #53bdeb;
     }
 
+    .message-read-summary {
+      color: rgba(255,255,255,.62);
+    }
+
     .reaction-chip,
     .reaction-picker-btn,
     .file-card {
@@ -1934,10 +1949,52 @@
         lido: Number(msg.lido || 0),
         tipo: msg.tipo || 'texto',
         reacoes: typeof msg.reacoes === 'object' && msg.reacoes ? msg.reacoes : {},
+        leituras_grupo: Array.isArray(msg.leituras_grupo)
+          ? msg.leituras_grupo
+              .map((item) => ({
+                usuario_id: Number(item?.usuario_id),
+                usuario_nome: item?.usuario_nome || '',
+                lido_em: item?.lido_em || null
+              }))
+              .filter((item) => Number.isFinite(item.usuario_id))
+          : [],
         reply_preview: msg.reply_preview || null,
         reply_to_id: Number(msg.reply_to_id || 0) || null,
         usuario_nome: msg.usuario_nome || msg.usuarioNome || msg.remetenteNome || '',
         usuarioNome: msg.usuarioNome || msg.usuario_nome || msg.remetenteNome || ''
+      };
+    }
+
+    function getLeiturasGrupo(message) {
+      const leituras = Array.isArray(message?.leituras_grupo) ? message.leituras_grupo : [];
+      return leituras.filter((item, index, arr) => (
+        Number(item?.usuario_id) !== Number(message?.usuarioId) &&
+        arr.findIndex((entry) => Number(entry?.usuario_id) === Number(item?.usuario_id)) === index
+      ));
+    }
+
+    function getResumoLeituraGrupo(message) {
+      const leituras = getLeiturasGrupo(message);
+      if (!leituras.length) {
+        return {
+          status: '✓',
+          detalhe: 'Ninguem do grupo leu ainda',
+          tooltip: 'Ninguem do grupo leu ainda'
+        };
+      }
+
+      const nomes = leituras
+        .map((item) => item.usuario_nome || 'Membro')
+        .filter(Boolean);
+
+      const detalhe = nomes.length <= 2
+        ? `Lido por ${nomes.join(', ')}`
+        : `Lido por ${nomes[0]}, ${nomes[1]} e mais ${nomes.length - 2}`;
+
+      return {
+        status: '✓✓',
+        detalhe,
+        tooltip: `Lido por: ${nomes.join(', ')}`
       };
     }
 
@@ -2261,6 +2318,12 @@
 
       if (isCurrent) {
         upsertMessageInCache(message);
+        if (Number(data.usuarioId) !== Number(usuarioAtual.id)) {
+          socket.emit('marcar-lidas-grupo', {
+            grupoId: data.grupoId,
+            usuarioId: usuarioAtual.id
+          });
+        }
       } else {
         unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
       }
@@ -2659,6 +2722,7 @@
 
         if (tipo === 'grupo') {
           socket.emit('entrar-grupo', { grupoId: id, usuarioId: usuarioAtual.id });
+          socket.emit('marcar-lidas-grupo', { grupoId: id, usuarioId: usuarioAtual.id });
         } else {
           socket.emit('marcar-lidas', { remetenteId: id, destinatarioId: usuarioAtual.id });
         }
@@ -2677,6 +2741,9 @@
       const ehOutro = Number(message.usuarioId) !== Number(usuarioAtual.id);
       const hora = formatTime(message.criado_em || new Date());
       const query = currentMessageSearch;
+      const resumoLeituraGrupo = !ehOutro && tipoChat === 'grupo'
+        ? getResumoLeituraGrupo(message)
+        : null;
       const replyHtml = message.reply_preview
         ? `
           <div class="message-reply-preview">
@@ -2719,8 +2786,8 @@
           </div>`
         : '';
 
-      return ehOutro
-        ? `
+      if (ehOutro) {
+        return `
           <div class="message-avatar">${escapeHtml(initials(message.usuarioNome || message.usuario_nome))}</div>
           <div class="message other">
             <div class="message-sender">${escapeHtml(message.usuarioNome || message.usuario_nome)}</div>
@@ -2730,16 +2797,32 @@
             ${pickerHtml}
             <div class="message-time">${actionButtons} ${editedHtml} ${hora}</div>
           </div>
-        `
-        : `
-          <div class="message own">
-            ${replyHtml}
-            ${innerContent}
-            ${reactionsHtml}
-            ${pickerHtml}
-            <div class="message-time">${actionButtons} ${editedHtml} ${hora} <span class="message-status ${message.lido ? 'lida' : ''}">${message.lido ? '✓✓' : '✓'}</span></div>
-          </div>
         `;
+      }
+
+      const statusClass = tipoChat === 'grupo'
+        ? (getLeiturasGrupo(message).length ? 'lida' : '')
+        : (message.lido ? 'lida' : '');
+      const statusTitle = tipoChat === 'grupo'
+        ? (resumoLeituraGrupo?.tooltip || '')
+        : (message.lido ? 'Mensagem lida' : 'Mensagem enviada');
+      const statusText = tipoChat === 'grupo'
+        ? (resumoLeituraGrupo?.status || '✓')
+        : (message.lido ? '✓✓' : '✓');
+      const resumoHtml = tipoChat === 'grupo'
+        ? `<div class="message-read-summary" title="${escapeHtml(resumoLeituraGrupo?.tooltip || '')}"><strong>Leitura:</strong> ${escapeHtml(resumoLeituraGrupo?.detalhe || 'Ninguem do grupo leu ainda')}</div>`
+        : '';
+
+      return `
+        <div class="message own">
+          ${replyHtml}
+          ${innerContent}
+          ${reactionsHtml}
+          ${pickerHtml}
+          <div class="message-time">${actionButtons} ${editedHtml} ${hora} <span class="message-status ${statusClass}" title="${escapeHtml(statusTitle)}">${statusText}</span></div>
+          ${resumoHtml}
+        </div>
+      `;
     }
 
     function renderMessages() {

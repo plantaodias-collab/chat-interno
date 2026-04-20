@@ -87,7 +87,7 @@ const typingTimeouts = new Map();
 
 function verificarToken(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ erro: 'Token não fornecido' });
+  if (!token) return res.status(401).json({ erro: 'Token nï¿½o fornecido' });
 
   try {
     const decoded = jwt.verify(token, SECRET_KEY);
@@ -95,7 +95,7 @@ function verificarToken(req, res, next) {
     req.userEmail = decoded.email;
     next();
   } catch (err) {
-    res.status(401).json({ erro: 'Token inválido' });
+    res.status(401).json({ erro: 'Token invï¿½lido' });
   }
 }
 
@@ -122,7 +122,7 @@ const upload = multer({
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname || '').toLowerCase();
     if (!ALLOWED_EXTENSIONS.has(ext)) {
-      return cb(new Error('Tipo de arquivo não permitido'));
+      return cb(new Error('Tipo de arquivo nï¿½o permitido'));
     }
     cb(null, true);
   }
@@ -169,10 +169,22 @@ function enrichMessage(m) {
   const replyTarget = m.reply_to_id
     ? db.mensagens.find((item) => Number(item.id) === Number(m.reply_to_id))
     : null;
+  const leiturasGrupo = Array.isArray(m.leituras_grupo)
+    ? m.leituras_grupo
+        .map((item) => ({
+          usuario_id: Number(item?.usuario_id),
+          lido_em: item?.lido_em || null
+        }))
+        .filter((item) => Number.isFinite(item.usuario_id))
+    : [];
 
   return {
     ...m,
     usuario_nome: db.usuarios.find((u) => u.id === m.usuario_id)?.nome || 'Desconhecido',
+    leituras_grupo: leiturasGrupo.map((item) => ({
+      ...item,
+      usuario_nome: db.usuarios.find((u) => u.id === item.usuario_id)?.nome || 'Desconhecido'
+    })),
     reacoes: typeof m.reacoes === 'object' && m.reacoes ? m.reacoes : {},
     reply_preview: replyTarget ? {
       id: replyTarget.id,
@@ -253,6 +265,52 @@ function getMembrosDoGrupo(grupoId) {
     .map((m) => Number(m.usuario_id));
 }
 
+function ensureGroupReadTracking(message) {
+  if (!message?.grupo_id) return message;
+  if (!Array.isArray(message.leituras_grupo)) {
+    message.leituras_grupo = [];
+  }
+  message.leituras_grupo = message.leituras_grupo
+    .map((item) => ({
+      usuario_id: Number(item?.usuario_id),
+      lido_em: item?.lido_em || null
+    }))
+    .filter((item) => Number.isFinite(item.usuario_id) && Number(item.usuario_id) !== Number(message.usuario_id))
+    .filter((item, index, arr) => arr.findIndex((entry) => entry.usuario_id === item.usuario_id) === index);
+  return message;
+}
+
+function marcarMensagensGrupoComoLidas(grupoId, usuarioId) {
+  let alterou = false;
+  const usuarioIdNumber = Number(usuarioId);
+  const grupoIdNumber = Number(grupoId);
+
+  db.mensagens.forEach((message) => {
+    if (Number(message.grupo_id) !== grupoIdNumber) return;
+    if (Number(message.usuario_id) === usuarioIdNumber) return;
+
+    ensureGroupReadTracking(message);
+
+    const jaLeu = message.leituras_grupo.some((item) => Number(item.usuario_id) === usuarioIdNumber);
+    if (jaLeu) return;
+
+    message.leituras_grupo.push({
+      usuario_id: usuarioIdNumber,
+      lido_em: new Date().toISOString()
+    });
+    alterou = true;
+
+    emitMessageUpdated(message, {
+      acao: 'leitura-grupo',
+      leitorId: usuarioIdNumber,
+      grupoId: grupoIdNumber
+    });
+  });
+
+  if (alterou) db.save();
+  return alterou;
+}
+
 function grupoEhRestrito(grupoId) {
   return getMembrosDoGrupo(grupoId).length > 0;
 }
@@ -289,10 +347,10 @@ app.post('/api/login', async (req, res) => {
 
     const usuario = db.usuarios.find((u) => normalizeEmail(u.email) === email && u.ativo);
 
-    if (!usuario) return res.status(401).json({ erro: 'Usuário ou senha inválidos' });
+    if (!usuario) return res.status(401).json({ erro: 'Usuï¿½rio ou senha invï¿½lidos' });
 
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
-    if (!senhaValida) return res.status(401).json({ erro: 'Usuário ou senha inválidos' });
+    if (!senhaValida) return res.status(401).json({ erro: 'Usuï¿½rio ou senha invï¿½lidos' });
 
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email, admin: usuario.admin },
@@ -401,7 +459,7 @@ app.post('/api/admin/criar-usuario', verificarToken, async (req, res) => {
     }
 
     if (db.usuarios.find((u) => normalizeEmail(u.email) === email)) {
-      return res.status(400).json({ erro: 'Email já cadastrado' });
+      return res.status(400).json({ erro: 'Email jï¿½ cadastrado' });
     }
 
     const senhaHash = await bcrypt.hash(senha, 10);
@@ -418,7 +476,7 @@ app.post('/api/admin/criar-usuario', verificarToken, async (req, res) => {
     db.usuarios.push(novoUsuario);
     db.save();
 
-    res.json({ mensagem: 'Usuário criado com sucesso' });
+    res.json({ mensagem: 'Usuï¿½rio criado com sucesso' });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -449,7 +507,7 @@ app.delete('/api/admin/usuarios/:id', verificarToken, (req, res) => {
       usuario.ativo = 0;
       db.save();
     }
-    res.json({ mensagem: 'Usuário desativado' });
+    res.json({ mensagem: 'Usuï¿½rio desativado' });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -557,6 +615,7 @@ app.get('/api/mensagens/grupo/:grupoId', verificarToken, (req, res) => {
 
     const mensagens = db.mensagens
       .filter((m) => m.grupo_id === grupoId)
+      .map((m) => ensureGroupReadTracking(m))
       .map(enrichMessage);
 
     res.json(mensagens);
@@ -658,9 +717,9 @@ app.put('/api/mensagens/:id', verificarToken, (req, res) => {
   try {
     const messageId = parseInt(req.params.id, 10);
     const mensagem = getMessageById(messageId);
-    if (!mensagem) return res.status(404).json({ erro: 'Mensagem não encontrada' });
+    if (!mensagem) return res.status(404).json({ erro: 'Mensagem nï¿½o encontrada' });
     if (Number(mensagem.usuario_id) !== Number(req.userId)) {
-      return res.status(403).json({ erro: 'Você só pode editar mensagens enviadas por você' });
+      return res.status(403).json({ erro: 'Vocï¿½ sï¿½ pode editar mensagens enviadas por vocï¿½' });
     }
     if (mensagem.tipo && mensagem.tipo !== 'texto') {
       return res.status(400).json({ erro: 'Somente mensagens de texto podem ser editadas' });
@@ -686,12 +745,12 @@ app.post('/api/mensagens/:id/reacoes', verificarToken, (req, res) => {
     const emoji = String(req.body?.emoji || '').trim();
     const mensagem = getMessageById(messageId);
 
-    if (!mensagem) return res.status(404).json({ erro: 'Mensagem não encontrada' });
+    if (!mensagem) return res.status(404).json({ erro: 'Mensagem nï¿½o encontrada' });
     if (!canUserAccessMessage(req.userId, mensagem)) {
       return res.status(403).json({ erro: 'Acesso negado a esta mensagem' });
     }
     if (!emoji || emoji.length > 8) {
-      return res.status(400).json({ erro: 'Emoji inválido' });
+      return res.status(400).json({ erro: 'Emoji invï¿½lido' });
     }
 
     if (!mensagem.reacoes || typeof mensagem.reacoes !== 'object') {
@@ -713,7 +772,7 @@ app.post('/api/mensagens/:id/reacoes', verificarToken, (req, res) => {
 
     db.save();
     emitMessageUpdated(mensagem, { acao: 'reacao' });
-    res.json({ mensagem: 'Reação atualizada com sucesso', message: enrichMessage(mensagem) });
+    res.json({ mensagem: 'Reaï¿½ï¿½o atualizada com sucesso', message: enrichMessage(mensagem) });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -724,8 +783,8 @@ app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => 
     const tipoChat = sanitizeText(req.body?.tipoChat);
     const chatId = Number(req.body?.chatId);
     const replyToId = Number(req.body?.replyToId || 0);
-    if (!req.file) return res.status(400).json({ erro: 'Arquivo não enviado' });
-    if (!tipoChat || !chatId) return res.status(400).json({ erro: 'Destino do arquivo não informado' });
+    if (!req.file) return res.status(400).json({ erro: 'Arquivo nï¿½o enviado' });
+    if (!tipoChat || !chatId) return res.status(400).json({ erro: 'Destino do arquivo nï¿½o informado' });
 
     if (!['grupo', 'privado'].includes(tipoChat)) {
       return res.status(400).json({ erro: 'Tipo de chat invÃ¡lido' });
@@ -758,6 +817,7 @@ app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => 
       arquivo_mimetype: req.file.mimetype,
       arquivo_tamanho: req.file.size,
       lido: 0,
+      leituras_grupo: tipoChat === 'grupo' ? [] : null,
       criado_em: new Date().toISOString()
     };
 
@@ -872,6 +932,7 @@ io.on('connection', (socket) => {
       reply_to_id: Number(data.replyToId || 0) || null,
       reacoes: {},
       lido: 0,
+      leituras_grupo: [],
       criado_em: new Date().toISOString()
     };
 
@@ -933,6 +994,14 @@ io.on('connection', (socket) => {
         destinatarioId: Number(destinatarioId)
       });
     }
+  });
+
+  socket.on('marcar-lidas-grupo', (data) => {
+    const grupoId = Number(data?.grupoId);
+    const usuarioId = Number(data?.usuarioId);
+    if (!grupoId || !usuarioId) return;
+    if (!usuarioPodeAcessarGrupo(usuarioId, grupoId)) return;
+    marcarMensagensGrupoComoLidas(grupoId, usuarioId);
   });
 
   socket.on('disconnect', () => {
