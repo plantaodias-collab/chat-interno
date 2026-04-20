@@ -1892,8 +1892,11 @@
     let activeReplyMessageId = null;
     let editingMessageId = null;
     let currentMessageSearch = '';
+    let titleBlinkInterval = null;
+    let titleBlinkVisible = false;
     const REACTION_OPTIONS = ['👍', '❤️', '😂', '👏', '🔥', '👀'];
     const STORAGE_KEY = 'chatinterno.session';
+    const DEFAULT_TITLE = 'Chat Interno - Equipe';
 
     function getChatKey(tipo, id) {
       return `${tipo}-${id}`;
@@ -2100,12 +2103,68 @@
       return Object.values(unreadState).reduce((acc, cur) => acc + (Number(cur) || 0), 0);
     }
 
+    function getUnreadTitle(total = getTotalUnread()) {
+      return total > 0
+        ? `(${total}) Chat Interno - Equipe`
+        : DEFAULT_TITLE;
+    }
+
+    function stopTitleBlink(resetTitle = true) {
+      if (titleBlinkInterval) {
+        clearInterval(titleBlinkInterval);
+        titleBlinkInterval = null;
+      }
+      titleBlinkVisible = false;
+      if (resetTitle) {
+        document.title = getUnreadTitle();
+      }
+    }
+
+    function startTitleBlink(total) {
+      if (document.visibilityState === 'visible' || total <= 0) {
+        stopTitleBlink(true);
+        return;
+      }
+
+      const unreadTitle = getUnreadTitle(total);
+      const alertTitle = '*** RESPONDER MENSAGENS ***';
+
+      if (titleBlinkInterval) {
+        document.title = titleBlinkVisible ? alertTitle : unreadTitle;
+        return;
+      }
+
+      titleBlinkVisible = false;
+      document.title = unreadTitle;
+      titleBlinkInterval = setInterval(() => {
+        titleBlinkVisible = !titleBlinkVisible;
+        document.title = titleBlinkVisible ? alertTitle : unreadTitle;
+      }, 900);
+    }
+
     function updateBrowserTitle() {
       const total = getTotalUnread();
-      document.title = total > 0
-        ? `(${total}) Chat Interno - Equipe`
-        : 'Chat Interno - Equipe';
+      if (total <= 0) {
+        stopTitleBlink(true);
+        return;
+      }
+
+      if (document.visibilityState === 'visible') {
+        stopTitleBlink(false);
+        document.title = getUnreadTitle(total);
+        return;
+      }
+
+      startTitleBlink(total);
     }
+
+    document.addEventListener('visibilitychange', () => {
+      updateBrowserTitle();
+    });
+
+    window.addEventListener('focus', () => {
+      updateBrowserTitle();
+    });
 
     function updateHeaderIcon(tipo, nome = '') {
       const icon = document.getElementById('chatHeaderAvatar');
