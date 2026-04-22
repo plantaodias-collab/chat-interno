@@ -1493,6 +1493,24 @@
       color: rgba(233,237,239,.5);
     }
 
+    .message-date-divider {
+      display: flex;
+      justify-content: center;
+      margin: 16px 0 12px;
+    }
+
+    .message-date-divider span {
+      background: rgba(15,23,42,.88);
+      border: 1px solid rgba(148,163,184,.14);
+      color: #cbd5e1;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      box-shadow: 0 10px 24px rgba(0,0,0,.14);
+    }
+
     .message-status.lida {
       color: #53bdeb;
     }
@@ -1933,6 +1951,39 @@
         hour: '2-digit',
         minute: '2-digit'
       });
+    }
+
+    function isSameCalendarDay(dateA, dateB) {
+      const a = new Date(dateA);
+      const b = new Date(dateB);
+      if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return false;
+      return a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate();
+    }
+
+    function formatCalendarDayLabel(date = new Date()) {
+      const target = new Date(date);
+      if (Number.isNaN(target.getTime())) return '';
+
+      const now = new Date();
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+
+      if (isSameCalendarDay(target, now)) return 'Hoje';
+      if (isSameCalendarDay(target, yesterday)) return 'Ontem';
+
+      return target.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    }
+
+    function formatMessageTimestamp(date = new Date()) {
+      const target = new Date(date);
+      if (Number.isNaN(target.getTime())) return formatTime();
+      return `${formatCalendarDayLabel(target)} às ${formatTime(target)}`;
     }
 
     function toTimestamp(value) {
@@ -2815,7 +2866,7 @@
 
     function renderMessageRow(message) {
       const ehOutro = Number(message.usuarioId) !== Number(usuarioAtual.id);
-      const hora = formatTime(message.criado_em || new Date());
+      const horarioMensagem = formatMessageTimestamp(message.criado_em || new Date());
       const query = currentMessageSearch;
       const resumoLeituraGrupo = !ehOutro && tipoChat === 'grupo'
         ? getResumoLeituraGrupo(message)
@@ -2871,7 +2922,7 @@
             ${innerContent}
             ${reactionsHtml}
             ${pickerHtml}
-            <div class="message-time">${actionButtons} ${editedHtml} ${hora}</div>
+            <div class="message-time">${actionButtons} ${editedHtml} ${escapeHtml(horarioMensagem)}</div>
           </div>
         `;
       }
@@ -2895,7 +2946,7 @@
           ${innerContent}
           ${reactionsHtml}
           ${pickerHtml}
-          <div class="message-time">${actionButtons} ${editedHtml} ${hora} <span class="message-status ${statusClass}" title="${escapeHtml(statusTitle)}">${statusText}</span></div>
+          <div class="message-time">${actionButtons} ${editedHtml} ${escapeHtml(horarioMensagem)} <span class="message-status ${statusClass}" title="${escapeHtml(statusTitle)}">${statusText}</span></div>
           ${resumoHtml}
         </div>
       `;
@@ -2924,9 +2975,15 @@
         return;
       }
 
+      let lastRenderedDay = '';
       container.innerHTML = filtered.map((message) => {
         const ehOutro = Number(message.usuarioId) !== Number(usuarioAtual.id);
-        return `<div class="message-row ${ehOutro ? '' : 'own'}" data-message-id="${Number(message.id)}" data-usuario-id="${Number(message.usuarioId || 0)}">${renderMessageRow(message)}</div>`;
+        const currentDay = formatCalendarDayLabel(message.criado_em || new Date());
+        const dividerHtml = currentDay && currentDay !== lastRenderedDay
+          ? `<div class="message-date-divider"><span>${escapeHtml(currentDay)}</span></div>`
+          : '';
+        lastRenderedDay = currentDay || lastRenderedDay;
+        return `${dividerHtml}<div class="message-row ${ehOutro ? '' : 'own'}" data-message-id="${Number(message.id)}" data-usuario-id="${Number(message.usuarioId || 0)}">${renderMessageRow(message)}</div>`;
       }).join('');
       container.scrollTop = container.scrollHeight;
     }
