@@ -2356,6 +2356,13 @@
       updateBrowserTitle();
     });
 
+    document.addEventListener('paste', (event) => {
+      const target = event.target;
+      const isComposerPaste = target?.id === 'messageInput' || target?.closest?.('.composer');
+      if (!isComposerPaste) return;
+      lidarColarArquivo(event);
+    });
+
     function updateHeaderIcon(tipo, nome = '') {
       const icon = document.getElementById('chatHeaderAvatar');
       if (tipo === 'grupo') icon.textContent = '#';
@@ -2432,6 +2439,36 @@
 
     function setUploadStatus(texto) {
       document.getElementById('uploadStatus').textContent = texto || '';
+    }
+
+    function getClipboardExtension(mimeType = '') {
+      const normalized = String(mimeType || '').toLowerCase();
+      return {
+        'image/png': '.png',
+        'image/jpeg': '.jpg',
+        'image/jpg': '.jpg',
+        'application/pdf': '.pdf',
+        'application/msword': '.doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+        'application/vnd.ms-excel': '.xls',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
+      }[normalized] || '';
+    }
+
+    function normalizeClipboardFile(file) {
+      if (!file) return null;
+      if (file.name) return file;
+
+      const extension = getClipboardExtension(file.type);
+      const baseName = file.type && file.type.startsWith('image/')
+        ? 'imagem-colada'
+        : 'arquivo-colado';
+
+      try {
+        return new File([file], `${baseName}${extension}`, { type: file.type || 'application/octet-stream' });
+      } catch (_err) {
+        return file;
+      }
     }
 
     function formatBoardTimestamp(value) {
@@ -3411,13 +3448,13 @@
       atualizarBarraContexto();
     }
 
-    async function enviarArquivo() {
+    async function enviarArquivoSelecionado(arquivo, options = {}) {
       const input = document.getElementById('fileInput');
-      const arquivo = input.files[0];
+      const clearInput = options.clearInput !== false;
       if (!arquivo) return;
       if (!tipoChat || !chatIdAtual) {
         mostrarNotificacao('Selecione um grupo ou contato antes de enviar arquivo', 'error');
-        input.value = '';
+        if (clearInput) input.value = '';
         return;
       }
 
@@ -3465,8 +3502,27 @@
         setUploadStatus('');
         mostrarNotificacao(err.message, 'error');
       } finally {
-        input.value = '';
+        if (clearInput) input.value = '';
       }
+    }
+
+    async function enviarArquivo() {
+      const input = document.getElementById('fileInput');
+      const arquivo = input.files[0];
+      await enviarArquivoSelecionado(arquivo, { clearInput: true });
+    }
+
+    async function lidarColarArquivo(event) {
+      const items = Array.from(event.clipboardData?.items || []);
+      const files = items
+        .filter((item) => item.kind === 'file')
+        .map((item) => normalizeClipboardFile(item.getAsFile()))
+        .filter(Boolean);
+
+      if (!files.length) return;
+
+      event.preventDefault();
+      await enviarArquivoSelecionado(files[0], { clearInput: false });
     }
 
     function enviarSeEnter(event) {
