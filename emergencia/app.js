@@ -5,7 +5,7 @@ const initialState = {
   nextNumber: 1,
   queue: [],
   currentCall: null,
-  history: [],
+  calledTickets: [],
   updatedAt: Date.now(),
 };
 
@@ -20,7 +20,11 @@ function loadState() {
       ...saved,
       nextNumber: Number(saved.nextNumber) || 1,
       queue: Array.isArray(saved.queue) ? saved.queue.map(normalizeTicket) : [],
-      history: Array.isArray(saved.history) ? saved.history.map(normalizeTicket) : [],
+      calledTickets: Array.isArray(saved.calledTickets)
+        ? saved.calledTickets.map(normalizeTicket)
+        : Array.isArray(saved.history)
+          ? saved.history.map(normalizeTicket)
+          : [],
     };
   } catch {
     return structuredClone(initialState);
@@ -94,8 +98,11 @@ function callNext(counter) {
     calledAt: Date.now(),
   };
 
-  state.history.unshift(state.currentCall);
-  state.history = state.history.slice(0, 8);
+  state.calledTickets.unshift({
+    ...state.currentCall,
+    statusLabel: "Ja chamada",
+  });
+  state.calledTickets = state.calledTickets.slice(0, 20);
   saveState();
   render();
 }
@@ -112,8 +119,11 @@ function repeatCall() {
     repeated: true,
   };
 
-  state.history.unshift(state.currentCall);
-  state.history = state.history.slice(0, 8);
+  state.calledTickets.unshift({
+    ...state.currentCall,
+    statusLabel: "Rechamada",
+  });
+  state.calledTickets = state.calledTickets.slice(0, 20);
   saveState();
   render();
 }
@@ -149,6 +159,7 @@ function historyMarkup(items, emptyMessage) {
       (item) => `
         <div class="history-item">
           <strong>${item.code}</strong>
+          <span class="history-status">${item.statusLabel || "Ja chamada"}</span>
           <span>${item.counter}</span>
           <span>${formatTime(item.calledAt)}</span>
         </div>
@@ -162,9 +173,9 @@ function renderAdmin() {
   const currentCounter = document.getElementById("current-counter");
   const queueTotal = document.getElementById("queue-total");
   const singleQueueEl = document.getElementById("single-queue");
-  const historyList = document.getElementById("history-list");
+  const calledList = document.getElementById("called-list");
 
-  if (!currentTicket || !currentCounter || !queueTotal || !singleQueueEl || !historyList) {
+  if (!currentTicket || !currentCounter || !queueTotal || !singleQueueEl || !calledList) {
     return;
   }
 
@@ -174,16 +185,16 @@ function renderAdmin() {
     : "Aguardando atendimento.";
   queueTotal.textContent = String(state.queue.length);
   singleQueueEl.innerHTML = queueMarkup(state.queue, "Nenhuma senha aguardando.");
-  historyList.innerHTML = historyMarkup(state.history, "Nenhuma senha chamada ate agora.");
+  calledList.innerHTML = historyMarkup(state.calledTickets, "Nenhuma senha chamada ate agora.");
 }
 
 function renderPublic() {
   const publicTicket = document.getElementById("public-ticket");
   const publicCounter = document.getElementById("public-counter");
-  const publicHistory = document.getElementById("public-history");
+  const publicCalledList = document.getElementById("public-called-list");
   const publicQueue = document.getElementById("public-queue");
 
-  if (!publicTicket || !publicCounter || !publicHistory || !publicQueue) {
+  if (!publicTicket || !publicCounter || !publicCalledList || !publicQueue) {
     return;
   }
 
@@ -191,7 +202,7 @@ function renderPublic() {
   publicCounter.textContent = state.currentCall
     ? `${state.currentCall.counter} - ${formatTime(state.currentCall.calledAt)}`
     : "O proximo atendimento aparecera aqui.";
-  publicHistory.innerHTML = historyMarkup(state.history, "Sem chamadas ainda.");
+  publicCalledList.innerHTML = historyMarkup(state.calledTickets, "Sem chamadas ainda.");
   publicQueue.innerHTML = queueMarkup(state.queue, "Nenhuma");
 
   announceCall();

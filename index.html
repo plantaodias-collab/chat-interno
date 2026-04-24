@@ -444,6 +444,16 @@
       flex: 1;
     }
 
+    .contact-ticket-note {
+      margin-top: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #93c5fd;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .notification-badge {
       min-width: 22px;
       height: 22px;
@@ -1670,7 +1680,7 @@
 <body>
   <div id="loginContainer" class="login-container">
     <div class="login-box">
-      <div class="login-brand"><span>ðŸ’¬</span><span>Chat Interno</span></div>
+      <div class="login-brand"><span>&#128172;</span><span>Chat Interno</span></div>
       <div class="login-subtitle">Mensagens em tempo real entre a equipe</div>
 
       <div class="form-group">
@@ -1704,7 +1714,7 @@
           <div class="user-email" id="currentUserEmail"></div>
         </div>
 
-        <button class="logout-btn" onclick="fazerLogout()" title="Sair">âŽ‹</button>
+        <button class="logout-btn" onclick="fazerLogout()" title="Sair">Sair</button>
       </div>
 
       <section class="sidebar-section">
@@ -1724,7 +1734,7 @@
       </section>
 
       <div class="admin-section hidden" id="adminSection">
-        <button class="admin-menu-item" onclick="abrirPainelAdmin()">âš™ï¸ Painel Admin</button>
+        <button class="admin-menu-item" onclick="abrirPainelAdmin()">&#9881; Painel Admin</button>
         <button class="admin-menu-item" onclick="abrirChamadorSenha()">Chamador de Senha</button>
         <button class="admin-menu-item" onclick="abrirPainelSenhaPublico()">Painel Publico de Senhas</button>
       </div>
@@ -1733,7 +1743,7 @@
     <main class="main-content">
       <div class="header">
         <div class="header-main">
-          <div class="avatar" id="chatHeaderAvatar">ðŸ’¬</div>
+          <div class="avatar" id="chatHeaderAvatar">&#128172;</div>
           <div class="header-title-wrap">
             <h2 id="headerTitle">Bem-vindo ao Chat do Cartorio Dias de Castro</h2>
             <div class="header-subtitle" id="headerSubtitle">Selecione um grupo ou contato para iniciar</div>
@@ -1744,15 +1754,15 @@
 
         <div class="header-actions">
           <input class="header-search" id="messageSearchInput" type="text" placeholder="Buscar na conversa" oninput="atualizarBuscaMensagens(this.value)" />
-          <button class="header-btn hidden" id="ajustesBtn" onclick="abrirAjustes()">âš™ï¸ Ajustes</button>
+          <button class="header-btn hidden" id="ajustesBtn" onclick="abrirAjustes()">&#9881; Ajustes</button>
         </div>
       </div>
 
       <div class="messages-container" id="messagesContainer">
         <div class="empty-state">
-          <span class="emoji">ðŸ’¬</span>
-          <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Seu chat estÃ¡ pronto</div>
-          <div>Agora ele pode exibir online, digitando, mensagens lidas, nÃ£o lidas e anexos.</div>
+          <span class="emoji">&#128172;</span>
+          <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Seu chat está pronto</div>
+          <div>Agora ele pode exibir online, digitando, mensagens lidas, não lidas e anexos.</div>
         </div>
       </div>
 
@@ -1762,30 +1772,30 @@
             <div class="message-context-label" id="messageContextLabel"></div>
             <div class="message-context-text" id="messageContextText"></div>
           </div>
-          <button class="message-context-close" onclick="limparContextoMensagem()" title="Fechar">âœ•</button>
+          <button class="message-context-close" onclick="limparContextoMensagem()" title="Fechar">&times;</button>
         </div>
         <div class="composer">
           <input type="file" id="fileInput" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" onchange="enviarArquivo()" />
-          <button class="emoji-btn" id="emojiToggleBtn" onclick="alternarEmojis(event)" title="Emojis">ðŸ˜Š</button>
+          <button class="emoji-btn" id="emojiToggleBtn" onclick="alternarEmojis(event)" title="Emojis">&#128522;</button>
           <div class="emoji-picker hidden" id="emojiPicker">
-            <button type="button" class="emoji-option" onclick="inserirEmoji('ðŸ˜€')">ðŸ˜€</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('ðŸ˜‚')">ðŸ˜‚</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('ðŸ¥°')">ðŸ¥°</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('ðŸ˜')">ðŸ˜</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('ðŸ˜‰')">ðŸ˜‰</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('ðŸ™Œ')">ðŸ™Œ</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('ðŸ‘')">ðŸ‘</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('âœ…')">âœ…</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('ðŸ“¢')">ðŸ“¢</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('ðŸ‘€')">ðŸ‘€</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('ðŸ¤')">ðŸ¤</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('ðŸ‘')">ðŸ‘</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('ðŸ‘Ž')">ðŸ‘Ž</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('ðŸ”¥')">ðŸ”¥</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('â¤ï¸')">â¤ï¸</button>
-            <button type="button" class="emoji-option" onclick="inserirEmoji('ðŸŽ‰')">ðŸŽ‰</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F600}')">&#128512;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F602}')">&#128514;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F970}')">&#129392;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F60D}')">&#128525;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F609}')">&#128521;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F64C}')">&#128588;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F44F}')">&#128079;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u2705')">&#9989;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F4E2}')">&#128226;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F440}')">&#128064;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F91D}')">&#129309;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F44D}')">&#128077;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F44E}')">&#128078;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F525}')">&#128293;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u2764\uFE0F')">&#10084;&#65039;</button>
+            <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F389}')">&#127881;</button>
           </div>
-          <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Anexar">ðŸ“Ž</button>
+          <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Anexar">&#128206;</button>
           <input
             type="text"
             id="messageInput"
@@ -1793,7 +1803,7 @@
             onkeypress="enviarSeEnter(event)"
             oninput="emitirDigitando()"
           />
-          <button class="send-btn" onclick="enviarMensagem()" title="Enviar">âž¤</button>
+          <button class="send-btn" onclick="enviarMensagem()" title="Enviar">Enviar</button>
         </div>
         <div class="upload-status" id="uploadStatus"></div>
       </div>
@@ -1802,24 +1812,24 @@
 
   <div id="adminModal" class="modal">
     <div class="modal-content">
-      <h3 style="margin-bottom:18px;">Painel de AdministraÃ§Ã£o</h3>
+      <h3 style="margin-bottom:18px;">Painel de Administração</h3>
 
       <div class="modal-grid">
         <section>
-          <h4 style="margin-bottom:14px;">Cadastrar novo usuÃ¡rio</h4>
+          <h4 style="margin-bottom:14px;">Cadastrar novo usuário</h4>
           <div class="form-group">
             <label for="adminNovonome">Nome</label>
-            <input class="field" type="text" id="adminNovonome" placeholder="Nome do usuÃ¡rio" />
+            <input class="field" type="text" id="adminNovonome" placeholder="Nome do usuário" />
           </div>
           <div class="form-group">
             <label for="adminNovoEmail">E-mail</label>
             <input class="field" type="email" id="adminNovoEmail" placeholder="email@exemplo.com" />
           </div>
-          <button class="btn btn-primary" onclick="cadastrarNovoUsuario()">Cadastrar usuÃ¡rio</button>
+          <button class="btn btn-primary" onclick="cadastrarNovoUsuario()">Cadastrar usuário</button>
         </section>
 
         <section style="border-top:1px solid #e5e7eb; padding-top:22px;">
-          <h4>UsuÃ¡rios cadastrados</h4>
+          <h4>Usuários cadastrados</h4>
           <table class="table">
             <thead>
               <tr>
@@ -1827,7 +1837,7 @@
                 <th>E-mail</th>
                 <th>Admin</th>
                 <th>Status</th>
-                <th>AÃ§Ã£o</th>
+                <th>Ação</th>
               </tr>
             </thead>
             <tbody id="adminUsuariosTable"></tbody>
@@ -1841,13 +1851,13 @@
             <input class="field" type="text" id="adminNovoGrupoNome" placeholder="Nome do grupo" />
           </div>
           <div class="form-group">
-            <label for="adminNovoGrupoDesc">DescriÃ§Ã£o</label>
-            <input class="field" type="text" id="adminNovoGrupoDesc" placeholder="DescriÃ§Ã£o do grupo" />
+            <label for="adminNovoGrupoDesc">Descrição</label>
+            <input class="field" type="text" id="adminNovoGrupoDesc" placeholder="Descrição do grupo" />
           </div>
           <div class="form-group">
             <label>Membros do grupo</label>
             <div id="adminGrupoMembros" style="border:1px solid #dbe1ea; border-radius:14px; padding:12px; max-height:220px; overflow:auto;"></div>
-            <div style="font-size:12px; color:#64748b; margin-top:6px;">Somente os membros selecionados verÃ£o este grupo e suas conversas.</div>
+            <div style="font-size:12px; color:#64748b; margin-top:6px;">Somente os membros selecionados verão este grupo e suas conversas.</div>
           </div>
           <button class="btn btn-primary" onclick="criarNovoGrupo()">Criar grupo</button>
         </section>
@@ -1871,6 +1881,11 @@
       <div class="form-group">
         <label for="ajustesEmail">E-mail</label>
         <input class="field" type="email" id="ajustesEmail" placeholder="seu@email.com" />
+      </div>
+
+      <div class="form-group">
+        <label for="ajustesSenhaPainel">Senha em atendimento ou atendida</label>
+        <input class="field" type="text" id="ajustesSenhaPainel" maxlength="60" placeholder="Ex.: S023 em atendimento, S022 atendida" />
       </div>
 
       <div class="form-group">
@@ -1915,7 +1930,7 @@
     let currentMessageSearch = '';
     let titleBlinkInterval = null;
     let titleBlinkVisible = false;
-    const REACTION_OPTIONS = ['ðŸ‘', 'â¤ï¸', 'ðŸ˜‚', 'ðŸ‘', 'ðŸ”¥', 'ðŸ‘€'];
+    const REACTION_OPTIONS = ['\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F44F}', '\u{1F525}', '\u{1F440}'];
     const STORAGE_KEY = 'chatinterno.session';
     const DEFAULT_TITLE = 'Chat Interno - Equipe';
     const DEFAULT_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Cpath d='M18 22c0-4.4 3.6-8 8-8h12c4.4 0 8 3.6 8 8v9c0 4.4-3.6 8-8 8H31l-8 7v-7h-1c-4.4 0-8-3.6-8-8V22Z' fill='white'/%3E%3Ccircle cx='27' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='33' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='39' cy='27' r='3' fill='%232563eb'/%3E%3C/svg%3E";
@@ -1985,7 +2000,7 @@
     function formatMessageTimestamp(date = new Date()) {
       const target = new Date(date);
       if (Number.isNaN(target.getTime())) return formatTime();
-      return `${formatCalendarDayLabel(target)} Ã s ${formatTime(target)}`;
+      return `${formatCalendarDayLabel(target)} às ${formatTime(target)}`;
     }
 
     function toTimestamp(value) {
@@ -2033,11 +2048,11 @@
       ));
     }
 
-    function getResumoLeituraGrupo(message) {
+        function getResumoLeituraGrupo(message) {
       const leituras = getLeiturasGrupo(message);
       if (!leituras.length) {
         return {
-          status: 'âœ“',
+          status: '\u2713',
           detalhe: 'Ninguem do grupo leu ainda',
           tooltip: 'Ninguem do grupo leu ainda'
         };
@@ -2052,7 +2067,7 @@
         : `Lido por ${nomes[0]}, ${nomes[1]} e mais ${nomes.length - 2}`;
 
       return {
-        status: 'âœ“âœ“',
+        status: '\u2713\u2713',
         detalhe,
         tooltip: `Lido por: ${nomes.join(', ')}`
       };
@@ -2240,7 +2255,7 @@
       const icon = document.getElementById('chatHeaderAvatar');
       if (tipo === 'grupo') icon.textContent = '#';
       else if (tipo === 'privado') icon.textContent = initials(nome);
-      else icon.textContent = 'ðŸ’¬';
+      else icon.textContent = '\\u{1F4AC}';
     }
 
     function updateHeaderStatus() {
@@ -2265,7 +2280,7 @@
       const el = document.getElementById('typingIndicator');
       const key = `${tipoChat}-${chatIdAtual}`;
       const nome = typingUsers.get(key);
-      el.textContent = nome ? `${nome} estÃ¡ digitando...` : '';
+      el.textContent = nome ? `${nome} está digitando...` : '';
     }
 
     function mostrarErro(mensagem) {
@@ -2317,6 +2332,7 @@
     function preencherFormularioAjustes() {
       document.getElementById('ajustesNome').value = usuarioAtual?.nome || '';
       document.getElementById('ajustesEmail').value = usuarioAtual?.email || '';
+      document.getElementById('ajustesSenhaPainel').value = usuarioAtual?.senha_painel || '';
       document.getElementById('ajustesSenhaAtual').value = '';
       document.getElementById('ajustesNovaSenha').value = '';
     }
@@ -2329,7 +2345,7 @@
       container.innerHTML = '';
 
       if (!ativos.length) {
-        container.textContent = 'Nenhum usuÃ¡rio disponÃ­vel.';
+        container.textContent = 'Nenhum usuário disponível.';
         return;
       }
 
@@ -2549,7 +2565,7 @@
         conectarSocket();
         await carregarDadosIniciais();
       } catch (err) {
-        mostrarErro('Erro na conexÃ£o: ' + err.message);
+        mostrarErro('Erro na conexão: ' + err.message);
       }
     }
 
@@ -2776,7 +2792,11 @@
       const criarItemContato = (usuario, online) => {
         const key = getChatKey('privado', usuario.id);
         const unread = unreadState[key] || 0;
+        const senhaPainel = String(usuario.senha_painel || '').trim();
         const preview = lastPreviewState[key] || (online ? 'Online agora' : usuario.email);
+        const atendimentoHtml = senhaPainel
+          ? `<div class="contact-ticket-note">Senha: ${escapeHtml(senhaPainel)}</div>`
+          : '';
 
         const item = document.createElement('div');
         item.className = `chat-item ${tipoChat === 'privado' && Number(chatIdAtual) === Number(usuario.id) ? 'active' : ''} ${unread > 0 ? 'unread' : ''}`;
@@ -2794,6 +2814,7 @@
               <div class="chat-preview">${escapeHtml(preview)}</div>
               ${unread > 0 ? `<span class="notification-badge">${unread > 99 ? '99+' : unread}</span>` : ''}
             </div>
+            ${atendimentoHtml}
           </div>
         `;
         item.addEventListener('click', () => carregarChat('privado', usuario.id, usuario.nome));
@@ -2891,7 +2912,7 @@
       const editedHtml = message.editado_em ? `<span class="message-edited">(editada)</span>` : '';
       const innerContent = message.tipo === 'arquivo'
         ? `<a class="file-card" href="${escapeHtml(message.arquivo_url)}" target="_blank" rel="noopener noreferrer">
-             <strong>ðŸ“Ž ${highlightText(message.arquivo_nome_original, query)}</strong>
+             <strong>&#128206; ${highlightText(message.arquivo_nome_original, query)}</strong>
              <small>${escapeHtml(formatFileSize(message.arquivo_tamanho))}</small>
            </a>`
         : `<div class="message-text">${highlightText(message.conteudo, query)}</div>`;
@@ -2909,10 +2930,10 @@
 
       const actionButtons = `
         <span class="message-actions">
-          <button class="message-action-btn" onclick="responderMensagem(${Number(message.id)})" title="Responder">â†©</button>
-          ${!ehOutro && message.tipo === 'texto' ? `<button class="message-action-btn" onclick="prepararEdicaoMensagem(${Number(message.id)})" title="Editar">âœï¸</button>` : ''}
-          <button class="message-action-btn" onclick="alternarReacaoRapida(${Number(message.id)})" title="Reagir">ðŸ˜Š</button>
-          ${!ehOutro ? `<button class="message-delete-btn" onclick="apagarMensagem(${Number(message.id)})" title="Apagar mensagem">ðŸ—‘ï¸</button>` : ''}
+          <button class="message-action-btn" onclick="responderMensagem(${Number(message.id)})" title="Responder">Resp</button>
+          ${!ehOutro && message.tipo === 'texto' ? `<button class="message-action-btn" onclick="prepararEdicaoMensagem(${Number(message.id)})" title="Editar">Edit</button>` : ''}
+          <button class="message-action-btn" onclick="alternarReacaoRapida(${Number(message.id)})" title="Reagir">React</button>
+          ${!ehOutro ? `<button class="message-delete-btn" onclick="apagarMensagem(${Number(message.id)})" title="Apagar mensagem">Apagar</button>` : ''}
         </span>
       `;
 
@@ -2943,8 +2964,8 @@
         ? (resumoLeituraGrupo?.tooltip || '')
         : (message.lido ? 'Mensagem lida' : 'Mensagem enviada');
       const statusText = tipoChat === 'grupo'
-        ? (resumoLeituraGrupo?.status || 'âœ“')
-        : (message.lido ? 'âœ“âœ“' : 'âœ“');
+        ? (resumoLeituraGrupo?.status || '\u2713')
+        : (message.lido ? '\u2713\u2713' : '\u2713');
       const resumoHtml = tipoChat === 'grupo'
         ? `<div class="message-read-summary" title="${escapeHtml(resumoLeituraGrupo?.tooltip || '')}"><strong>Leitura:</strong> ${escapeHtml(resumoLeituraGrupo?.detalhe || 'Ninguem do grupo leu ainda')}</div>`
         : '';
@@ -2969,14 +2990,14 @@
         container.innerHTML = currentMessageSearch
           ? `
             <div class="empty-state">
-              <span class="emoji">ðŸ”Ž</span>
+              <span class="emoji">&#128269;</span>
               <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Nenhum resultado</div>
               <div>Tente buscar por outro termo nesta conversa.</div>
             </div>
           `
           : `
             <div class="empty-state">
-              <span class="emoji">ðŸ—‚ï¸</span>
+              <span class="emoji">&#128172;</span>
               <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Nenhuma mensagem ainda</div>
               <div>Envie a primeira mensagem desta conversa.</div>
             </div>
@@ -3093,7 +3114,7 @@
 
         const data = await response.json();
         if (!response.ok) {
-          mostrarNotificacao(data.erro || 'Erro ao reagir Ã  mensagem', 'error');
+          mostrarNotificacao(data.erro || 'Erro ao reagir à mensagem', 'error');
           return;
         }
 
@@ -3275,7 +3296,7 @@
     async function carregarUsuariosAdmin() {
       try {
         const response = await fetch('/api/admin/usuarios', { headers: authHeaders() });
-        if (!response.ok) throw new Error('Falha ao carregar usuÃ¡rios');
+        if (!response.ok) throw new Error('Falha ao carregar usuários');
         const usuarios = await response.json();
         adminUsuariosCache = Array.isArray(usuarios) ? usuarios : [];
         renderGrupoMembrosSelector();
@@ -3288,7 +3309,7 @@
           tr.innerHTML = `
             <td>${escapeHtml(usuario.nome)}</td>
             <td>${escapeHtml(usuario.email)}</td>
-            <td>${usuario.admin ? 'Sim' : 'NÃ£o'}</td>
+            <td>${usuario.admin ? 'Sim' : 'Não'}</td>
             <td>${usuario.ativo ? (online ? 'Ativo / Online' : 'Ativo') : 'Inativo'}</td>
             <td class="table-actions">
               <button class="mini-btn btn-secondary" onclick="redefinirSenhaUsuario(${usuario.id}, '${escapeHtml(usuario.nome).replace(/'/g, "\\'")}')">Senha</button>
@@ -3299,7 +3320,7 @@
         });
       } catch (err) {
         console.error(err);
-        mostrarNotificacao('Erro ao carregar usuÃ¡rios', 'error');
+        mostrarNotificacao('Erro ao carregar usuários', 'error');
       }
     }
 
@@ -3316,6 +3337,7 @@
     async function salvarAjustesConta() {
       const nome = document.getElementById('ajustesNome').value.trim();
       const email = document.getElementById('ajustesEmail').value.trim();
+      const senhaPainel = document.getElementById('ajustesSenhaPainel').value.trim();
       const senhaAtual = document.getElementById('ajustesSenhaAtual').value;
       const novaSenha = document.getElementById('ajustesNovaSenha').value;
 
@@ -3328,7 +3350,7 @@
         const response = await fetch('/api/me', {
           method: 'PUT',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ nome, email, senhaAtual, novaSenha })
+          body: JSON.stringify({ nome, email, senhaPainel, senhaAtual, novaSenha })
         });
 
         const data = await response.json();
@@ -3372,7 +3394,7 @@
           return;
         }
 
-        mostrarNotificacao('UsuÃ¡rio cadastrado com sucesso. Senha padrÃ£o: Senha123!', 'success');
+        mostrarNotificacao('Usuário cadastrado com sucesso. Senha padrão: Senha123!', 'success');
         document.getElementById('adminNovonome').value = '';
         document.getElementById('adminNovoEmail').value = '';
         carregarUsuariosAdmin();
@@ -3383,7 +3405,7 @@
     }
 
     async function desativarUsuario(usuarioId) {
-      if (!confirm('Desativar este usuÃ¡rio?')) return;
+      if (!confirm('Desativar este usuário?')) return;
 
       try {
         const response = await fetch(`/api/admin/usuarios/${usuarioId}`, {
@@ -3392,7 +3414,7 @@
         });
 
         if (response.ok) {
-          mostrarNotificacao('UsuÃ¡rio desativado com sucesso', 'success');
+          mostrarNotificacao('Usuário desativado com sucesso', 'success');
           carregarUsuariosAdmin();
           carregarContatos();
         }
@@ -3525,6 +3547,10 @@
   </script>
 </body>
 </html>
+
+
+
+
 
 
 

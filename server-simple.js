@@ -134,7 +134,8 @@ function getUsuarioPublico(usuario) {
     email: usuario.email,
     nome: usuario.nome,
     admin: usuario.admin,
-    ativo: usuario.ativo
+    ativo: usuario.ativo,
+    senha_painel: String(usuario.senha_painel || '')
   };
 }
 
@@ -364,7 +365,8 @@ app.post('/api/login', async (req, res) => {
         id: usuario.id,
         email: usuario.email,
         nome: usuario.nome,
-        admin: usuario.admin
+        admin: usuario.admin,
+        senha_painel: String(usuario.senha_painel || '')
       }
     });
   } catch (err) {
@@ -389,6 +391,7 @@ app.put('/api/me', verificarToken, async (req, res) => {
 
     const nome = sanitizeText(req.body?.nome);
     const email = normalizeEmail(req.body?.email);
+    const senhaPainel = sanitizeText(req.body?.senhaPainel);
     const senhaAtual = String(req.body?.senhaAtual || '');
     const novaSenha = String(req.body?.novaSenha || '').trim();
 
@@ -424,6 +427,7 @@ app.put('/api/me', verificarToken, async (req, res) => {
 
     usuario.nome = nome;
     usuario.email = email;
+    usuario.senha_painel = senhaPainel;
     db.save();
 
     const token = jwt.sign(
@@ -597,7 +601,8 @@ app.get('/api/usuarios', verificarToken, (req, res) => {
         id: u.id,
         nome: u.nome,
         email: u.email,
-        online: isUsuarioOnline(u.id)
+        online: isUsuarioOnline(u.id),
+        senha_painel: String(u.senha_painel || '')
       }));
 
     res.json(usuarios);
