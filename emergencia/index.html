@@ -1,0 +1,107 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chamador de Senha</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-shell">
+  <main class="layout">
+    <section class="hero-card">
+      <div>
+        <p class="eyebrow">Modo operacional</p>
+        <h1>Chamador de senha emergencial</h1>
+        <p class="hero-copy">
+          Emita senhas, chame o proximo cliente e mantenha o painel publico sincronizado
+          em outra aba ou monitor.
+        </p>
+      </div>
+      <div class="hero-actions">
+        <a class="secondary-button" href="painel.html" target="_blank" rel="noreferrer">Abrir painel publico</a>
+        <button class="danger-button" id="reset-system" type="button">Zerar atendimento</button>
+      </div>
+    </section>
+
+    <section class="grid-two">
+      <article class="card">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Emissao</p>
+            <h2>Gerar senha</h2>
+          </div>
+          <div class="badge-row">
+            <span class="badge badge-normal">Fila sequencial</span>
+          </div>
+        </div>
+
+        <div class="issue-actions">
+          <button class="action-button normal" id="issue-next" type="button">Gerar nova senha</button>
+        </div>
+
+        <div class="ticket-preview">
+          <p class="label">Ultima senha emitida</p>
+          <strong id="last-issued" class="ticket-code">Nenhuma</strong>
+          <p id="last-issued-meta" class="muted">As proximas senhas aparecerao aqui.</p>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Atendimento</p>
+            <h2>Chamar proximo</h2>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>Guiche</span>
+          <select id="counter-select">
+            <option value="Guiche 1">Guiche 1</option>
+            <option value="Guiche 2">Guiche 2</option>
+            <option value="Guiche 3">Guiche 3</option>
+            <option value="Caixa">Caixa</option>
+            <option value="Triagem">Triagem</option>
+          </select>
+        </label>
+
+        <div class="call-actions">
+          <button class="primary-button" id="call-next" type="button">Chamar proxima senha</button>
+          <button class="secondary-button" id="repeat-call" type="button">Repetir ultima chamada</button>
+        </div>
+
+        <div class="current-call">
+          <p class="label">Chamada atual</p>
+          <strong id="current-ticket" class="ticket-code live">Nenhuma</strong>
+          <p id="current-counter" class="muted">Aguardando atendimento.</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid-two">
+      <article class="card">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Fila</p>
+            <h2>Senhas aguardando</h2>
+          </div>
+          <strong id="queue-total" class="counter-pill">0</strong>
+        </div>
+        <div id="single-queue" class="queue-list empty-state">Nenhuma senha aguardando.</div>
+      </article>
+
+      <article class="card">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Historico</p>
+            <h2>Ultimas chamadas</h2>
+          </div>
+        </div>
+        <div id="history-list" class="history-list empty-state">Nenhuma senha chamada ate agora.</div>
+      </article>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

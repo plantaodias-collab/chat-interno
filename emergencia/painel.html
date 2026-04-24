@@ -1,0 +1,32 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel de Senhas</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="public-shell">
+  <main class="public-layout">
+    <section class="public-main">
+      <p class="eyebrow">Chamada atual</p>
+      <h1 id="public-ticket" class="public-ticket">Aguardando</h1>
+      <p id="public-counter" class="public-counter">O proximo atendimento aparecera aqui.</p>
+    </section>
+
+    <section class="public-side">
+      <article class="public-card">
+        <p class="eyebrow">Ultimas chamadas</p>
+        <div id="public-history" class="public-history empty-state">Sem chamadas ainda.</div>
+      </article>
+
+      <article class="public-card">
+        <p class="eyebrow">Fila atual</p>
+        <div id="public-queue" class="queue-list compact empty-state">Nenhuma</div>
+      </article>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
