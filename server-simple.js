@@ -27,6 +27,7 @@ const DATA_DIR = path.join(STORAGE_ROOT, 'data');
 const UPLOAD_DIR = path.join(STORAGE_ROOT, 'uploads');
 const BACKUP_DIR = path.join(STORAGE_ROOT, 'backups');
 const APP_TIMEZONE = 'America/Sao_Paulo';
+const AUTOMATIC_BACKUP_RETENTION = 3;
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png']);
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'painel-senhas.json', 'backup-agendamento.json'];
@@ -36,7 +37,7 @@ function getDefaultBackupSchedule() {
     ativo: false,
     horario: '18:00',
     timezone: APP_TIMEZONE,
-    manterQuantidade: 14,
+    manterQuantidade: AUTOMATIC_BACKUP_RETENTION,
     ultimaExecucaoChave: '',
     ultimaExecucaoEm: null
   };
@@ -216,7 +217,7 @@ function normalizeBackupScheduleConfig(input = {}, current = getDefaultBackupSch
     ativo: Boolean(input.ativo ?? currentSchedule.ativo),
     horario: parsedTime ? `${parsedTime.hour}:${parsedTime.minute}` : currentSchedule.horario,
     timezone: APP_TIMEZONE,
-    manterQuantidade: Number.isFinite(manterQuantidade) ? Math.min(Math.max(manterQuantidade, 1), 60) : currentSchedule.manterQuantidade
+    manterQuantidade: AUTOMATIC_BACKUP_RETENTION
   };
 }
 
@@ -328,7 +329,7 @@ function createBackup({ nome = '', criadoPor = '', tipo = 'manual' } = {}) {
 }
 
 function pruneAutomaticBackups(manterQuantidade) {
-  const limite = Number.isFinite(Number(manterQuantidade)) ? Number(manterQuantidade) : 14;
+  const limite = Number.isFinite(Number(manterQuantidade)) ? Number(manterQuantidade) : AUTOMATIC_BACKUP_RETENTION;
   const automaticos = listBackups().filter((backup) => backup.tipo === 'automatico');
   automaticos.slice(limite).forEach((backup) => {
     const backupPath = resolveBackupPath(backup.id);
@@ -825,6 +826,7 @@ app.put('/api/admin/backups/agendamento', verificarToken, (req, res) => {
 
     db.backup_agendamento = normalizeBackupScheduleConfig(req.body, db.backup_agendamento);
     db.saveFile('backup-agendamento.json', db.backup_agendamento);
+    pruneAutomaticBackups(AUTOMATIC_BACKUP_RETENTION);
 
     io.emit('backup-agendamento-atualizado', {
       configuradoPor: usuarioAdmin.nome,
@@ -1409,6 +1411,8 @@ setInterval(() => {
     console.error('Erro ao executar backup automatico:', err);
   }
 }, 30000);
+
+pruneAutomaticBackups(AUTOMATIC_BACKUP_RETENTION);
 
 
 
