@@ -47,6 +47,12 @@ class SimpleDB {
     this.grupos = this.loadFile('grupos.json', []);
     this.membros_grupo = this.loadFile('membros.json', []);
     this.mensagens = this.loadFile('mensagens.json', []);
+    this.painel_senhas = this.loadFile('painel-senhas.json', {
+      senhaAtual: '',
+      observacao: '',
+      atualizadoPor: '',
+      atualizadoEm: null
+    });
   }
 
   loadFile(name, defaultValue) {
@@ -77,6 +83,7 @@ class SimpleDB {
     this.saveFile('grupos.json', this.grupos);
     this.saveFile('membros.json', this.membros_grupo);
     this.saveFile('mensagens.json', this.mensagens);
+    this.saveFile('painel-senhas.json', this.painel_senhas);
   }
 }
 
@@ -606,6 +613,42 @@ app.get('/api/usuarios', verificarToken, (req, res) => {
       }));
 
     res.json(usuarios);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.get('/api/painel-senhas', verificarToken, (_req, res) => {
+  try {
+    res.json({
+      senhaAtual: String(db.painel_senhas?.senhaAtual || ''),
+      observacao: String(db.painel_senhas?.observacao || ''),
+      atualizadoPor: String(db.painel_senhas?.atualizadoPor || ''),
+      atualizadoEm: db.painel_senhas?.atualizadoEm || null
+    });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.put('/api/painel-senhas', verificarToken, (req, res) => {
+  try {
+    const usuario = findActiveUserById(req.userId);
+    if (!usuario) return res.status(404).json({ erro: 'Usuario nao encontrado' });
+
+    const senhaAtual = sanitizeText(req.body?.senhaAtual);
+    const observacao = sanitizeText(req.body?.observacao);
+
+    db.painel_senhas = {
+      senhaAtual,
+      observacao,
+      atualizadoPor: usuario.nome,
+      atualizadoEm: new Date().toISOString()
+    };
+
+    db.save();
+    io.emit('painel-senhas-atualizado', db.painel_senhas);
+    res.json(db.painel_senhas);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }

@@ -239,6 +239,87 @@
       flex-direction: column;
     }
 
+    .ticket-board {
+      padding: 14px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.02);
+    }
+
+    .ticket-board-card {
+      border: 1px solid rgba(59,130,246,.16);
+      background: rgba(15,23,42,.72);
+      border-radius: 18px;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .ticket-board-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #bfdbfe;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .ticket-board-current {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .ticket-board-current strong {
+      font-size: 28px;
+      line-height: 1;
+      color: #f8fafc;
+    }
+
+    .ticket-board-meta {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .ticket-board-inputs {
+      display: grid;
+      gap: 8px;
+    }
+
+    .ticket-board-input {
+      width: 100%;
+      border: 1px solid rgba(148,163,184,.18);
+      background: rgba(15,23,42,.88);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    .ticket-board-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .ticket-board-btn {
+      flex: 1;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .ticket-board-btn.primary {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+    }
+
+    .ticket-board-btn.secondary {
+      background: rgba(255,255,255,.06);
+      color: #e5e7eb;
+    }
+
     .sidebar-section-header {
       display: flex;
       justify-content: space-between;
@@ -1726,6 +1807,24 @@
       </section>
 
       <section class="sidebar-section contacts-section">
+        <div class="ticket-board">
+          <div class="ticket-board-card">
+            <div class="ticket-board-title">Painel de senha compartilhado</div>
+            <div class="ticket-board-current">
+              <strong id="ticketBoardCurrent">--</strong>
+              <span class="ticket-board-meta" id="ticketBoardUpdated">Sem atualizacao</span>
+            </div>
+            <div class="ticket-board-inputs">
+              <input class="ticket-board-input" id="ticketBoardInput" type="text" maxlength="20" placeholder="Ex.: S023" />
+              <input class="ticket-board-input" id="ticketBoardNote" type="text" maxlength="60" placeholder="Ex.: chamar agora no balcao 2" />
+            </div>
+            <div class="ticket-board-actions">
+              <button class="ticket-board-btn primary" type="button" onclick="salvarPainelSenha()">Atualizar</button>
+              <button class="ticket-board-btn secondary" type="button" onclick="limparPainelSenha()">Limpar</button>
+            </div>
+          </div>
+        </div>
+
         <div class="sidebar-section-header">
           <div class="section-title">Contatos</div>
           <button class="menu-btn" onclick="abrirNovoContato()">+</button>
@@ -1930,6 +2029,12 @@
     let currentMessageSearch = '';
     let titleBlinkInterval = null;
     let titleBlinkVisible = false;
+    let painelSenhaState = {
+      senhaAtual: '',
+      observacao: '',
+      atualizadoPor: '',
+      atualizadoEm: null
+    };
     const REACTION_OPTIONS = ['\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F44F}', '\u{1F525}', '\u{1F440}'];
     const STORAGE_KEY = 'chatinterno.session';
     const DEFAULT_TITLE = 'Chat Interno - Equipe';
@@ -2329,6 +2434,74 @@
       document.getElementById('uploadStatus').textContent = texto || '';
     }
 
+    function formatBoardTimestamp(value) {
+      if (!value) return 'Sem atualizacao';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return 'Sem atualizacao';
+      return `${date.toLocaleDateString('pt-BR')} ${formatTime(date)}`;
+    }
+
+    function renderPainelSenha() {
+      const current = document.getElementById('ticketBoardCurrent');
+      const updated = document.getElementById('ticketBoardUpdated');
+      const input = document.getElementById('ticketBoardInput');
+      const note = document.getElementById('ticketBoardNote');
+      if (!current || !updated || !input || !note) return;
+
+      current.textContent = painelSenhaState.senhaAtual || '--';
+
+      const metaParts = [];
+      if (painelSenhaState.observacao) metaParts.push(painelSenhaState.observacao);
+      if (painelSenhaState.atualizadoPor) metaParts.push(`por ${painelSenhaState.atualizadoPor}`);
+      if (painelSenhaState.atualizadoEm) metaParts.push(formatBoardTimestamp(painelSenhaState.atualizadoEm));
+      updated.textContent = metaParts.length ? metaParts.join(' • ') : 'Sem atualizacao';
+
+      input.value = painelSenhaState.senhaAtual || '';
+      note.value = painelSenhaState.observacao || '';
+    }
+
+    async function carregarPainelSenha() {
+      try {
+        const response = await fetch('/api/painel-senhas', { headers: authHeaders() });
+        if (!response.ok) throw new Error('Falha ao carregar painel de senhas');
+        painelSenhaState = await response.json();
+        renderPainelSenha();
+      } catch (err) {
+        mostrarNotificacao('Erro ao carregar painel de senha: ' + err.message, 'error');
+      }
+    }
+
+    async function salvarPainelSenha() {
+      const senhaAtual = document.getElementById('ticketBoardInput').value.trim().toUpperCase();
+      const observacao = document.getElementById('ticketBoardNote').value.trim();
+
+      try {
+        const response = await fetch('/api/painel-senhas', {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ senhaAtual, observacao })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          mostrarNotificacao(data.erro || 'Erro ao atualizar painel de senha', 'error');
+          return;
+        }
+
+        painelSenhaState = data;
+        renderPainelSenha();
+        mostrarNotificacao('Painel de senha atualizado', 'success');
+      } catch (err) {
+        mostrarNotificacao('Erro ao atualizar painel de senha: ' + err.message, 'error');
+      }
+    }
+
+    async function limparPainelSenha() {
+      document.getElementById('ticketBoardInput').value = '';
+      document.getElementById('ticketBoardNote').value = '';
+      await salvarPainelSenha();
+    }
+
     function preencherFormularioAjustes() {
       document.getElementById('ajustesNome').value = usuarioAtual?.nome || '';
       document.getElementById('ajustesEmail').value = usuarioAtual?.email || '';
@@ -2446,6 +2619,7 @@
         usuarioAtual = session.usuario;
         aplicarSessaoUsuario();
         conectarSocket();
+        await carregarPainelSenha();
         await carregarDadosIniciais();
       } catch (_err) {
         limparSessao();
@@ -2563,6 +2737,7 @@
         aplicarSessaoUsuario();
 
         conectarSocket();
+        await carregarPainelSenha();
         await carregarDadosIniciais();
       } catch (err) {
         mostrarErro('Erro na conexão: ' + err.message);
@@ -2580,6 +2755,11 @@
         onlineState = new Set((data.online || []).map(Number));
         renderContatos();
         updateHeaderStatus();
+      });
+
+      socket.on('painel-senhas-atualizado', (data) => {
+        painelSenhaState = data || {};
+        renderPainelSenha();
       });
 
       socket.on('usuario-digitando', (data) => {
