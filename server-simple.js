@@ -25,12 +25,15 @@ const STORAGE_ROOT = process.env.STORAGE_ROOT || process.env.RAILWAY_VOLUME_MOUN
 const IS_EPHEMERAL_STORAGE = !process.env.STORAGE_ROOT && !process.env.RAILWAY_VOLUME_MOUNT_PATH && Boolean(process.env.RAILWAY_ENVIRONMENT);
 const DATA_DIR = path.join(STORAGE_ROOT, 'data');
 const UPLOAD_DIR = path.join(STORAGE_ROOT, 'uploads');
+const BACKUP_DIR = path.join(STORAGE_ROOT, 'backups');
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png']);
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
+const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'painel-senhas.json'];
 
 if (!fs.existsSync(STORAGE_ROOT)) fs.mkdirSync(STORAGE_ROOT, { recursive: true });
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
 app.use(cors());
 app.use(express.json());
@@ -43,6 +46,10 @@ app.get('/health', (_req, res) => {
 
 class SimpleDB {
   constructor() {
+    this.reload();
+  }
+
+  reload() {
     this.usuarios = this.loadFile('usuarios.json', []);
     this.grupos = this.loadFile('grupos.json', []);
     this.membros_grupo = this.loadFile('membros.json', []);
@@ -148,6 +155,114 @@ function getUsuarioPublico(usuario) {
 
 function isUsuarioOnline(usuarioId) {
   return onlineUsers.has(Number(usuarioId)) && onlineUsers.get(Number(usuarioId)).size > 0;
+}
+
+function isAdminUser(userId) {
+  return Boolean(db.usuarios.find((u) => u.id === Number(userId) && u.ativo && u.admin));
+}
+
+function formatBackupStamp(date = new Date()) {
+  const value = new Date(date);
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  const hour = String(value.getHours()).padStart(2, '0');
+  const minute = String(value.getMinutes()).padStart(2, '0');
+  const second = String(value.getSeconds()).padStart(2, '0');
+  return `${year}${month}${day}-${hour}${minute}${second}`;
+}
+
+function sanitizeBackupName(name) {
+  return String(name || '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 40);
+}
+
+function resolveBackupPath(backupId) {
+  const targetPath = path.join(BACKUP_DIR, String(backupId || ''));
+  const resolvedBackupRoot = path.resolve(BACKUP_DIR);
+  const resolvedTarget = path.resolve(targetPath);
+  if (!resolvedTarget.startsWith(resolvedBackupRoot)) {
+    throw new Error('Backup invalido');
+  }
+  return resolvedTarget;
+}
+
+function listBackups() {
+  if (!fs.existsSync(BACKUP_DIR)) return [];
+
+  return fs.readdirSync(BACKUP_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => {
+      const backupPath = path.join(BACKUP_DIR, entry.name);
+      const metadataPath = path.join(backupPath, 'metadata.json');
+      let metadata = null;
+
+      if (fs.existsSync(metadataPath)) {
+        try {
+          metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+        } catch {
+          metadata = null;
+        }
+      }
+
+      const stat = fs.statSync(backupPath);
+      return {
+        id: entry.name,
+        nome: metadata?.nome || entry.name,
+        criado_em: metadata?.criado_em || stat.mtime.toISOString(),
+        criado_por: metadata?.criado_por || '',
+        arquivos: Array.isArray(metadata?.arquivos) ? metadata.arquivos : []
+      };
+    })
+    .sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
+}
+
+function createBackup({ nome = '', criadoPor = '' } = {}) {
+  const stamp = formatBackupStamp();
+  const safeName = sanitizeBackupName(nome);
+  const backupId = safeName ? `${stamp}-${safeName}` : stamp;
+  const backupPath = path.join(BACKUP_DIR, backupId);
+  fs.mkdirSync(backupPath, { recursive: true });
+
+  const copiedFiles = [];
+  DATA_FILE_NAMES.forEach((fileName) => {
+    const sourcePath = path.join(DATA_DIR, fileName);
+    if (!fs.existsSync(sourcePath)) return;
+    fs.copyFileSync(sourcePath, path.join(backupPath, fileName));
+    copiedFiles.push(fileName);
+  });
+
+  const metadata = {
+    id: backupId,
+    nome: safeName || `backup-${stamp}`,
+    criado_em: new Date().toISOString(),
+    criado_por: criadoPor,
+    arquivos: copiedFiles
+  };
+
+  fs.writeFileSync(path.join(backupPath, 'metadata.json'), JSON.stringify(metadata, null, 2));
+  return metadata;
+}
+
+function restoreBackup(backupId) {
+  const backupPath = resolveBackupPath(backupId);
+  if (!fs.existsSync(backupPath)) {
+    throw new Error('Backup nao encontrado');
+  }
+
+  DATA_FILE_NAMES.forEach((fileName) => {
+    const sourcePath = path.join(backupPath, fileName);
+    if (!fs.existsSync(sourcePath)) return;
+    fs.copyFileSync(sourcePath, path.join(DATA_DIR, fileName));
+  });
+
+  db.reload();
 }
 
 function marcarComoLidas(remetenteId, destinatarioId) {
@@ -541,6 +656,51 @@ app.put('/api/admin/usuarios/:id/senha', verificarToken, async (req, res) => {
     db.save();
 
     res.json({ mensagem: 'Senha redefinida com sucesso' });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.get('/api/admin/backups', verificarToken, (req, res) => {
+  try {
+    if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+    res.json(listBackups());
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.post('/api/admin/backups', verificarToken, (req, res) => {
+  try {
+    const usuarioAdmin = findActiveUserById(req.userId);
+    if (!usuarioAdmin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
+
+    const nome = sanitizeText(req.body?.nome);
+    const backup = createBackup({ nome, criadoPor: usuarioAdmin.nome });
+    res.json({ mensagem: 'Backup criado com sucesso', backup });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.post('/api/admin/backups/importar', verificarToken, (req, res) => {
+  try {
+    const usuarioAdmin = findActiveUserById(req.userId);
+    if (!usuarioAdmin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
+
+    const backupId = sanitizeText(req.body?.backupId);
+    if (!backupId) {
+      return res.status(400).json({ erro: 'Backup nao informado' });
+    }
+
+    restoreBackup(backupId);
+    io.emit('backup-restaurado', {
+      backupId,
+      restauradoPor: usuarioAdmin.nome,
+      restauradoEm: new Date().toISOString()
+    });
+
+    res.json({ mensagem: 'Backup restaurado com sucesso' });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }

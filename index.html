@@ -535,6 +535,51 @@
       text-overflow: ellipsis;
     }
 
+    .backup-panel {
+      display: grid;
+      gap: 12px;
+    }
+
+    .backup-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .backup-actions .btn {
+      width: auto;
+      margin-top: 0;
+    }
+
+    .backup-list {
+      display: grid;
+      gap: 10px;
+      max-height: 220px;
+      overflow: auto;
+      border: 1px solid rgba(148,163,184,.12);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(15,23,42,.45);
+    }
+
+    .backup-item {
+      border: 1px solid rgba(148,163,184,.12);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,.03);
+    }
+
+    .backup-item strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .backup-item span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
     .notification-badge {
       min-width: 22px;
       height: 22px;
@@ -1961,6 +2006,34 @@
           <button class="btn btn-primary" onclick="criarNovoGrupo()">Criar grupo</button>
         </section>
 
+        <section style="border-top:1px solid #e5e7eb; padding-top:22px;">
+          <h4 style="margin-bottom:14px;">Backups manuais</h4>
+          <div class="backup-panel">
+            <div class="form-group">
+              <label for="adminBackupNome">Nome do backup</label>
+              <input class="field" type="text" id="adminBackupNome" placeholder="Ex.: antes-da-atualizacao" />
+            </div>
+
+            <div class="backup-actions">
+              <button class="btn btn-primary" onclick="gerarBackupAdmin()">Gerar backup agora</button>
+              <button class="btn btn-secondary" onclick="carregarBackupsAdmin()">Atualizar lista</button>
+            </div>
+
+            <div class="form-group">
+              <label for="adminBackupSelect">Importar backup salvo</label>
+              <select class="field" id="adminBackupSelect">
+                <option value="">Selecione um backup</option>
+              </select>
+            </div>
+
+            <div class="backup-actions">
+              <button class="btn btn-secondary" onclick="importarBackupAdmin()">Importar backup selecionado</button>
+            </div>
+
+            <div id="adminBackupList" class="backup-list">Nenhum backup encontrado.</div>
+          </div>
+        </section>
+
         <div style="display:flex; justify-content:flex-end; gap:10px;">
           <button class="btn btn-secondary" onclick="fecharModal('adminModal')">Fechar</button>
         </div>
@@ -2023,6 +2096,7 @@
     let onlineState = new Set();
     let typingUsers = new Map();
     let adminUsuariosCache = [];
+    let adminBackupsCache = [];
     let currentMessagesCache = [];
     let activeReplyMessageId = null;
     let editingMessageId = null;
@@ -2799,6 +2873,12 @@
         renderPainelSenha();
       });
 
+      socket.on('backup-restaurado', async () => {
+        await carregarDadosIniciais();
+        if (!document.getElementById('adminModal').classList.contains('active')) return;
+        await carregarBackupsAdmin();
+      });
+
       socket.on('usuario-digitando', (data) => {
         if (
           tipoChat === data.tipo &&
@@ -3560,8 +3640,108 @@
       }
     }
 
+    function renderBackupsAdmin() {
+      const select = document.getElementById('adminBackupSelect');
+      const list = document.getElementById('adminBackupList');
+      if (!select || !list) return;
+
+      select.innerHTML = '<option value="">Selecione um backup</option>';
+
+      if (!adminBackupsCache.length) {
+        list.textContent = 'Nenhum backup encontrado.';
+        return;
+      }
+
+      adminBackupsCache.forEach((backup) => {
+        const option = document.createElement('option');
+        option.value = backup.id;
+        option.textContent = `${backup.nome} - ${formatMessageTimestamp(backup.criado_em)}`;
+        select.appendChild(option);
+      });
+
+      list.innerHTML = adminBackupsCache.map((backup) => `
+        <div class="backup-item">
+          <strong>${escapeHtml(backup.nome || backup.id)}</strong>
+          <span>${escapeHtml(formatMessageTimestamp(backup.criado_em))}</span>
+          <span>${escapeHtml(backup.criado_por ? `Criado por ${backup.criado_por}` : 'Criacao manual')}</span>
+          <span>${escapeHtml(Array.isArray(backup.arquivos) ? backup.arquivos.join(', ') : '')}</span>
+        </div>
+      `).join('');
+    }
+
+    async function carregarBackupsAdmin() {
+      try {
+        const response = await fetch('/api/admin/backups', { headers: authHeaders() });
+        if (!response.ok) throw new Error('Falha ao carregar backups');
+        adminBackupsCache = await response.json();
+        if (!Array.isArray(adminBackupsCache)) adminBackupsCache = [];
+        renderBackupsAdmin();
+      } catch (err) {
+        adminBackupsCache = [];
+        renderBackupsAdmin();
+        mostrarNotificacao('Erro ao carregar backups: ' + err.message, 'error');
+      }
+    }
+
+    async function gerarBackupAdmin() {
+      const nome = document.getElementById('adminBackupNome').value.trim();
+
+      try {
+        const response = await fetch('/api/admin/backups', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ nome })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          mostrarNotificacao(data.erro || 'Erro ao gerar backup', 'error');
+          return;
+        }
+
+        document.getElementById('adminBackupNome').value = '';
+        await carregarBackupsAdmin();
+        mostrarNotificacao('Backup gerado com sucesso', 'success');
+      } catch (err) {
+        mostrarNotificacao('Erro ao gerar backup: ' + err.message, 'error');
+      }
+    }
+
+    async function importarBackupAdmin() {
+      const backupId = document.getElementById('adminBackupSelect').value;
+      if (!backupId) {
+        mostrarNotificacao('Selecione um backup para importar', 'error');
+        return;
+      }
+
+      if (!confirm('Importar este backup vai substituir os JSONs atuais. Deseja continuar?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/admin/backups/importar', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ backupId })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          mostrarNotificacao(data.erro || 'Erro ao importar backup', 'error');
+          return;
+        }
+
+        await carregarDadosIniciais();
+        await carregarBackupsAdmin();
+        mostrarNotificacao('Backup importado com sucesso', 'success');
+      } catch (err) {
+        mostrarNotificacao('Erro ao importar backup: ' + err.message, 'error');
+      }
+    }
+
     function abrirPainelAdmin() {
       carregarUsuariosAdmin();
+      carregarBackupsAdmin();
       document.getElementById('adminModal').classList.add('active');
     }
 
