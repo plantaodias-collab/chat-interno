@@ -26,9 +26,21 @@ const IS_EPHEMERAL_STORAGE = !process.env.STORAGE_ROOT && !process.env.RAILWAY_V
 const DATA_DIR = path.join(STORAGE_ROOT, 'data');
 const UPLOAD_DIR = path.join(STORAGE_ROOT, 'uploads');
 const BACKUP_DIR = path.join(STORAGE_ROOT, 'backups');
+const APP_TIMEZONE = 'America/Sao_Paulo';
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png']);
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
-const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'painel-senhas.json'];
+const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'painel-senhas.json', 'backup-agendamento.json'];
+
+function getDefaultBackupSchedule() {
+  return {
+    ativo: false,
+    horario: '18:00',
+    timezone: APP_TIMEZONE,
+    manterQuantidade: 14,
+    ultimaExecucaoChave: '',
+    ultimaExecucaoEm: null
+  };
+}
 
 if (!fs.existsSync(STORAGE_ROOT)) fs.mkdirSync(STORAGE_ROOT, { recursive: true });
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -60,6 +72,7 @@ class SimpleDB {
       atualizadoPor: '',
       atualizadoEm: null
     });
+    this.backup_agendamento = this.loadFile('backup-agendamento.json', getDefaultBackupSchedule());
   }
 
   loadFile(name, defaultValue) {
@@ -91,6 +104,7 @@ class SimpleDB {
     this.saveFile('membros.json', this.membros_grupo);
     this.saveFile('mensagens.json', this.mensagens);
     this.saveFile('painel-senhas.json', this.painel_senhas);
+    this.saveFile('backup-agendamento.json', this.backup_agendamento);
   }
 }
 
@@ -183,6 +197,67 @@ function sanitizeBackupName(name) {
     .slice(0, 40);
 }
 
+function parseBackupTime(value) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(value || '').trim());
+  if (!match) return null;
+  return { hour: match[1], minute: match[2] };
+}
+
+function normalizeBackupScheduleConfig(input = {}, current = getDefaultBackupSchedule()) {
+  const currentSchedule = {
+    ...getDefaultBackupSchedule(),
+    ...(current || {})
+  };
+  const parsedTime = parseBackupTime(input.horario ?? currentSchedule.horario);
+  const manterQuantidade = Number.parseInt(input.manterQuantidade ?? currentSchedule.manterQuantidade, 10);
+
+  return {
+    ...currentSchedule,
+    ativo: Boolean(input.ativo ?? currentSchedule.ativo),
+    horario: parsedTime ? `${parsedTime.hour}:${parsedTime.minute}` : currentSchedule.horario,
+    timezone: APP_TIMEZONE,
+    manterQuantidade: Number.isFinite(manterQuantidade) ? Math.min(Math.max(manterQuantidade, 1), 60) : currentSchedule.manterQuantidade
+  };
+}
+
+function getTimeZoneParts(timeZone = APP_TIMEZONE, date = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  });
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value])
+  );
+  return {
+    year: parts.year,
+    month: parts.month,
+    day: parts.day,
+    hour: parts.hour,
+    minute: parts.minute
+  };
+}
+
+function getScheduleRunKey(parts) {
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function getBackupScheduleStatus() {
+  const schedule = normalizeBackupScheduleConfig(db.backup_agendamento);
+  return {
+    ...schedule,
+    descricao: schedule.ativo
+      ? `Todos os dias as ${schedule.horario} (${schedule.timezone})`
+      : 'Backup automatico desativado'
+  };
+}
+
 function resolveBackupPath(backupId) {
   const targetPath = path.join(BACKUP_DIR, String(backupId || ''));
   const resolvedBackupRoot = path.resolve(BACKUP_DIR);
@@ -217,13 +292,14 @@ function listBackups() {
         nome: metadata?.nome || entry.name,
         criado_em: metadata?.criado_em || stat.mtime.toISOString(),
         criado_por: metadata?.criado_por || '',
-        arquivos: Array.isArray(metadata?.arquivos) ? metadata.arquivos : []
+        arquivos: Array.isArray(metadata?.arquivos) ? metadata.arquivos : [],
+        tipo: metadata?.tipo || 'manual'
       };
     })
     .sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
 }
 
-function createBackup({ nome = '', criadoPor = '' } = {}) {
+function createBackup({ nome = '', criadoPor = '', tipo = 'manual' } = {}) {
   const stamp = formatBackupStamp();
   const safeName = sanitizeBackupName(nome);
   const backupId = safeName ? `${stamp}-${safeName}` : stamp;
@@ -243,11 +319,23 @@ function createBackup({ nome = '', criadoPor = '' } = {}) {
     nome: safeName || `backup-${stamp}`,
     criado_em: new Date().toISOString(),
     criado_por: criadoPor,
-    arquivos: copiedFiles
+    arquivos: copiedFiles,
+    tipo
   };
 
   fs.writeFileSync(path.join(backupPath, 'metadata.json'), JSON.stringify(metadata, null, 2));
   return metadata;
+}
+
+function pruneAutomaticBackups(manterQuantidade) {
+  const limite = Number.isFinite(Number(manterQuantidade)) ? Number(manterQuantidade) : 14;
+  const automaticos = listBackups().filter((backup) => backup.tipo === 'automatico');
+  automaticos.slice(limite).forEach((backup) => {
+    const backupPath = resolveBackupPath(backup.id);
+    if (fs.existsSync(backupPath)) {
+      fs.rmSync(backupPath, { recursive: true, force: true });
+    }
+  });
 }
 
 function restoreBackup(backupId) {
@@ -263,6 +351,44 @@ function restoreBackup(backupId) {
   });
 
   db.reload();
+}
+
+let lastAutomaticBackupCheckKey = '';
+
+function runAutomaticBackupIfDue() {
+  const schedule = normalizeBackupScheduleConfig(db.backup_agendamento);
+  if (!schedule.ativo) return null;
+
+  const nowParts = getTimeZoneParts(schedule.timezone);
+  const nowTime = `${nowParts.hour}:${nowParts.minute}`;
+  const runKey = getScheduleRunKey(nowParts);
+  const minuteKey = `${runKey}-${nowTime}`;
+
+  if (nowTime !== schedule.horario) return null;
+  if (schedule.ultimaExecucaoChave === runKey) return null;
+  if (lastAutomaticBackupCheckKey === minuteKey) return null;
+
+  const metadata = createBackup({
+    nome: `auto-${runKey}-${nowParts.hour}${nowParts.minute}`,
+    criadoPor: 'Sistema',
+    tipo: 'automatico'
+  });
+
+  db.backup_agendamento = {
+    ...schedule,
+    ultimaExecucaoChave: runKey,
+    ultimaExecucaoEm: new Date().toISOString()
+  };
+  db.saveFile('backup-agendamento.json', db.backup_agendamento);
+  pruneAutomaticBackups(schedule.manterQuantidade);
+
+  lastAutomaticBackupCheckKey = minuteKey;
+  io.emit('backup-automatico-criado', {
+    backup: metadata,
+    agendamento: getBackupScheduleStatus()
+  });
+
+  return metadata;
 }
 
 function marcarComoLidas(remetenteId, destinatarioId) {
@@ -670,6 +796,15 @@ app.get('/api/admin/backups', verificarToken, (req, res) => {
   }
 });
 
+app.get('/api/admin/backups/agendamento', verificarToken, (req, res) => {
+  try {
+    if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+    res.json(getBackupScheduleStatus());
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.post('/api/admin/backups', verificarToken, (req, res) => {
   try {
     const usuarioAdmin = findActiveUserById(req.userId);
@@ -678,6 +813,26 @@ app.post('/api/admin/backups', verificarToken, (req, res) => {
     const nome = sanitizeText(req.body?.nome);
     const backup = createBackup({ nome, criadoPor: usuarioAdmin.nome });
     res.json({ mensagem: 'Backup criado com sucesso', backup });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.put('/api/admin/backups/agendamento', verificarToken, (req, res) => {
+  try {
+    const usuarioAdmin = findActiveUserById(req.userId);
+    if (!usuarioAdmin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
+
+    db.backup_agendamento = normalizeBackupScheduleConfig(req.body, db.backup_agendamento);
+    db.saveFile('backup-agendamento.json', db.backup_agendamento);
+
+    io.emit('backup-agendamento-atualizado', {
+      configuradoPor: usuarioAdmin.nome,
+      configuradoEm: new Date().toISOString(),
+      agendamento: getBackupScheduleStatus()
+    });
+
+    res.json(getBackupScheduleStatus());
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -1232,6 +1387,8 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`Storage root: ${STORAGE_ROOT}`);
   console.log(`Arquivos de dados: ${DATA_DIR}`);
   console.log(`Arquivos enviados: ${UPLOAD_DIR}`);
+  console.log(`Backups: ${BACKUP_DIR}`);
+  console.log(`Backup automatico: ${db.backup_agendamento?.ativo ? `ativo as ${db.backup_agendamento.horario}` : 'desativado'}`);
 
   if (SECRET_KEY === DEFAULT_SECRET_KEY) {
     console.warn('AVISO: SECRET_KEY nao configurada. Configure uma SECRET_KEY no ambiente para producao.');
@@ -1241,6 +1398,17 @@ server.listen(PORT, '0.0.0.0', () => {
     console.warn('AVISO: storage efemero em uso. Configure STORAGE_ROOT ou RAILWAY_VOLUME_MOUNT_PATH com um volume persistente no Railway.');
   }
 });
+
+setInterval(() => {
+  try {
+    const metadata = runAutomaticBackupIfDue();
+    if (metadata) {
+      console.log(`Backup automatico criado: ${metadata.id}`);
+    }
+  } catch (err) {
+    console.error('Erro ao executar backup automatico:', err);
+  }
+}, 30000);
 
 
 

@@ -593,6 +593,19 @@
       color: var(--muted);
     }
 
+    .backup-schedule-grid {
+      display: grid;
+      grid-template-columns: 1fr 160px;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .backup-schedule-status {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #64748b;
+    }
+
     .notification-badge {
       min-width: 22px;
       height: 22px;
@@ -2023,6 +2036,31 @@
           <h4 style="margin-bottom:14px;">Backups manuais</h4>
           <div class="backup-panel">
             <div class="form-group">
+              <label style="display:flex; align-items:center; gap:10px;">
+                <input type="checkbox" id="adminBackupAutoAtivo" />
+                Gerar backup automaticamente todos os dias
+              </label>
+            </div>
+
+            <div class="backup-schedule-grid">
+              <div class="form-group">
+                <label for="adminBackupAutoHorario">Horário do backup automático</label>
+                <input class="field" type="time" id="adminBackupAutoHorario" value="18:00" />
+              </div>
+
+              <div class="form-group">
+                <label for="adminBackupAutoManter">Guardar quantos</label>
+                <input class="field" type="number" id="adminBackupAutoManter" min="1" max="60" value="14" />
+              </div>
+            </div>
+
+            <div class="backup-actions">
+              <button class="btn btn-secondary" onclick="salvarAgendamentoBackupAdmin()">Salvar backup automático</button>
+            </div>
+
+            <div id="adminBackupAutoStatus" class="backup-schedule-status">Backup automático desativado.</div>
+
+            <div class="form-group">
               <label for="adminBackupNome">Nome do backup</label>
               <input class="field" type="text" id="adminBackupNome" placeholder="Ex.: antes-da-atualizacao" />
             </div>
@@ -2111,6 +2149,7 @@
     let adminUsuariosCache = [];
     let adminBackupsCache = [];
     let adminBackupSelecionadoId = '';
+    let adminBackupAgendamento = null;
     let currentMessagesCache = [];
     let activeReplyMessageId = null;
     let editingMessageId = null;
@@ -2893,6 +2932,17 @@
         await carregarBackupsAdmin();
       });
 
+      socket.on('backup-automatico-criado', async () => {
+        if (!document.getElementById('adminModal').classList.contains('active')) return;
+        await carregarBackupsAdmin();
+        await carregarAgendamentoBackupAdmin();
+      });
+
+      socket.on('backup-agendamento-atualizado', async () => {
+        if (!document.getElementById('adminModal').classList.contains('active')) return;
+        await carregarAgendamentoBackupAdmin();
+      });
+
       socket.on('usuario-digitando', (data) => {
         if (
           tipoChat === data.tipo &&
@@ -3654,6 +3704,73 @@
       }
     }
 
+    function renderAgendamentoBackupAdmin() {
+      const ativo = document.getElementById('adminBackupAutoAtivo');
+      const horario = document.getElementById('adminBackupAutoHorario');
+      const manter = document.getElementById('adminBackupAutoManter');
+      const status = document.getElementById('adminBackupAutoStatus');
+      if (!ativo || !horario || !manter || !status) return;
+
+      const config = adminBackupAgendamento || {
+        ativo: false,
+        horario: '18:00',
+        manterQuantidade: 14,
+        timezone: 'America/Sao_Paulo',
+        ultimaExecucaoEm: null
+      };
+
+      ativo.checked = Boolean(config.ativo);
+      horario.value = config.horario || '18:00';
+      manter.value = String(config.manterQuantidade || 14);
+
+      const ultimaExecucao = config.ultimaExecucaoEm
+        ? ` Ultimo backup automatico: ${formatMessageTimestamp(config.ultimaExecucaoEm)}.`
+        : '';
+
+      status.textContent = config.ativo
+        ? `Ativo todos os dias as ${config.horario} (${config.timezone || 'America/Sao_Paulo'}). Mantem ${config.manterQuantidade} backups automaticos.${ultimaExecucao}`
+        : 'Backup automatico desativado.';
+    }
+
+    async function carregarAgendamentoBackupAdmin() {
+      try {
+        const response = await fetch('/api/admin/backups/agendamento', { headers: authHeaders() });
+        if (!response.ok) throw new Error('Falha ao carregar agendamento');
+        adminBackupAgendamento = await response.json();
+        renderAgendamentoBackupAdmin();
+      } catch (err) {
+        adminBackupAgendamento = null;
+        renderAgendamentoBackupAdmin();
+        mostrarNotificacao('Erro ao carregar agendamento de backup: ' + err.message, 'error');
+      }
+    }
+
+    async function salvarAgendamentoBackupAdmin() {
+      const ativo = document.getElementById('adminBackupAutoAtivo').checked;
+      const horario = document.getElementById('adminBackupAutoHorario').value;
+      const manterQuantidade = Number(document.getElementById('adminBackupAutoManter').value || 14);
+
+      if (!horario) {
+        mostrarNotificacao('Escolha um horário para o backup automático', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/admin/backups/agendamento', {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ ativo, horario, manterQuantidade })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.erro || 'Falha ao salvar agendamento');
+        adminBackupAgendamento = data;
+        renderAgendamentoBackupAdmin();
+        mostrarNotificacao('Agendamento de backup salvo com sucesso', 'success');
+      } catch (err) {
+        mostrarNotificacao('Erro ao salvar agendamento: ' + err.message, 'error');
+      }
+    }
+
     function renderBackupsAdmin() {
       const select = document.getElementById('adminBackupSelect');
       const list = document.getElementById('adminBackupList');
@@ -3773,6 +3890,7 @@
     function abrirPainelAdmin() {
       carregarUsuariosAdmin();
       carregarBackupsAdmin();
+      carregarAgendamentoBackupAdmin();
       document.getElementById('adminModal').classList.add('active');
     }
 
