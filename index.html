@@ -1878,7 +1878,7 @@
       </section>
 
       <section class="sidebar-section contacts-section">
-        <div class="ticket-board">
+        <div class="ticket-board" id="ticketBoardPanel" style="display:none;">
           <div class="ticket-board-card">
             <div class="ticket-board-title">Painel de senha compartilhado</div>
             <div class="ticket-board-current">
@@ -2156,6 +2156,7 @@
     let currentMessageSearch = '';
     let titleBlinkInterval = null;
     let titleBlinkVisible = false;
+    const SHARED_PASSWORD_PANEL_ENABLED = false;
     let painelSenhaState = {
       senhaAtual: '',
       observacao: '',
@@ -2605,7 +2606,17 @@
       return `${date.toLocaleDateString('pt-BR')} ${formatTime(date)}`;
     }
 
+    function syncPainelSenhaVisibility() {
+      const panel = document.getElementById('ticketBoardPanel');
+      if (!panel) return;
+      panel.style.display = SHARED_PASSWORD_PANEL_ENABLED ? '' : 'none';
+    }
+
     function renderPainelSenha() {
+      if (!SHARED_PASSWORD_PANEL_ENABLED) {
+        syncPainelSenhaVisibility();
+        return;
+      }
       const current = document.getElementById('ticketBoardCurrent');
       const updated = document.getElementById('ticketBoardUpdated');
       const input = document.getElementById('ticketBoardInput');
@@ -2625,6 +2636,10 @@
     }
 
     async function carregarPainelSenha() {
+      if (!SHARED_PASSWORD_PANEL_ENABLED) {
+        syncPainelSenhaVisibility();
+        return;
+      }
       try {
         const response = await fetch('/api/painel-senhas', { headers: authHeaders() });
         if (!response.ok) throw new Error('Falha ao carregar painel de senhas');
@@ -2636,6 +2651,7 @@
     }
 
     async function salvarPainelSenha() {
+      if (!SHARED_PASSWORD_PANEL_ENABLED) return;
       const senhaAtual = document.getElementById('ticketBoardInput').value.trim().toUpperCase();
       const observacao = document.getElementById('ticketBoardNote').value.trim();
 
@@ -2661,6 +2677,7 @@
     }
 
     async function limparPainelSenha() {
+      if (!SHARED_PASSWORD_PANEL_ENABLED) return;
       document.getElementById('ticketBoardInput').value = '';
       document.getElementById('ticketBoardNote').value = '';
       await salvarPainelSenha();
