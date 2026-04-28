@@ -2181,6 +2181,10 @@
       };
     }
 
+    function getPrivateChatUnreadCount(userId) {
+      return Number(unreadState[getChatKey('privado', userId)] || 0);
+    }
+
     function escapeHtml(texto) {
       return String(texto ?? '')
         .replace(/&/g, '&amp;')
@@ -3309,6 +3313,7 @@
       const actionButtons = `
         <span class="message-actions">
           <button class="message-action-btn" onclick="responderMensagem(${Number(message.id)})" title="Responder">Resp</button>
+          ${ehOutro && tipoChat === 'privado' ? `<button class="message-action-btn" onclick="marcarConversaComoNaoLida(${Number(message.id)}, ${Number(message.usuarioId)})" title="Marcar conversa como não lida">Não lido</button>` : ''}
           ${!ehOutro && message.tipo === 'texto' ? `<button class="message-action-btn" onclick="prepararEdicaoMensagem(${Number(message.id)})" title="Editar">Edit</button>` : ''}
           <button class="message-action-btn" onclick="alternarReacaoRapida(${Number(message.id)})" title="Reagir">React</button>
           ${!ehOutro ? `<button class="message-delete-btn" onclick="apagarMensagem(${Number(message.id)})" title="Apagar mensagem">Apagar</button>` : ''}
@@ -3437,6 +3442,31 @@
       if (Number(editingMessageId) === Number(messageId)) editingMessageId = null;
       atualizarBarraContexto();
       renderMessages();
+    }
+
+    async function marcarConversaComoNaoLida(messageId, contatoId) {
+      try {
+        if (tipoChat !== 'privado' || !contatoId) return;
+
+        const response = await fetch(`/api/conversas/privadas/${Number(contatoId)}/marcar-nao-lida`, {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ messageId: Number(messageId) })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          mostrarNotificacao(data.erro || 'Erro ao marcar conversa como não lida', 'error');
+          return;
+        }
+
+        const key = getChatKey('privado', contatoId);
+        unreadState[key] = Math.max(getPrivateChatUnreadCount(contatoId), Number(data.naoLidas) || 1);
+        renderContatos();
+        updateBrowserTitle();
+        mostrarNotificacao('Conversa marcada como não lida', 'success');
+      } catch (err) {
+        mostrarNotificacao('Erro ao marcar conversa como não lida: ' + err.message, 'error');
+      }
     }
 
     async function atualizarChatAposExclusao(data) {

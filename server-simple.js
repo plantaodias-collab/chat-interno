@@ -30,7 +30,7 @@ const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png']);
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
-const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'painel-senhas.json', 'backup-agendamento.json'];
+const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json'];
 
 function getDefaultBackupSchedule() {
   return {
@@ -67,6 +67,7 @@ class SimpleDB {
     this.grupos = this.loadFile('grupos.json', []);
     this.membros_grupo = this.loadFile('membros.json', []);
     this.mensagens = this.loadFile('mensagens.json', []);
+    this.conversas_pendentes = this.loadFile('conversas-pendentes.json', []);
     this.painel_senhas = this.loadFile('painel-senhas.json', {
       senhaAtual: '',
       observacao: '',
@@ -104,6 +105,7 @@ class SimpleDB {
     this.saveFile('grupos.json', this.grupos);
     this.saveFile('membros.json', this.membros_grupo);
     this.saveFile('mensagens.json', this.mensagens);
+    this.saveFile('conversas-pendentes.json', this.conversas_pendentes);
     this.saveFile('painel-senhas.json', this.painel_senhas);
     this.saveFile('backup-agendamento.json', this.backup_agendamento);
   }
@@ -561,6 +563,54 @@ function marcarMensagensGrupoComoLidas(grupoId, usuarioId) {
   return alterou;
 }
 
+function getPendingConversationIndex(usuarioId, contatoId) {
+  return db.conversas_pendentes.findIndex((item) =>
+    Number(item?.usuario_id) === Number(usuarioId) &&
+    Number(item?.contato_id) === Number(contatoId)
+  );
+}
+
+function marcarConversaPrivadaComoPendente(usuarioId, contatoId, messageId = null) {
+  const usuarioIdNumber = Number(usuarioId);
+  const contatoIdNumber = Number(contatoId);
+
+  if (!usuarioIdNumber || !contatoIdNumber || usuarioIdNumber === contatoIdNumber) {
+    return false;
+  }
+
+  const agora = new Date().toISOString();
+  const index = getPendingConversationIndex(usuarioIdNumber, contatoIdNumber);
+  const registro = {
+    id: Date.now(),
+    usuario_id: usuarioIdNumber,
+    contato_id: contatoIdNumber,
+    message_id: Number(messageId) || null,
+    criado_em: agora,
+    atualizado_em: agora
+  };
+
+  if (index >= 0) {
+    db.conversas_pendentes[index] = {
+      ...db.conversas_pendentes[index],
+      message_id: registro.message_id,
+      atualizado_em: agora
+    };
+  } else {
+    db.conversas_pendentes.push(registro);
+  }
+
+  db.save();
+  return true;
+}
+
+function limparConversaPrivadaPendente(usuarioId, contatoId) {
+  const index = getPendingConversationIndex(usuarioId, contatoId);
+  if (index === -1) return false;
+  db.conversas_pendentes.splice(index, 1);
+  db.save();
+  return true;
+}
+
 function grupoEhRestrito(grupoId) {
   return getMembrosDoGrupo(grupoId).length > 0;
 }
@@ -993,6 +1043,7 @@ app.get('/api/mensagens/privadas/:usuarioId', verificarToken, (req, res) => {
   try {
     const outroUsuarioId = parseInt(req.params.usuarioId, 10);
     marcarComoLidas(outroUsuarioId, req.userId);
+    limparConversaPrivadaPendente(req.userId, outroUsuarioId);
 
     const mensagens = db.mensagens
       .filter(
@@ -1032,7 +1083,61 @@ app.get('/api/conversas/privadas/resumo', verificarToken, (req, res) => {
         }
       });
 
+    db.conversas_pendentes
+      .filter((item) => Number(item?.usuario_id) === Number(req.userId))
+      .forEach((item) => {
+        const outroId = Number(item.contato_id);
+        if (!outroId) return;
+
+        if (!resumo[outroId]) {
+          resumo[outroId] = {
+            usuarioId: outroId,
+            ultimaMensagem: '',
+            criado_em: item.atualizado_em || item.criado_em || new Date().toISOString(),
+            naoLidas: 0
+          };
+        }
+
+        resumo[outroId].pendenteManual = true;
+        resumo[outroId].naoLidas = Math.max(Number(resumo[outroId].naoLidas) || 0, 1);
+      });
+
     res.json(Object.values(resumo));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.post('/api/conversas/privadas/:usuarioId/marcar-nao-lida', verificarToken, (req, res) => {
+  try {
+    const outroUsuarioId = parseInt(req.params.usuarioId, 10);
+    const messageId = Number(req.body?.messageId) || null;
+
+    if (!outroUsuarioId || Number(outroUsuarioId) === Number(req.userId)) {
+      return res.status(400).json({ erro: 'Conversa privada inválida' });
+    }
+
+    const outroUsuario = findActiveUserById(outroUsuarioId);
+    if (!outroUsuario) {
+      return res.status(404).json({ erro: 'Contato não encontrado' });
+    }
+
+    if (messageId) {
+      const mensagem = getMessageById(messageId);
+      if (!mensagem) return res.status(404).json({ erro: 'Mensagem não encontrada' });
+      if (mensagem.grupo_id) return res.status(400).json({ erro: 'Ação disponível apenas em conversa privada' });
+      if (!isSamePrivateConversation(mensagem, req.userId, outroUsuarioId)) {
+        return res.status(403).json({ erro: 'Mensagem não pertence a esta conversa' });
+      }
+    }
+
+    marcarConversaPrivadaComoPendente(req.userId, outroUsuarioId, messageId);
+    res.json({
+      mensagem: 'Conversa marcada como não lida',
+      usuarioId: outroUsuarioId,
+      naoLidas: 1,
+      pendenteManual: true
+    });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
