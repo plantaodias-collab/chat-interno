@@ -2040,6 +2040,11 @@
       font-weight: 800;
     }
 
+    .header-title-wrap {
+      display: grid;
+      gap: 3px;
+    }
+
     .header-subtitle {
       color: #ababb0;
     }
@@ -2324,6 +2329,31 @@
       color: var(--text);
     }
 
+    .header {
+      min-height: 96px;
+      align-items: center;
+    }
+
+    .header-main {
+      align-items: center;
+    }
+
+    .header-motivation {
+      width: fit-content;
+      max-width: min(760px, 54vw);
+      margin-top: 7px;
+      padding: 9px 15px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #eff6ff, #dbeafe);
+      border: 1px solid #bfdbfe;
+      color: #1e3a8a;
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.25;
+      box-shadow: 0 8px 18px rgba(37,99,235,.10);
+      white-space: normal;
+    }
+
     .workspace-search-input:focus,
     .header-search:focus,
     .composer:focus-within {
@@ -2348,6 +2378,11 @@
     .message-sender,
     .notification-title {
       color: var(--text);
+    }
+
+    .header-motivation::selection {
+      background: #2563eb;
+      color: #ffffff;
     }
 
     .logout-btn,
