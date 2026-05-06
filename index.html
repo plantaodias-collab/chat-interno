@@ -2261,6 +2261,261 @@
       }
     }
 
+    /* Clean light workspace */
+    :root {
+      --bg: #eef4f8;
+      --panel: #ffffff;
+      --line: #d9e2ea;
+      --text: #172033;
+      --muted: #64748b;
+      --primary: #2563eb;
+      --primary-2: #1d4ed8;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --badge: #dc2626;
+      --bubble-own: #e9f1ff;
+      --bubble-other: #ffffff;
+      --bubble-other-text: #172033;
+      --shadow: 0 14px 34px rgba(15,23,42,.08);
+    }
+
+    body {
+      background: #eef4f8;
+      color: var(--text);
+    }
+
+    .container {
+      background: #eef4f8;
+    }
+
+    .sidebar,
+    .main-content {
+      background: #ffffff;
+      color: var(--text);
+    }
+
+    .sidebar {
+      background: #f7fafc;
+      border-right: 1px solid var(--line);
+    }
+
+    .main-content {
+      background: #ffffff;
+      border-left: none;
+    }
+
+    .user-info,
+    .workspace-search,
+    .sidebar-section,
+    .contacts-section,
+    .admin-section,
+    .header,
+    .input-area {
+      background: #ffffff;
+      border-color: var(--line);
+    }
+
+    .workspace-search-input,
+    .header-search,
+    .header-btn,
+    .composer {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      color: var(--text);
+    }
+
+    .workspace-search-input:focus,
+    .header-search:focus,
+    .composer:focus-within {
+      border-color: rgba(37,99,235,.62);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+
+    .user-email,
+    .header-subtitle,
+    .chat-preview,
+    .chat-time,
+    .upload-status,
+    .empty-list,
+    .message-time {
+      color: var(--muted);
+    }
+
+    .section-title,
+    .contact-group-title,
+    .chat-name,
+    .header h2,
+    .message-sender,
+    .notification-title {
+      color: var(--text);
+    }
+
+    .logout-btn,
+    .menu-btn {
+      background: #eef2f7;
+      color: #334155;
+    }
+
+    .logout-btn:hover,
+    .menu-btn:hover,
+    .header-btn:hover,
+    .attach-btn:hover,
+    .emoji-btn:hover {
+      background: #e2e8f0;
+    }
+
+    .avatar {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    }
+
+    .chat-item:hover {
+      background: #eef4ff;
+    }
+
+    .chat-item.active {
+      background: #dbeafe;
+      box-shadow: inset 3px 0 0 #2563eb;
+    }
+
+    .chat-item.unread {
+      background: #f1f5f9;
+    }
+
+    .chat-item.active .chat-preview,
+    .chat-item.active .chat-time,
+    .chat-item.active .chat-name {
+      color: #172033;
+    }
+
+    .chat-icon.group {
+      color: #2563eb;
+    }
+
+    .chat-icon.private,
+    .message-avatar {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #ffffff;
+    }
+
+    .contact-group-count,
+    .notification-badge {
+      background: #dc2626;
+      color: #ffffff;
+    }
+
+    .messages-container {
+      background: #ffffff;
+    }
+
+    .message-row:hover {
+      background: #f8fafc;
+    }
+
+    .message,
+    .message.own,
+    .message.other {
+      color: var(--text);
+    }
+
+    .message-text {
+      color: #172033;
+    }
+
+    .message-reply-preview,
+    .file-card,
+    .reaction-chip,
+    .reaction-picker-btn {
+      background: #f1f5f9;
+      border-color: #d9e2ea;
+      color: var(--text);
+    }
+
+    .reply-author,
+    .message-context-label {
+      color: #2563eb;
+    }
+
+    .message-date-divider span {
+      background: #ffffff;
+      border-color: #d9e2ea;
+      color: #475569;
+      box-shadow: 0 8px 20px rgba(15,23,42,.08);
+    }
+
+    .message-actions {
+      right: 24px;
+      top: -18px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      width: auto;
+      max-width: none;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      box-shadow: 0 10px 24px rgba(15,23,42,.14);
+    }
+
+    .message-action-btn,
+    .message-delete-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: auto;
+      min-width: 34px;
+      height: 28px;
+      white-space: nowrap;
+      color: #334155;
+      background: transparent;
+      line-height: 1;
+    }
+
+    .message-action-btn:hover,
+    .message-delete-btn:hover {
+      background: #eef4ff;
+      color: #1d4ed8;
+    }
+
+    .message-delete-btn:hover {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .message-context {
+      background: #eff6ff;
+      border-left-color: #2563eb;
+    }
+
+    .message-context-text {
+      color: #334155;
+    }
+
+    .composer textarea {
+      color: var(--text);
+    }
+
+    .attach-btn,
+    .emoji-btn {
+      color: #475569;
+    }
+
+    .send-btn {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .send-btn:hover {
+      background: #1d4ed8;
+    }
+
+    .empty-state {
+      color: var(--muted);
+    }
+
+    .empty-state div[style] {
+      color: var(--text) !important;
+    }
+
   </style>
 </head>
 <body>
@@ -3804,11 +4059,11 @@
 
       const actionButtons = `
         <span class="message-actions">
-          <button class="message-action-btn" onclick="responderMensagem(${Number(message.id)})" title="Responder">Resp</button>
-          ${ehOutro && tipoChat === 'privado' ? `<button class="message-action-btn" onclick="marcarConversaComoNaoLida(${Number(message.id)}, ${Number(message.usuarioId)})" title="Marcar conversa como não lida">Não lido</button>` : ''}
-          ${!ehOutro && message.tipo === 'texto' ? `<button class="message-action-btn" onclick="prepararEdicaoMensagem(${Number(message.id)})" title="Editar">Edit</button>` : ''}
-          <button class="message-action-btn" onclick="alternarReacaoRapida(${Number(message.id)})" title="Reagir">React</button>
-          ${!ehOutro ? `<button class="message-delete-btn" onclick="apagarMensagem(${Number(message.id)})" title="Apagar mensagem">Apagar</button>` : ''}
+          <button class="message-action-btn" onclick="responderMensagem(${Number(message.id)})" title="Responder">&#8617;</button>
+          ${ehOutro && tipoChat === 'privado' ? `<button class="message-action-btn" onclick="marcarConversaComoNaoLida(${Number(message.id)}, ${Number(message.usuarioId)})" title="Marcar conversa como não lida">Nao lido</button>` : ''}
+          ${!ehOutro && message.tipo === 'texto' ? `<button class="message-action-btn" onclick="prepararEdicaoMensagem(${Number(message.id)})" title="Editar">&#9998;</button>` : ''}
+          <button class="message-action-btn" onclick="alternarReacaoRapida(${Number(message.id)})" title="Reagir">+</button>
+          ${!ehOutro ? `<button class="message-delete-btn" onclick="apagarMensagem(${Number(message.id)})" title="Apagar mensagem">&#128465;</button>` : ''}
         </span>
       `;
 
