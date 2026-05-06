@@ -155,6 +155,29 @@
       gap: 12px;
     }
 
+    .workspace-search {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(15,23,42,.36);
+    }
+
+    .workspace-search-input {
+      width: 100%;
+      border: 1px solid rgba(148,163,184,.14);
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 11px 13px;
+      outline: none;
+    }
+
+    .workspace-search-input::placeholder { color: var(--muted); }
+
+    .workspace-search-input:focus {
+      border-color: rgba(59,130,246,.42);
+      box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+    }
+
     .avatar {
       width: 46px;
       height: 46px;
@@ -1046,6 +1069,24 @@
 
     .composer input[type="text"]::placeholder { color: var(--muted); }
 
+    .composer textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      padding: 8px 10px;
+      min-width: 0;
+      min-height: 42px;
+      max-height: 150px;
+      resize: none;
+      line-height: 1.4;
+      overflow-y: auto;
+      font: inherit;
+    }
+
+    .composer textarea::placeholder { color: var(--muted); }
+
     .attach-btn, .emoji-btn, .send-btn {
       border: none;
       width: 48px;
@@ -1827,6 +1868,399 @@
       }
     }
 
+    /* Slack-inspired polish */
+    :root {
+      --bg: #19171d;
+      --panel: #1f1d24;
+      --line: rgba(255,255,255,.10);
+      --text: #f8f8f8;
+      --muted: #b7b3bd;
+      --primary: #36c5f0;
+      --primary-2: #1264a3;
+      --success: #2eb67d;
+      --danger: #e01e5a;
+      --badge: #e01e5a;
+      --bubble-own: #26364a;
+      --bubble-other: transparent;
+      --bubble-other-text: #f8f8f8;
+      --shadow: 0 18px 44px rgba(0,0,0,.24);
+    }
+
+    body {
+      background: #19171d;
+    }
+
+    .container {
+      grid-template-columns: 320px 1fr;
+      gap: 0;
+      padding: 0;
+      background: #19171d;
+    }
+
+    .sidebar,
+    .main-content {
+      border-radius: 0;
+      border: none;
+      box-shadow: none;
+      background: var(--panel);
+    }
+
+    .main-content {
+      background: #1a1d21;
+      border-left: 1px solid rgba(255,255,255,.10);
+    }
+
+    .user-info,
+    .workspace-search,
+    .sidebar-section,
+    .contacts-section,
+    .admin-section {
+      background: #19171d;
+      border-color: rgba(255,255,255,.10);
+    }
+
+    .workspace-search-input {
+      background: #27242d;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .workspace-search-input:focus {
+      border-color: #36c5f0;
+      box-shadow: 0 0 0 3px rgba(54,197,240,.18);
+    }
+
+    .sidebar-section {
+      padding: 10px 8px 8px;
+    }
+
+    .sidebar-section-header {
+      padding: 0 8px 8px;
+    }
+
+    .section-title,
+    .contact-group-title {
+      color: #d7d3dc;
+      letter-spacing: 0;
+      text-transform: none;
+      font-size: 13px;
+    }
+
+    .menu-list {
+      padding-right: 2px;
+    }
+
+    .contact-group {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+      padding: 0;
+    }
+
+    .contact-group-header {
+      padding: 8px 8px 4px;
+    }
+
+    .empty-list {
+      color: #ababb0;
+      font-size: 13px;
+      padding: 10px 12px;
+    }
+
+    .chat-item {
+      min-height: 42px;
+      border-radius: 6px;
+      padding: 7px 8px;
+      gap: 9px;
+      margin-bottom: 2px;
+      border: none;
+    }
+
+    .chat-item:hover {
+      background: rgba(255,255,255,.08);
+      border-color: transparent;
+    }
+
+    .chat-item.active {
+      background: #1164a3;
+      border-color: transparent;
+    }
+
+    .chat-item.unread {
+      background: rgba(255,255,255,.06);
+      border-color: transparent;
+    }
+
+    .chat-item.active .chat-preview,
+    .chat-item.active .chat-time,
+    .chat-item.active .chat-name {
+      color: #fff;
+    }
+
+    .chat-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .chat-icon.group {
+      background: transparent;
+      color: #d7d3dc;
+      font-size: 20px;
+    }
+
+    .chat-icon.private,
+    .message-avatar {
+      background: #4a154b;
+      border-radius: 6px;
+    }
+
+    .chat-name {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .chat-preview,
+    .chat-time {
+      font-size: 12px;
+    }
+
+    .header {
+      min-height: 64px;
+      background: #1a1d21;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      padding: 10px 20px;
+    }
+
+    .header h2 {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .header-subtitle {
+      color: #ababb0;
+    }
+
+    .header-search,
+    .header-btn {
+      background: #222529;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 8px;
+    }
+
+    .messages-container {
+      gap: 2px;
+      padding: 18px 0 22px;
+      background: #1a1d21;
+      background-image: none;
+    }
+
+    .message-date-divider {
+      margin: 18px 24px 10px;
+      position: sticky;
+      top: 8px;
+      z-index: 4;
+    }
+
+    .message-date-divider span {
+      background: #222529;
+      border: 1px solid rgba(255,255,255,.12);
+      color: #d7d3dc;
+      border-radius: 999px;
+      padding: 4px 11px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .message-row {
+      position: relative;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 3px 24px;
+    }
+
+    .message-row:hover {
+      background: rgba(255,255,255,.045);
+    }
+
+    .message-row.own {
+      justify-content: flex-start;
+    }
+
+    .message-row.compact {
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+
+    .message-row.compact .message-avatar {
+      visibility: hidden;
+    }
+
+    .message-row.compact .message-sender {
+      display: none;
+    }
+
+    .message {
+      max-width: min(860px, calc(100% - 62px));
+      padding: 5px 0 6px;
+      border-radius: 0;
+      box-shadow: none;
+      animation: none;
+      background: transparent;
+      color: var(--text);
+    }
+
+    .message.own,
+    .message.other {
+      background: transparent;
+      color: var(--text);
+      border-radius: 0;
+    }
+
+    .message.own::after,
+    .message.other::after {
+      display: none;
+    }
+
+    .message-sender {
+      margin-bottom: 2px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .message-text {
+      font-size: 15px;
+      line-height: 1.42;
+    }
+
+    .message-time {
+      justify-content: flex-start;
+      gap: 8px;
+      margin-top: 3px;
+      color: #ababb0;
+      font-size: 11px;
+      opacity: 1;
+    }
+
+    .message-actions {
+      position: absolute;
+      right: 26px;
+      top: -12px;
+      z-index: 5;
+      opacity: 0;
+      pointer-events: none;
+      background: #222529;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 8px;
+      padding: 4px;
+      box-shadow: 0 8px 22px rgba(0,0,0,.26);
+    }
+
+    .message-row:hover .message-actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .message-action-btn,
+    .message-delete-btn {
+      border-radius: 6px;
+      padding: 5px 7px;
+      font-size: 12px;
+      color: #d7d3dc;
+    }
+
+    .message-action-btn:hover,
+    .message-delete-btn:hover {
+      background: rgba(255,255,255,.10);
+    }
+
+    .message-reply-preview,
+    .file-card,
+    .reaction-chip,
+    .reaction-picker-btn {
+      background: #222529;
+      border-color: rgba(255,255,255,.12);
+    }
+
+    .input-area {
+      background: #1a1d21;
+      border-top: 1px solid rgba(255,255,255,.10);
+      padding: 12px 20px 18px;
+    }
+
+    .composer {
+      align-items: flex-end;
+      gap: 8px;
+      background: #222529;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 10px;
+      padding: 8px;
+    }
+
+    .composer:focus-within {
+      border-color: #36c5f0;
+      box-shadow: 0 0 0 3px rgba(54,197,240,.14);
+    }
+
+    .composer input[type="text"],
+    .composer textarea {
+      background: transparent;
+      border-radius: 0;
+      padding: 8px 8px;
+    }
+
+    .attach-btn,
+    .emoji-btn,
+    .send-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: transparent;
+      color: #d7d3dc;
+      font-size: 16px;
+    }
+
+    .attach-btn:hover,
+    .emoji-btn:hover,
+    .send-btn:hover {
+      background: rgba(255,255,255,.10);
+    }
+
+    .send-btn {
+      background: #007a5a;
+      color: #fff;
+    }
+
+    .empty-state {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      color: #ababb0;
+    }
+
+    @media (max-width: 980px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        max-height: 42vh;
+      }
+
+      .message-row {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
+      .message {
+        max-width: calc(100% - 48px);
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1867,6 +2301,16 @@
         </div>
 
         <button class="logout-btn" onclick="fazerLogout()" title="Sair">Sair</button>
+      </div>
+
+      <div class="workspace-search">
+        <input
+          class="workspace-search-input"
+          id="conversationSearchInput"
+          type="text"
+          placeholder="Buscar grupos e contatos"
+          oninput="atualizarBuscaConversas(this.value)"
+        />
       </div>
 
       <section class="sidebar-section">
@@ -1966,14 +2410,14 @@
             <button type="button" class="emoji-option" onclick="inserirEmoji('\u{1F389}')">&#127881;</button>
           </div>
           <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Anexar">&#128206;</button>
-          <input
-            type="text"
+          <textarea
             id="messageInput"
             placeholder="Digite uma mensagem..."
-            onkeypress="enviarSeEnter(event)"
-            oninput="emitirDigitando()"
-          />
-          <button class="send-btn" onclick="enviarMensagem()" title="Enviar">Enviar</button>
+            rows="1"
+            onkeydown="enviarSeEnter(event)"
+            oninput="autoResizeComposer(); emitirDigitando()"
+          ></textarea>
+          <button class="send-btn" onclick="enviarMensagem()" title="Enviar">&#10148;</button>
         </div>
         <div class="upload-status" id="uploadStatus"></div>
       </div>
@@ -2154,6 +2598,7 @@
     let activeReplyMessageId = null;
     let editingMessageId = null;
     let currentMessageSearch = '';
+    let conversationSearchTerm = '';
     let titleBlinkInterval = null;
     let titleBlinkVisible = false;
     const SHARED_PASSWORD_PANEL_ENABLED = false;
@@ -2198,6 +2643,25 @@
       if (!nome) return '?';
       const partes = nome.trim().split(/\s+/).slice(0, 2);
       return partes.map(p => p[0]?.toUpperCase() || '').join('');
+    }
+
+    function normalizeSearchText(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    }
+
+    function atualizarBuscaConversas(value) {
+      conversationSearchTerm = normalizeSearchText(value);
+      renderGrupos();
+      renderContatos();
+    }
+
+    function chatMatchesSearch(parts) {
+      if (!conversationSearchTerm) return true;
+      return normalizeSearchText(parts.filter(Boolean).join(' ')).includes(conversationSearchTerm);
     }
 
     function formatTime(date = new Date()) {
@@ -2374,6 +2838,7 @@
       activeReplyMessageId = null;
       editingMessageId = null;
       document.getElementById('messageInput').value = '';
+      autoResizeComposer();
       atualizarBarraContexto();
     }
 
@@ -2390,6 +2855,7 @@
       activeReplyMessageId = null;
       editingMessageId = Number(messageId);
       document.getElementById('messageInput').value = message.conteudo || '';
+      autoResizeComposer();
       atualizarBarraContexto();
       document.getElementById('messageInput').focus();
     }
@@ -2573,6 +3039,13 @@
       document.getElementById('uploadStatus').textContent = texto || '';
     }
 
+    function autoResizeComposer() {
+      const input = document.getElementById('messageInput');
+      if (!input) return;
+      input.style.height = 'auto';
+      input.style.height = `${Math.min(input.scrollHeight, 150)}px`;
+    }
+
     function getClipboardExtension(mimeType = '') {
       const normalized = String(mimeType || '').toLowerCase();
       return {
@@ -2741,6 +3214,7 @@
       const novaPosicao = start + emoji.length;
       input.focus();
       input.setSelectionRange(novaPosicao, novaPosicao);
+      autoResizeComposer();
       fecharEmojiPicker();
       emitirDigitando();
     }
@@ -3117,7 +3591,17 @@
       const gruposList = document.getElementById('gruposList');
       gruposList.innerHTML = '';
 
-      sortByRecent(gruposCache, 'grupo').forEach(grupo => {
+      const gruposFiltrados = sortByRecent(gruposCache, 'grupo').filter((grupo) => {
+        const key = getChatKey('grupo', grupo.id);
+        return chatMatchesSearch([grupo.nome, grupo.descricao, lastPreviewState[key]]);
+      });
+
+      if (!gruposFiltrados.length) {
+        gruposList.innerHTML = `<div class="empty-list">Nenhum grupo encontrado</div>`;
+        return;
+      }
+
+      gruposFiltrados.forEach(grupo => {
         const key = getChatKey('grupo', grupo.id);
         const unread = unreadState[key] || 0;
 
@@ -3167,7 +3651,10 @@
         return group;
       };
 
-      const contatosOrdenados = sortByRecent(contatosCache, 'privado');
+      const contatosOrdenados = sortByRecent(contatosCache, 'privado').filter((usuario) => {
+        const key = getChatKey('privado', usuario.id);
+        return chatMatchesSearch([usuario.nome, usuario.email, usuario.senha_painel, lastPreviewState[key]]);
+      });
       const contatosOnline = contatosOrdenados.filter(usuario => onlineState.has(Number(usuario.id)));
       const contatosOffline = contatosOrdenados.filter(usuario => !onlineState.has(Number(usuario.id)));
 
@@ -3214,6 +3701,10 @@
       gruposContatos.appendChild(criarGrupoContatos('Online', contatosOnline.length, onlineContainer, 'online-group'));
       gruposContatos.appendChild(criarGrupoContatos('Offline', contatosOffline.length, offlineContainer, 'offline-group'));
       contatosList.appendChild(gruposContatos);
+
+      if (!contatosOrdenados.length) {
+        contatosList.innerHTML = `<div class="empty-list">Nenhum contato encontrado</div>`;
+      }
     }
 
     async function carregarChat(tipo, id, nome) {
@@ -3225,6 +3716,7 @@
       editingMessageId = null;
       document.getElementById('messageSearchInput').value = '';
       document.getElementById('messageInput').value = '';
+      autoResizeComposer();
       atualizarBarraContexto();
 
       unreadState[getChatKey(tipo, id)] = 0;
@@ -3354,7 +3846,9 @@
         : '';
 
       return `
+        <div class="message-avatar">${escapeHtml(initials(usuarioAtual.nome))}</div>
         <div class="message own">
+          <div class="message-sender">${escapeHtml(usuarioAtual.nome || 'Voce')}</div>
           ${replyHtml}
           ${innerContent}
           ${reactionsHtml}
@@ -3389,14 +3883,20 @@
       }
 
       let lastRenderedDay = '';
+      let previousMessage = null;
       container.innerHTML = filtered.map((message) => {
         const ehOutro = Number(message.usuarioId) !== Number(usuarioAtual.id);
         const currentDay = formatCalendarDayLabel(message.criado_em || new Date());
         const dividerHtml = currentDay && currentDay !== lastRenderedDay
           ? `<div class="message-date-divider"><span>${escapeHtml(currentDay)}</span></div>`
           : '';
+        const compact = !dividerHtml &&
+          previousMessage &&
+          Number(previousMessage.usuarioId) === Number(message.usuarioId) &&
+          Math.abs(toTimestamp(message.criado_em) - toTimestamp(previousMessage.criado_em)) < 5 * 60 * 1000;
         lastRenderedDay = currentDay || lastRenderedDay;
-        return `${dividerHtml}<div class="message-row ${ehOutro ? '' : 'own'}" data-message-id="${Number(message.id)}" data-usuario-id="${Number(message.usuarioId || 0)}">${renderMessageRow(message)}</div>`;
+        previousMessage = message;
+        return `${dividerHtml}<div class="message-row ${ehOutro ? '' : 'own'} ${compact ? 'compact' : ''}" data-message-id="${Number(message.id)}" data-usuario-id="${Number(message.usuarioId || 0)}">${renderMessageRow(message)}</div>`;
       }).join('');
       container.scrollTop = container.scrollHeight;
     }
@@ -3633,6 +4133,7 @@
 
       updateBrowserTitle();
       input.value = '';
+      autoResizeComposer();
       input.focus();
       fecharEmojiPicker();
       activeReplyMessageId = null;
@@ -3717,7 +4218,10 @@
     }
 
     function enviarSeEnter(event) {
-      if (event.key === 'Enter') enviarMensagem();
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        enviarMensagem();
+      }
     }
 
     async function carregarUsuariosAdmin() {
