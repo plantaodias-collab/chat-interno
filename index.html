@@ -2961,11 +2961,6 @@
       </div>
 
       <div class="form-group">
-        <label for="ajustesSenhaPainel">Senha em atendimento ou atendida</label>
-        <input class="field" type="text" id="ajustesSenhaPainel" maxlength="60" placeholder="Ex.: S023 em atendimento, S022 atendida" />
-      </div>
-
-      <div class="form-group">
         <label for="ajustesSenhaAtual">Senha atual</label>
         <input class="field" type="password" id="ajustesSenhaAtual" placeholder="Digite sua senha atual para alterar a senha" />
       </div>
@@ -3573,7 +3568,6 @@
     function preencherFormularioAjustes() {
       document.getElementById('ajustesNome').value = usuarioAtual?.nome || '';
       document.getElementById('ajustesEmail').value = usuarioAtual?.email || '';
-      document.getElementById('ajustesSenhaPainel').value = usuarioAtual?.senha_painel || '';
       document.getElementById('ajustesSenhaAtual').value = '';
       document.getElementById('ajustesNovaSenha').value = '';
     }
@@ -4894,7 +4888,6 @@
     async function salvarAjustesConta() {
       const nome = document.getElementById('ajustesNome').value.trim();
       const email = document.getElementById('ajustesEmail').value.trim();
-      const senhaPainel = document.getElementById('ajustesSenhaPainel').value.trim();
       const senhaAtual = document.getElementById('ajustesSenhaAtual').value;
       const novaSenha = document.getElementById('ajustesNovaSenha').value;
 
@@ -4907,7 +4900,7 @@
         const response = await fetch('/api/me', {
           method: 'PUT',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ nome, email, senhaPainel, senhaAtual, novaSenha })
+          body: JSON.stringify({ nome, email, senhaAtual, novaSenha })
         });
 
         const data = await response.json();
