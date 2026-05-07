@@ -812,6 +812,28 @@
         linear-gradient(180deg, rgba(255,255,255,.01), rgba(255,255,255,.02));
     }
 
+    .load-older-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 8px 0 14px;
+    }
+
+    .load-older-btn {
+      border: 1px solid rgba(148,163,184,.22);
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 9px 14px;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    .load-older-btn:disabled {
+      opacity: .65;
+      cursor: wait;
+    }
+
     .empty-state {
       margin: auto;
       text-align: center;
@@ -2734,6 +2756,16 @@
       gap: 0;
     }
 
+    .load-older-btn {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: #1e3a8a;
+    }
+
+    .load-older-btn:hover {
+      background: #dbeafe;
+    }
+
     .message-row:hover {
       background: #f8fafc;
     }
@@ -3444,6 +3476,9 @@
     let adminBackupSelecionadoId = '';
     let adminBackupAgendamento = null;
     let currentMessagesCache = [];
+    let currentMessagesHasMore = false;
+    let currentMessagesNextBefore = null;
+    let currentMessagesLoadingOlder = false;
     let activeReplyMessageId = null;
     let editingMessageId = null;
     let currentMessageSearch = '';
@@ -3463,6 +3498,7 @@
     const REACTION_OPTIONS = ['\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F44F}', '\u{1F525}', '\u{1F440}'];
     const STORAGE_KEY = 'chatinterno.session';
     const THEME_KEY = 'chatinterno.theme';
+    const MESSAGE_PAGE_SIZE = 50;
     const DEFAULT_TITLE = 'Chat Interno - Equipe';
     const DEFAULT_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Cpath d='M18 22c0-4.4 3.6-8 8-8h12c4.4 0 8 3.6 8 8v9c0 4.4-3.6 8-8 8H31l-8 7v-7h-1c-4.4 0-8-3.6-8-8V22Z' fill='white'/%3E%3Ccircle cx='27' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='33' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='39' cy='27' r='3' fill='%232563eb'/%3E%3C/svg%3E";
     const ALERT_FAVICON_A = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23ef4444'/%3E%3Ccircle cx='32' cy='32' r='23' fill='%23fef2f2'/%3E%3Cpath d='M32 18 18 44h28L32 18Z' fill='%23ef4444'/%3E%3Crect x='30' y='26' width='4' height='10' rx='2' fill='white'/%3E%3Ccircle cx='32' cy='40' r='2.2' fill='white'/%3E%3C/svg%3E";
@@ -4246,10 +4282,46 @@
       localStorage.removeItem(STORAGE_KEY);
     }
 
+    async function registrarServiceWorkerNotificacoes() {
+      if (!('serviceWorker' in navigator)) return null;
+      try {
+        return await navigator.serviceWorker.register('/sw.js');
+      } catch (err) {
+        console.warn('Service worker indisponivel', err);
+        return null;
+      }
+    }
+
+    async function mostrarNotificacaoNavegador(title, options = {}) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      const payload = {
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        tag: options.tag || 'chatinterno-message',
+        renotify: true,
+        ...options
+      };
+
+      try {
+        const registration = 'serviceWorker' in navigator
+          ? await navigator.serviceWorker.ready
+          : null;
+        if (registration?.showNotification) {
+          await registration.showNotification(title, payload);
+          return;
+        }
+      } catch (_err) {
+        // fallback below
+      }
+
+      new Notification(title, payload);
+    }
+
     async function carregarDadosIniciais() {
       await carregarGrupos();
       await carregarContatos();
       await carregarResumoConversas();
+      await registrarServiceWorkerNotificacoes();
       updateBrowserTitle();
 
       if ('Notification' in window && Notification.permission === 'default') {
@@ -4365,13 +4437,12 @@
 
       if (Number(data.usuarioId) !== Number(usuarioAtual.id)) {
         mostrarNotificacao(`${data.usuarioNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem'} no grupo`, 'success');
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('Nova mensagem em grupo', {
-            body: data.tipo === 'arquivo'
-              ? `${data.usuarioNome}: Arquivo ${data.arquivo_nome_original}`
-              : `${data.usuarioNome}: ${data.conteudo}`
-          });
-        }
+        mostrarNotificacaoNavegador('Nova mensagem em grupo', {
+          body: data.tipo === 'arquivo'
+            ? `${data.usuarioNome}: Arquivo ${data.arquivo_nome_original}`
+            : `${data.usuarioNome}: ${data.conteudo}`,
+          tag: `grupo-${data.grupoId}`
+        });
       }
     }
 
@@ -4408,13 +4479,12 @@
 
       mostrarNotificacao(`${data.remetenteNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem privada'}`, 'success');
 
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Nova mensagem privada', {
-          body: data.tipo === 'arquivo'
-            ? `${data.remetenteNome}: Arquivo ${data.arquivo_nome_original}`
-            : `${data.remetenteNome}: ${data.conteudo}`
-        });
-      }
+      mostrarNotificacaoNavegador('Nova mensagem privada', {
+        body: data.tipo === 'arquivo'
+          ? `${data.remetenteNome}: Arquivo ${data.arquivo_nome_original}`
+          : `${data.remetenteNome}: ${data.conteudo}`,
+        tag: `privado-${data.remetente_id}`
+      });
     }
 
     async function fazerLogin() {
@@ -4785,6 +4855,9 @@
       chatIdAtual = id;
       currentMessageSearch = '';
       currentMessagesCache = [];
+      currentMessagesHasMore = false;
+      currentMessagesNextBefore = null;
+      currentMessagesLoadingOlder = false;
       activeReplyMessageId = null;
       editingMessageId = null;
       document.getElementById('messageSearchInput').value = '';
@@ -4808,13 +4881,16 @@
 
       try {
         const endpoint = tipo === 'grupo'
-          ? `/api/mensagens/grupo/${id}`
-          : `/api/mensagens/privadas/${id}`;
+          ? `/api/mensagens/grupo/${id}?limit=${MESSAGE_PAGE_SIZE}`
+          : `/api/mensagens/privadas/${id}?limit=${MESSAGE_PAGE_SIZE}`;
 
         const response = await fetch(endpoint, { headers: authHeaders() });
         if (!response.ok) throw new Error('Falha ao carregar mensagens');
 
-        const mensagens = await response.json();
+        const payload = await response.json();
+        const mensagens = Array.isArray(payload) ? payload : payload.mensagens;
+        currentMessagesHasMore = Boolean(payload?.hasMore);
+        currentMessagesNextBefore = payload?.nextBefore || (Array.isArray(mensagens) && mensagens.length ? mensagens[0].criado_em : null);
         currentMessagesCache = Array.isArray(mensagens)
           ? mensagens.map((msg) => normalizeMessage({
               ...msg,
@@ -4965,7 +5041,10 @@
 
       let lastRenderedDay = '';
       let previousMessage = null;
-      container.innerHTML = filtered.map((message) => {
+      const loadOlderHtml = currentMessagesHasMore && !currentMessageSearch
+        ? `<div class="load-older-wrap"><button class="load-older-btn" onclick="carregarMensagensAnteriores()" ${currentMessagesLoadingOlder ? 'disabled' : ''}>${currentMessagesLoadingOlder ? 'Carregando...' : 'Carregar mensagens anteriores'}</button></div>`
+        : '';
+      container.innerHTML = loadOlderHtml + filtered.map((message) => {
         const ehOutro = Number(message.usuarioId) !== Number(usuarioAtual.id);
         const currentDay = formatCalendarDayLabel(message.criado_em || new Date());
         const dividerHtml = currentDay && currentDay !== lastRenderedDay
@@ -4980,6 +5059,46 @@
         return `${dividerHtml}<div class="message-row ${ehOutro ? '' : 'own'} ${compact ? 'compact' : ''}" data-message-id="${Number(message.id)}" data-usuario-id="${Number(message.usuarioId || 0)}">${renderMessageRow(message)}</div>`;
       }).join('');
       container.scrollTop = container.scrollHeight;
+    }
+
+    async function carregarMensagensAnteriores() {
+      if (!tipoChat || !chatIdAtual || !currentMessagesHasMore || currentMessagesLoadingOlder || !currentMessagesNextBefore) return;
+      const container = document.getElementById('messagesContainer');
+      const previousHeight = container.scrollHeight;
+      currentMessagesLoadingOlder = true;
+      renderMessages();
+
+      try {
+        const endpoint = tipoChat === 'grupo'
+          ? `/api/mensagens/grupo/${chatIdAtual}?limit=${MESSAGE_PAGE_SIZE}&before=${encodeURIComponent(currentMessagesNextBefore)}`
+          : `/api/mensagens/privadas/${chatIdAtual}?limit=${MESSAGE_PAGE_SIZE}&before=${encodeURIComponent(currentMessagesNextBefore)}`;
+        const response = await fetch(endpoint, { headers: authHeaders() });
+        if (!response.ok) throw new Error('Falha ao carregar historico');
+        const payload = await response.json();
+        const mensagens = Array.isArray(payload) ? payload : payload.mensagens;
+        const older = Array.isArray(mensagens)
+          ? mensagens.map((msg) => normalizeMessage({
+              ...msg,
+              usuarioNome: msg.usuario_nome,
+              usuarioId: msg.usuario_id,
+              showReactionPicker: false
+            }))
+          : [];
+
+        const existingIds = new Set(currentMessagesCache.map((message) => Number(message.id)));
+        currentMessagesCache = [
+          ...older.filter((message) => !existingIds.has(Number(message.id))),
+          ...currentMessagesCache
+        ].sort((a, b) => toTimestamp(a.criado_em) - toTimestamp(b.criado_em));
+        currentMessagesHasMore = Boolean(payload?.hasMore);
+        currentMessagesNextBefore = payload?.nextBefore || (currentMessagesCache.length ? currentMessagesCache[0].criado_em : null);
+      } catch (err) {
+        mostrarNotificacao('Erro ao carregar historico: ' + err.message, 'error');
+      } finally {
+        currentMessagesLoadingOlder = false;
+        renderMessages();
+        container.scrollTop = Math.max(0, container.scrollHeight - previousHeight);
+      }
     }
 
     function upsertMessageInCache(message) {

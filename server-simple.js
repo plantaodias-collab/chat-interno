@@ -507,6 +507,32 @@ function sanitizeText(value) {
   return String(value || '').trim();
 }
 
+function clampNumber(value, min, max, fallback) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, parsed));
+}
+
+function paginateMessages(messages, req) {
+  const hasPagination = req.query?.limit || req.query?.before;
+  const sorted = [...messages].sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em));
+  if (!hasPagination) return sorted;
+
+  const limit = clampNumber(req.query.limit, 20, 100, 50);
+  const before = req.query.before ? new Date(req.query.before).getTime() : null;
+  const filtered = Number.isFinite(before)
+    ? sorted.filter((message) => new Date(message.criado_em).getTime() < before)
+    : sorted;
+  const slice = filtered.slice(Math.max(0, filtered.length - limit));
+
+  return {
+    mensagens: slice,
+    hasMore: filtered.length > slice.length,
+    nextBefore: slice.length ? slice[0].criado_em : null,
+    totalLoaded: slice.length
+  };
+}
+
 function normalizeSearchText(value) {
   return String(value || '')
     .normalize('NFD')
@@ -1068,7 +1094,7 @@ app.get('/api/mensagens/grupo/:grupoId', verificarToken, (req, res) => {
       .map((m) => ensureGroupReadTracking(m))
       .map(enrichMessage);
 
-    res.json(mensagens);
+    res.json(paginateMessages(mensagens, req));
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -1088,7 +1114,7 @@ app.get('/api/mensagens/privadas/:usuarioId', verificarToken, (req, res) => {
       )
       .map(enrichMessage);
 
-    res.json(mensagens);
+    res.json(paginateMessages(mensagens, req));
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
