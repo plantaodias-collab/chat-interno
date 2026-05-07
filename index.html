@@ -67,6 +67,34 @@
       font-weight: 800;
     }
 
+    .brand-mark {
+      width: 44px;
+      height: 52px;
+      border-radius: 16px;
+      background: #050505;
+      color: #e5e7eb;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid rgba(203,213,225,.75);
+      box-shadow: 0 8px 18px rgba(15,23,42,.12);
+      font-family: Georgia, 'Times New Roman', serif;
+      font-weight: 800;
+      line-height: .88;
+    }
+
+    .brand-mark span {
+      display: block;
+      font-size: 18px;
+    }
+
+    .brand-mark small {
+      display: block;
+      width: 18px;
+      height: 2px;
+      background: #cbd5e1;
+      margin: 2px auto;
+    }
+
     .login-subtitle {
       text-align: center;
       color: var(--muted);
@@ -176,6 +204,33 @@
     .workspace-search-input:focus {
       border-color: rgba(59,130,246,.42);
       box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+    }
+
+    .conversation-filters {
+      display: flex;
+      gap: 6px;
+      padding: 0 14px 12px;
+      background: rgba(15,23,42,.36);
+      border-bottom: 1px solid var(--line);
+      overflow-x: auto;
+    }
+
+    .conversation-filter-btn {
+      border: 1px solid rgba(148,163,184,.18);
+      background: rgba(255,255,255,.05);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .conversation-filter-btn.active {
+      background: rgba(59,130,246,.16);
+      border-color: rgba(59,130,246,.34);
+      color: var(--text);
     }
 
     .avatar {
@@ -895,6 +950,11 @@
       font-size: 11px;
       opacity: .95;
       font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 2px 7px;
+      background: rgba(148,163,184,.16);
     }
 
     .message-status.lida { color: #bfdbfe; }
@@ -1931,6 +1991,25 @@
       box-shadow: 0 0 0 3px rgba(54,197,240,.18);
     }
 
+    .conversation-filters {
+      background: #19171d;
+      border-color: rgba(255,255,255,.10);
+      padding-left: 14px;
+      padding-right: 14px;
+    }
+
+    .conversation-filter-btn {
+      background: #27242d;
+      border-color: rgba(255,255,255,.12);
+      color: #d7d3dc;
+    }
+
+    .conversation-filter-btn.active {
+      background: #1164a3;
+      border-color: #1164a3;
+      color: #ffffff;
+    }
+
     .sidebar-section {
       padding: 10px 8px 8px;
     }
@@ -2191,6 +2270,39 @@
       border-color: rgba(255,255,255,.12);
     }
 
+    .reply-quote-label {
+      font-size: 11px;
+      font-weight: 900;
+      color: #36c5f0;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .file-preview {
+      margin-top: 8px;
+      overflow: hidden;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+    }
+
+    .file-preview img {
+      width: 100%;
+      max-height: 280px;
+      object-fit: contain;
+      display: block;
+      background: #ffffff;
+    }
+
+    .file-preview.pdf {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      color: #d7d3dc;
+      font-weight: 800;
+    }
+
     .input-area {
       background: #1a1d21;
       border-top: 1px solid rgba(255,255,255,.10);
@@ -2359,6 +2471,28 @@
       color: var(--text);
     }
 
+    .conversation-filters {
+      background: #ffffff;
+      border-color: var(--line);
+    }
+
+    .conversation-filter-btn {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: #475569;
+    }
+
+    .conversation-filter-btn:hover {
+      background: #eef4ff;
+      color: #1d4ed8;
+    }
+
+    .conversation-filter-btn.active {
+      background: #dbeafe;
+      border-color: #93c5fd;
+      color: #1e3a8a;
+    }
+
     .header {
       min-height: 96px;
       align-items: center;
@@ -2431,6 +2565,20 @@
 
     .avatar {
       background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    }
+
+    .avatar.brand-avatar {
+      width: 54px;
+      height: 62px;
+      border-radius: 18px;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .avatar.brand-avatar .brand-mark {
+      width: 46px;
+      height: 56px;
+      font-size: 14px;
     }
 
     .chat-item:hover {
@@ -2581,6 +2729,50 @@
       color: var(--text);
     }
 
+    .message-reply-preview {
+      border-left: 4px solid #2563eb;
+      padding: 10px 12px;
+    }
+
+    .reply-quote-label {
+      font-size: 11px;
+      font-weight: 900;
+      color: #2563eb;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .file-preview {
+      margin-top: 8px;
+      overflow: hidden;
+      border-radius: 10px;
+      border: 1px solid #d9e2ea;
+      background: #ffffff;
+    }
+
+    .file-preview img {
+      width: 100%;
+      max-height: 280px;
+      object-fit: contain;
+      display: block;
+      background: #ffffff;
+    }
+
+    .file-preview.pdf {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      color: #334155;
+      font-weight: 800;
+    }
+
+    .typing-preview {
+      color: #2563eb;
+      font-weight: 900;
+      font-style: italic;
+    }
+
     .reply-author,
     .message-context-label {
       color: #2563eb;
@@ -2709,7 +2901,7 @@
 <body>
   <div id="loginContainer" class="login-container">
     <div class="login-box">
-      <div class="login-brand"><span>&#128172;</span><span>Chat Interno</span></div>
+      <div class="login-brand"><span class="brand-mark"><span>D</span><small></small><span>C</span></span><span>Chat Interno</span></div>
       <div class="login-subtitle">Mensagens em tempo real entre a equipe</div>
 
       <div class="form-group">
@@ -2754,6 +2946,12 @@
           placeholder="Buscar grupos e contatos"
           oninput="atualizarBuscaConversas(this.value)"
         />
+      </div>
+      <div class="conversation-filters" id="conversationFilters">
+        <button class="conversation-filter-btn active" type="button" data-filter="todos" onclick="setConversationFilter('todos')">Todos</button>
+        <button class="conversation-filter-btn" type="button" data-filter="nao-lidas" onclick="setConversationFilter('nao-lidas')">Nao lidas</button>
+        <button class="conversation-filter-btn" type="button" data-filter="online" onclick="setConversationFilter('online')">Online</button>
+        <button class="conversation-filter-btn" type="button" data-filter="grupos" onclick="setConversationFilter('grupos')">Grupos</button>
       </div>
 
       <section class="sidebar-section">
@@ -3053,6 +3251,9 @@
     let editingMessageId = null;
     let currentMessageSearch = '';
     let conversationSearchTerm = '';
+    let conversationSearchRemoteMatches = new Set();
+    let conversationSearchTimer = null;
+    let conversationFilter = 'todos';
     let titleBlinkInterval = null;
     let titleBlinkVisible = false;
     const SHARED_PASSWORD_PANEL_ENABLED = false;
@@ -3109,13 +3310,53 @@
 
     function atualizarBuscaConversas(value) {
       conversationSearchTerm = normalizeSearchText(value);
+      buscarConversasPorConteudo();
       renderGrupos();
       renderContatos();
     }
 
-    function chatMatchesSearch(parts) {
+    function setConversationFilter(filter) {
+      conversationFilter = filter || 'todos';
+      document.querySelectorAll('.conversation-filter-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.filter === conversationFilter);
+      });
+      renderGrupos();
+      renderContatos();
+    }
+
+    async function buscarConversasPorConteudo() {
+      clearTimeout(conversationSearchTimer);
+      conversationSearchRemoteMatches = new Set();
+
+      if (conversationSearchTerm.length < 2) return;
+
+      conversationSearchTimer = setTimeout(async () => {
+        try {
+          const response = await fetch(`/api/busca-conversas?q=${encodeURIComponent(conversationSearchTerm)}`, { headers: authHeaders() });
+          if (!response.ok) return;
+          const data = await response.json();
+          conversationSearchRemoteMatches = new Set(Array.isArray(data.matches) ? data.matches : []);
+          renderGrupos();
+          renderContatos();
+        } catch (err) {
+          console.error(err);
+        }
+      }, 220);
+    }
+
+    function chatMatchesSearch(parts, key) {
       if (!conversationSearchTerm) return true;
-      return normalizeSearchText(parts.filter(Boolean).join(' ')).includes(conversationSearchTerm);
+      return normalizeSearchText(parts.filter(Boolean).join(' ')).includes(conversationSearchTerm) ||
+        conversationSearchRemoteMatches.has(key);
+    }
+
+    function getTypingName(tipo, id) {
+      return typingUsers.get(getChatKey(tipo, id)) || '';
+    }
+
+    function getTypingPreviewHtml(tipo, id) {
+      const nome = getTypingName(tipo, id);
+      return nome ? `<span class="typing-preview">${escapeHtml(nome)} digitando...</span>` : '';
     }
 
     function formatTime(date = new Date()) {
@@ -3253,7 +3494,7 @@
 
     function isMessageMatch(message, query) {
       if (!query) return true;
-      const needle = query.toLowerCase();
+      const needle = normalizeSearchText(query);
       return [
         message.usuarioNome,
         message.usuario_nome,
@@ -3261,7 +3502,48 @@
         message.arquivo_nome_original,
         message.reply_preview?.conteudo,
         message.reply_preview?.usuario_nome
-      ].some((value) => String(value || '').toLowerCase().includes(needle));
+      ].some((value) => normalizeSearchText(value).includes(needle));
+    }
+
+    function isImageAttachment(message) {
+      return message?.tipo === 'arquivo' && /\.(png|jpe?g|gif|webp)$/i.test(String(message.arquivo_nome_original || message.arquivo_url || ''));
+    }
+
+    function isPdfAttachment(message) {
+      return message?.tipo === 'arquivo' && /\.pdf$/i.test(String(message.arquivo_nome_original || message.arquivo_url || ''));
+    }
+
+    function getMessageCopyText(message) {
+      if (!message) return '';
+      if (message.tipo === 'arquivo') {
+        const url = message.arquivo_url ? new URL(message.arquivo_url, window.location.origin).href : '';
+        return [message.arquivo_nome_original || 'Arquivo', url].filter(Boolean).join('\n');
+      }
+      return String(message.conteudo || '').trim();
+    }
+
+    async function copiarMensagem(messageId) {
+      const message = getMessageByIdFromCache(messageId);
+      const text = getMessageCopyText(message);
+      if (!text) return;
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = text;
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          textarea.remove();
+        }
+        mostrarNotificacao('Mensagem copiada', 'success');
+      } catch (err) {
+        mostrarNotificacao('Nao foi possivel copiar: ' + err.message, 'error');
+      }
     }
 
     function atualizarBarraContexto() {
@@ -3417,9 +3699,10 @@
 
     function updateHeaderIcon(tipo, nome = '') {
       const icon = document.getElementById('chatHeaderAvatar');
+      icon.classList.toggle('brand-avatar', !tipo);
       if (tipo === 'grupo') icon.textContent = '#';
       else if (tipo === 'privado') icon.textContent = initials(nome);
-      else icon.textContent = '\u{1F4AC}';
+      else icon.innerHTML = getMiniBrandMarkup();
     }
 
     function updateHeaderStatus() {
@@ -3445,6 +3728,16 @@
       const key = `${tipoChat}-${chatIdAtual}`;
       const nome = typingUsers.get(key);
       el.textContent = nome ? `${nome} está digitando...` : '';
+    }
+
+    function renderTypingSurfaces() {
+      renderTypingIndicator();
+      renderGrupos();
+      renderContatos();
+    }
+
+    function getMiniBrandMarkup() {
+      return '<span class="brand-mark"><span>D</span><small></small><span>C</span></span>';
     }
 
     function mostrarErro(mensagem) {
@@ -3798,12 +4091,18 @@
       }
 
       typingUsers.delete(`grupo-${data.grupoId}`);
-      renderTypingIndicator();
-      renderGrupos();
+      renderTypingSurfaces();
       updateBrowserTitle();
 
       if (Number(data.usuarioId) !== Number(usuarioAtual.id)) {
         mostrarNotificacao(`${data.usuarioNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem'} no grupo`, 'success');
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Nova mensagem em grupo', {
+            body: data.tipo === 'arquivo'
+              ? `${data.usuarioNome}: Arquivo ${data.arquivo_nome_original}`
+              : `${data.usuarioNome}: ${data.conteudo}`
+          });
+        }
       }
     }
 
@@ -3835,8 +4134,7 @@
       }
 
       typingUsers.delete(`privado-${data.remetente_id}`);
-      renderTypingIndicator();
-      renderContatos();
+      renderTypingSurfaces();
       updateBrowserTitle();
 
       mostrarNotificacao(`${data.remetenteNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem privada'}`, 'success');
@@ -3923,19 +4221,14 @@
       });
 
       socket.on('usuario-digitando', (data) => {
-        if (
-          tipoChat === data.tipo &&
-          Number(chatIdAtual) === Number(data.chatId) &&
-          Number(data.usuarioId) !== Number(usuarioAtual.id)
-        ) {
-          typingUsers.set(`${data.tipo}-${data.chatId}`, data.usuarioNome);
-          renderTypingIndicator();
-        }
+        if (Number(data.usuarioId) === Number(usuarioAtual.id)) return;
+        typingUsers.set(`${data.tipo}-${data.chatId}`, data.usuarioNome);
+        renderTypingSurfaces();
       });
 
       socket.on('usuario-parou-digitacao', (data) => {
         typingUsers.delete(`${data.tipo}-${data.chatId}`);
-        renderTypingIndicator();
+        renderTypingSurfaces();
       });
 
       socket.on('nova-mensagem-grupo', (data) => {
@@ -4077,7 +4370,10 @@
 
       const gruposFiltrados = sortByRecent(gruposCache, 'grupo').filter((grupo) => {
         const key = getChatKey('grupo', grupo.id);
-        return chatMatchesSearch([grupo.nome, grupo.descricao, lastPreviewState[key]]);
+        const unread = unreadState[key] || 0;
+        if (conversationFilter === 'online') return false;
+        if (conversationFilter === 'nao-lidas' && unread <= 0) return false;
+        return chatMatchesSearch([grupo.nome, grupo.descricao, lastPreviewState[key]], key);
       });
 
       if (!gruposFiltrados.length) {
@@ -4088,6 +4384,7 @@
       gruposFiltrados.forEach(grupo => {
         const key = getChatKey('grupo', grupo.id);
         const unread = unreadState[key] || 0;
+        const typingPreviewHtml = getTypingPreviewHtml('grupo', grupo.id);
 
         const item = document.createElement('div');
         item.className = `chat-item ${tipoChat === 'grupo' && Number(chatIdAtual) === Number(grupo.id) ? 'active' : ''} ${unread > 0 ? 'unread' : ''}`;
@@ -4099,7 +4396,7 @@
               <div class="chat-time">${lastTimeState[key] || ''}</div>
             </div>
             <div class="chat-preview-row">
-              <div class="chat-preview">${escapeHtml(lastPreviewState[key] || grupo.descricao || 'Sem mensagens recentes')}</div>
+              <div class="chat-preview">${typingPreviewHtml || escapeHtml(lastPreviewState[key] || grupo.descricao || 'Sem mensagens recentes')}</div>
               ${unread > 0 ? `<span class="notification-badge">${unread > 99 ? '99+' : unread}</span>` : ''}
             </div>
           </div>
@@ -4137,7 +4434,12 @@
 
       const contatosOrdenados = sortByRecent(contatosCache, 'privado').filter((usuario) => {
         const key = getChatKey('privado', usuario.id);
-        return chatMatchesSearch([usuario.nome, usuario.email, usuario.senha_painel, lastPreviewState[key]]);
+        const unread = unreadState[key] || 0;
+        const online = onlineState.has(Number(usuario.id));
+        if (conversationFilter === 'grupos') return false;
+        if (conversationFilter === 'nao-lidas' && unread <= 0) return false;
+        if (conversationFilter === 'online' && !online) return false;
+        return chatMatchesSearch([usuario.nome, usuario.email, usuario.senha_painel, lastPreviewState[key]], key);
       });
       const contatosOnline = contatosOrdenados.filter(usuario => onlineState.has(Number(usuario.id)));
       const contatosOffline = contatosOrdenados.filter(usuario => !onlineState.has(Number(usuario.id)));
@@ -4146,6 +4448,7 @@
         const key = getChatKey('privado', usuario.id);
         const unread = unreadState[key] || 0;
         const senhaPainel = String(usuario.senha_painel || '').trim();
+        const typingPreviewHtml = getTypingPreviewHtml('privado', usuario.id);
         const preview = lastPreviewState[key] || (online ? 'Online agora' : usuario.email);
         const atendimentoHtml = senhaPainel
           ? `<div class="contact-ticket-note">Senha: ${escapeHtml(senhaPainel)}</div>`
@@ -4164,7 +4467,7 @@
               <div class="chat-time">${lastTimeState[key] || ''}</div>
             </div>
             <div class="chat-preview-row">
-              <div class="chat-preview">${escapeHtml(preview)}</div>
+              <div class="chat-preview">${typingPreviewHtml || escapeHtml(preview)}</div>
               ${unread > 0 ? `<span class="notification-badge">${unread > 99 ? '99+' : unread}</span>` : ''}
             </div>
             ${atendimentoHtml}
@@ -4209,7 +4512,7 @@
       updateBrowserTitle();
 
       typingUsers.delete(`${tipo}-${id}`);
-      renderTypingIndicator();
+      renderTypingSurfaces();
 
       document.getElementById('headerTitle').textContent = (tipo === 'grupo' ? '# ' : '') + nome;
       updateHeaderIcon(tipo, nome);
@@ -4262,17 +4565,23 @@
       const replyHtml = message.reply_preview
         ? `
           <div class="message-reply-preview">
+            <div class="reply-quote-label">Resposta</div>
             <div class="reply-author">${escapeHtml(message.reply_preview.usuario_nome || 'Mensagem')}</div>
             <div class="reply-snippet">${highlightText(message.reply_preview.conteudo || '', query)}</div>
           </div>
         `
         : '';
       const editedHtml = message.editado_em ? `<span class="message-edited">(editada)</span>` : '';
+      const filePreviewHtml = message.tipo === 'arquivo' && isImageAttachment(message)
+        ? `<div class="file-preview"><img src="${escapeHtml(message.arquivo_url)}" alt="${escapeHtml(message.arquivo_nome_original || 'Imagem anexada')}" loading="lazy" /></div>`
+        : message.tipo === 'arquivo' && isPdfAttachment(message)
+          ? `<div class="file-preview pdf"><span>&#128196;</span><span>Previa de PDF disponivel ao abrir o arquivo</span></div>`
+          : '';
       const innerContent = message.tipo === 'arquivo'
         ? `<a class="file-card" href="${escapeHtml(message.arquivo_url)}" target="_blank" rel="noopener noreferrer">
              <strong>&#128206; ${highlightText(message.arquivo_nome_original, query)}</strong>
              <small>${escapeHtml(formatFileSize(message.arquivo_tamanho))}</small>
-           </a>`
+           </a>${filePreviewHtml}`
         : `<div class="message-text">${highlightText(message.conteudo, query)}</div>`;
 
       const reactions = Object.entries(message.reacoes || {});
@@ -4289,6 +4598,7 @@
       const actionButtons = `
         <span class="message-actions">
           <button class="message-action-btn" onclick="responderMensagem(${Number(message.id)})" title="Responder">&#8617;</button>
+          <button class="message-action-btn" onclick="copiarMensagem(${Number(message.id)})" title="Copiar mensagem">&#128203;</button>
           ${ehOutro && tipoChat === 'privado' ? `<button class="message-action-btn" onclick="marcarConversaComoNaoLida(${Number(message.id)}, ${Number(message.usuarioId)})" title="Marcar conversa como não lida">Nao lido</button>` : ''}
           ${!ehOutro && message.tipo === 'texto' ? `<button class="message-action-btn" onclick="prepararEdicaoMensagem(${Number(message.id)})" title="Editar">&#9998;</button>` : ''}
           <button class="message-action-btn" onclick="alternarReacaoRapida(${Number(message.id)})" title="Reagir">+</button>
@@ -4323,8 +4633,8 @@
         ? (resumoLeituraGrupo?.tooltip || '')
         : (message.lido ? 'Mensagem lida' : 'Mensagem enviada');
       const statusText = tipoChat === 'grupo'
-        ? (resumoLeituraGrupo?.status || '\u2713')
-        : (message.lido ? '\u2713\u2713' : '\u2713');
+        ? (getLeiturasGrupo(message).length ? 'Lida' : 'Enviada')
+        : (message.lido ? 'Lida' : 'Enviada');
       const resumoHtml = tipoChat === 'grupo'
         ? `<div class="message-read-summary" title="${escapeHtml(resumoLeituraGrupo?.tooltip || '')}"><strong>Leitura:</strong> ${escapeHtml(resumoLeituraGrupo?.detalhe || 'Ninguem do grupo leu ainda')}</div>`
         : '';

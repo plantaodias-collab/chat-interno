@@ -507,6 +507,14 @@ function sanitizeText(value) {
   return String(value || '').trim();
 }
 
+function normalizeSearchText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 function findActiveUserById(userId) {
   return db.usuarios.find((u) => u.id === Number(userId) && u.ativo);
 }
@@ -1103,6 +1111,44 @@ app.get('/api/conversas/privadas/resumo', verificarToken, (req, res) => {
       });
 
     res.json(Object.values(resumo));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.get('/api/busca-conversas', verificarToken, (req, res) => {
+  try {
+    const query = normalizeSearchText(req.query?.q);
+    if (query.length < 2) {
+      return res.json({ matches: [] });
+    }
+
+    const matches = new Set();
+
+    db.mensagens.forEach((message) => {
+      if (!canUserAccessMessage(req.userId, message)) return;
+
+      const sender = db.usuarios.find((u) => Number(u.id) === Number(message.usuario_id));
+      const content = [
+        sender?.nome,
+        message.conteudo,
+        message.arquivo_nome_original,
+        message.tipo === 'arquivo' ? 'arquivo anexo pdf imagem documento' : ''
+      ].map(normalizeSearchText).join(' ');
+
+      if (!content.includes(query)) return;
+
+      if (message.grupo_id) {
+        matches.add(`grupo-${Number(message.grupo_id)}`);
+      } else {
+        const otherId = Number(message.usuario_id) === Number(req.userId)
+          ? Number(message.usuario_destino_id)
+          : Number(message.usuario_id);
+        if (otherId) matches.add(`privado-${otherId}`);
+      }
+    });
+
+    res.json({ matches: Array.from(matches) });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
