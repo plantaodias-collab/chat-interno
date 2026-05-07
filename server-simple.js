@@ -30,7 +30,7 @@ const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png']);
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
-const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json'];
+const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json'];
 
 function getDefaultBackupSchedule() {
   return {
@@ -67,6 +67,7 @@ class SimpleDB {
     this.grupos = this.loadFile('grupos.json', []);
     this.membros_grupo = this.loadFile('membros.json', []);
     this.mensagens = this.loadFile('mensagens.json', []);
+    this.mensagens_apagadas = this.loadFile('mensagens-apagadas.json', []);
     this.conversas_pendentes = this.loadFile('conversas-pendentes.json', []);
     this.painel_senhas = this.loadFile('painel-senhas.json', {
       senhaAtual: '',
@@ -105,6 +106,7 @@ class SimpleDB {
     this.saveFile('grupos.json', this.grupos);
     this.saveFile('membros.json', this.membros_grupo);
     this.saveFile('mensagens.json', this.mensagens);
+    this.saveFile('mensagens-apagadas.json', this.mensagens_apagadas);
     this.saveFile('conversas-pendentes.json', this.conversas_pendentes);
     this.saveFile('painel-senhas.json', this.painel_senhas);
     this.saveFile('backup-agendamento.json', this.backup_agendamento);
@@ -834,6 +836,33 @@ app.get('/api/admin/usuarios', verificarToken, (req, res) => {
   }
 });
 
+app.get('/api/admin/mensagens-apagadas', verificarToken, (req, res) => {
+  try {
+    const usuarioAdmin = db.usuarios.find((u) => u.id === req.userId);
+    if (!usuarioAdmin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
+
+    const mensagens = [...db.mensagens_apagadas]
+      .sort((a, b) => new Date(b.apagada_em || b.criado_em) - new Date(a.apagada_em || a.criado_em))
+      .slice(0, 200)
+      .map((message) => {
+        const sender = db.usuarios.find((u) => Number(u.id) === Number(message.usuario_id));
+        const grupo = message.grupo_id ? db.grupos.find((g) => Number(g.id) === Number(message.grupo_id)) : null;
+        const destino = message.usuario_destino_id ? db.usuarios.find((u) => Number(u.id) === Number(message.usuario_destino_id)) : null;
+        const apagadaPor = db.usuarios.find((u) => Number(u.id) === Number(message.apagada_por));
+        return {
+          ...message,
+          usuario_nome: sender?.nome || 'Desconhecido',
+          conversa_nome: grupo?.nome || destino?.nome || 'Conversa',
+          apagada_por_nome: apagadaPor?.nome || 'Desconhecido'
+        };
+      });
+
+    res.json(mensagens);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.delete('/api/admin/usuarios/:id', verificarToken, (req, res) => {
   try {
     const usuarioAdmin = db.usuarios.find((u) => u.id === req.userId);
@@ -1207,6 +1236,52 @@ app.get('/api/busca-conversas', verificarToken, (req, res) => {
   }
 });
 
+app.get('/api/busca-global', verificarToken, (req, res) => {
+  try {
+    const query = normalizeSearchText(req.query?.q);
+    if (query.length < 2) return res.json({ resultados: [] });
+
+    const resultados = db.mensagens
+      .filter((message) => canUserAccessMessage(req.userId, message))
+      .map(enrichMessage)
+      .filter((message) => {
+        const haystack = [
+          message.usuario_nome,
+          message.conteudo,
+          message.arquivo_nome_original,
+          message.reply_preview?.conteudo,
+          message.reply_preview?.usuario_nome,
+          message.tipo === 'arquivo' ? 'arquivo anexo pdf imagem documento' : ''
+        ].map(normalizeSearchText).join(' ');
+        return haystack.includes(query);
+      })
+      .sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))
+      .slice(0, 80)
+      .map((message) => {
+        const tipoChat = message.grupo_id ? 'grupo' : 'privado';
+        const chatId = message.grupo_id
+          ? Number(message.grupo_id)
+          : (Number(message.usuario_id) === Number(req.userId) ? Number(message.usuario_destino_id) : Number(message.usuario_id));
+        const grupo = message.grupo_id ? db.grupos.find((item) => Number(item.id) === Number(message.grupo_id)) : null;
+        const contato = !message.grupo_id ? db.usuarios.find((item) => Number(item.id) === Number(chatId)) : null;
+        return {
+          id: message.id,
+          tipoChat,
+          chatId,
+          chatNome: grupo?.nome || contato?.nome || 'Conversa',
+          usuario_nome: message.usuario_nome,
+          conteudo: message.tipo === 'arquivo' ? (message.arquivo_nome_original || 'Arquivo') : message.conteudo,
+          tipo: message.tipo || 'texto',
+          criado_em: message.criado_em
+        };
+      });
+
+    res.json({ resultados });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.post('/api/conversas/privadas/:usuarioId/marcar-nao-lida', verificarToken, (req, res) => {
   try {
     const outroUsuarioId = parseInt(req.params.usuarioId, 10);
@@ -1253,6 +1328,11 @@ app.delete('/api/mensagens/:id', verificarToken, (req, res) => {
       return res.status(403).json({ erro: 'Você só pode apagar mensagens enviadas por você' });
     }
 
+    db.mensagens_apagadas.push({
+      ...mensagem,
+      apagada_em: new Date().toISOString(),
+      apagada_por: Number(req.userId)
+    });
     db.mensagens.splice(index, 1);
     db.save();
     if (mensagem.tipo === 'arquivo') {
