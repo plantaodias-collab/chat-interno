@@ -2443,7 +2443,33 @@
     }
 
     .chat-item.unread {
-      background: #f1f5f9;
+      background: #c7d2fe;
+      box-shadow: inset 4px 0 0 #1d4ed8, 0 8px 18px rgba(37,99,235,.12);
+      border: 1px solid #93c5fd;
+    }
+
+    .chat-item.unread:hover {
+      background: #bfdbfe;
+    }
+
+    .chat-item.unread .chat-name {
+      color: #0f2f73;
+      animation: unreadNamePulse 1.05s ease-in-out infinite;
+    }
+
+    .chat-item.unread .chat-preview,
+    .chat-item.unread .chat-time {
+      color: #1e3a8a;
+      font-weight: 700;
+    }
+
+    .chat-item.unread .chat-icon.private,
+    .chat-item.unread .chat-icon.group {
+      box-shadow: 0 0 0 3px rgba(37,99,235,.16);
+    }
+
+    .chat-item.unread .notification-badge {
+      animation: unreadBadgePulse 1.05s ease-in-out infinite;
     }
 
     .chat-item.active .chat-preview,
@@ -2466,6 +2492,29 @@
     .notification-badge {
       background: #dc2626;
       color: #ffffff;
+    }
+
+    @keyframes unreadNamePulse {
+      0%, 100% {
+        color: #0f2f73;
+        text-shadow: none;
+      }
+      50% {
+        color: #ffffff;
+        text-shadow: 0 0 10px rgba(37,99,235,.85);
+      }
+    }
+
+    @keyframes unreadBadgePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.12); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .chat-item.unread .chat-name,
+      .chat-item.unread .notification-badge {
+        animation: none;
+      }
     }
 
     .messages-container {
