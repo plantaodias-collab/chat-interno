@@ -1238,6 +1238,70 @@
       padding: 26px;
     }
 
+    .modal-tabs {
+      display: flex;
+      gap: 8px;
+      margin: 0 0 18px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 10px;
+      overflow-x: auto;
+    }
+
+    .modal-tab-btn {
+      border: 1px solid #dbe1ea;
+      background: #f8fafc;
+      color: #334155;
+      border-radius: 999px;
+      padding: 9px 13px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .modal-tab-btn.active {
+      background: #dbeafe;
+      border-color: #93c5fd;
+      color: #1e3a8a;
+    }
+
+    .modal-tab-panel.hidden {
+      display: none;
+    }
+
+    .pinned-notice {
+      display: none;
+      align-items: flex-start;
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+      background: #fff7ed;
+      color: #7c2d12;
+      padding: 12px 20px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .pinned-notice.active {
+      display: flex;
+    }
+
+    .pinned-notice strong {
+      display: block;
+      color: #9a3412;
+      margin-bottom: 2px;
+    }
+
+    .pinned-notice-icon {
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: inline-grid;
+      place-items: center;
+      background: #fed7aa;
+      color: #9a3412;
+      font-weight: 900;
+    }
+
     .modal-content h3, .modal-content h4 { color: #0f172a; }
 
     .modal-content .field {
@@ -2859,6 +2923,85 @@
       color: var(--text) !important;
     }
 
+    body.theme-dark {
+      --bg: #111827;
+      --panel: #172033;
+      --line: rgba(148,163,184,.22);
+      --text: #e5edf7;
+      --muted: #9fb0c7;
+      background: #111827;
+      color: var(--text);
+    }
+
+    body.theme-dark .container,
+    body.theme-dark .main-content,
+    body.theme-dark .messages-container,
+    body.theme-dark .header,
+    body.theme-dark .input-area {
+      background: #111827;
+      color: var(--text);
+    }
+
+    body.theme-dark .sidebar,
+    body.theme-dark .user-info,
+    body.theme-dark .workspace-search,
+    body.theme-dark .conversation-filters,
+    body.theme-dark .sidebar-section,
+    body.theme-dark .contacts-section,
+    body.theme-dark .admin-section {
+      background: #0f172a;
+      border-color: rgba(148,163,184,.22);
+    }
+
+    body.theme-dark .workspace-search-input,
+    body.theme-dark .header-search,
+    body.theme-dark .header-btn,
+    body.theme-dark .composer,
+    body.theme-dark .conversation-filter-btn {
+      background: #1e293b;
+      border-color: rgba(148,163,184,.28);
+      color: var(--text);
+    }
+
+    body.theme-dark .conversation-filter-btn.active,
+    body.theme-dark .chat-item.active {
+      background: #1d4ed8;
+      color: #ffffff;
+    }
+
+    body.theme-dark .chat-item:hover,
+    body.theme-dark .message-row:hover {
+      background: rgba(96,165,250,.10);
+    }
+
+    body.theme-dark .chat-name,
+    body.theme-dark .header h2,
+    body.theme-dark .message-sender,
+    body.theme-dark .message-text,
+    body.theme-dark .welcome-title {
+      color: var(--text);
+    }
+
+    body.theme-dark .message-reply-preview,
+    body.theme-dark .file-card,
+    body.theme-dark .reaction-chip,
+    body.theme-dark .reaction-picker-btn,
+    body.theme-dark .message-context {
+      background: #1e293b;
+      border-color: rgba(148,163,184,.24);
+      color: var(--text);
+    }
+
+    body.theme-dark .pinned-notice {
+      background: #2a1f12;
+      color: #fed7aa;
+      border-color: rgba(251,146,60,.28);
+    }
+
+    body.theme-dark .pinned-notice strong {
+      color: #fdba74;
+    }
+
     .welcome-state {
       width: min(520px, 92%);
       display: grid;
@@ -3013,6 +3156,14 @@
         </div>
       </div>
 
+      <div class="pinned-notice" id="pinnedNoticeBar">
+        <span class="pinned-notice-icon">!</span>
+        <div>
+          <strong>Aviso fixado</strong>
+          <span id="pinnedNoticeText"></span>
+        </div>
+      </div>
+
       <div class="messages-container" id="messagesContainer">
         <div class="empty-state welcome-state">
           <div class="welcome-logo-card" aria-label="Logo Dias de Castro">
@@ -3085,8 +3236,15 @@
     <div class="modal-content">
       <h3 style="margin-bottom:18px;">Painel de Administração</h3>
 
+      <div class="modal-tabs">
+        <button class="modal-tab-btn active" type="button" data-admin-tab="usuarios" onclick="setAdminTab('usuarios')">Usuarios</button>
+        <button class="modal-tab-btn" type="button" data-admin-tab="grupos" onclick="setAdminTab('grupos')">Grupos</button>
+        <button class="modal-tab-btn" type="button" data-admin-tab="avisos" onclick="setAdminTab('avisos')">Avisos</button>
+        <button class="modal-tab-btn" type="button" data-admin-tab="backups" onclick="setAdminTab('backups')">Backups</button>
+      </div>
+
       <div class="modal-grid">
-        <section>
+        <section class="modal-tab-panel" data-admin-panel="usuarios">
           <h4 style="margin-bottom:14px;">Cadastrar novo usuário</h4>
           <div class="form-group">
             <label for="adminNovonome">Nome</label>
@@ -3099,7 +3257,7 @@
           <button class="btn btn-primary" onclick="cadastrarNovoUsuario()">Cadastrar usuário</button>
         </section>
 
-        <section style="border-top:1px solid #e5e7eb; padding-top:22px;">
+        <section class="modal-tab-panel" data-admin-panel="usuarios" style="border-top:1px solid #e5e7eb; padding-top:22px;">
           <h4>Usuários cadastrados</h4>
           <table class="table">
             <thead>
@@ -3115,7 +3273,7 @@
           </table>
         </section>
 
-        <section style="border-top:1px solid #e5e7eb; padding-top:22px;">
+        <section class="modal-tab-panel hidden" data-admin-panel="grupos" style="border-top:1px solid #e5e7eb; padding-top:22px;">
           <h4 style="margin-bottom:14px;">Criar novo grupo</h4>
           <div class="form-group">
             <label for="adminNovoGrupoNome">Nome do grupo</label>
@@ -3133,7 +3291,25 @@
           <button class="btn btn-primary" onclick="criarNovoGrupo()">Criar grupo</button>
         </section>
 
-        <section style="border-top:1px solid #e5e7eb; padding-top:22px;">
+        <section class="modal-tab-panel hidden" data-admin-panel="avisos" style="border-top:1px solid #e5e7eb; padding-top:22px;">
+          <h4 style="margin-bottom:14px;">Aviso fixado do grupo</h4>
+          <div class="form-group">
+            <label for="adminAvisoGrupoSelect">Grupo</label>
+            <select class="field" id="adminAvisoGrupoSelect" onchange="preencherAvisoGrupoSelecionado()">
+              <option value="">Selecione um grupo</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="adminAvisoGrupoTexto">Aviso</label>
+            <textarea class="field" id="adminAvisoGrupoTexto" rows="4" maxlength="500" placeholder="Ex.: Prazo importante, comunicado interno ou orientação fixa do grupo."></textarea>
+          </div>
+          <div class="backup-actions">
+            <button class="btn btn-primary" style="width:auto;" onclick="salvarAvisoGrupoAdmin()">Salvar aviso</button>
+            <button class="btn btn-secondary" onclick="limparAvisoGrupoAdmin()">Limpar aviso</button>
+          </div>
+        </section>
+
+        <section class="modal-tab-panel hidden" data-admin-panel="backups" style="border-top:1px solid #e5e7eb; padding-top:22px;">
           <h4 style="margin-bottom:14px;">Backups manuais</h4>
           <div class="backup-panel">
             <div class="form-group">
@@ -3197,6 +3373,13 @@
     <div class="modal-content" style="max-width:640px;">
       <h3 style="margin-bottom:18px;">Ajustes da Conta</h3>
 
+      <div class="modal-tabs">
+        <button class="modal-tab-btn active" type="button" data-settings-tab="perfil" onclick="setSettingsTab('perfil')">Perfil</button>
+        <button class="modal-tab-btn" type="button" data-settings-tab="senha" onclick="setSettingsTab('senha')">Senha</button>
+        <button class="modal-tab-btn" type="button" data-settings-tab="visual" onclick="setSettingsTab('visual')">Visual</button>
+      </div>
+
+      <div class="modal-tab-panel" data-settings-panel="perfil">
       <div class="form-group">
         <label for="ajustesNome">Nome</label>
         <input class="field" type="text" id="ajustesNome" placeholder="Seu nome" />
@@ -3206,7 +3389,9 @@
         <label for="ajustesEmail">E-mail</label>
         <input class="field" type="email" id="ajustesEmail" placeholder="seu@email.com" />
       </div>
+      </div>
 
+      <div class="modal-tab-panel hidden" data-settings-panel="senha">
       <div class="form-group">
         <label for="ajustesSenhaAtual">Senha atual</label>
         <input class="field" type="password" id="ajustesSenhaAtual" placeholder="Digite sua senha atual para alterar a senha" />
@@ -3215,6 +3400,18 @@
       <div class="form-group">
         <label for="ajustesNovaSenha">Nova senha</label>
         <input class="field" type="password" id="ajustesNovaSenha" placeholder="Deixe em branco para manter a senha atual" />
+      </div>
+      </div>
+
+      <div class="modal-tab-panel hidden" data-settings-panel="visual">
+        <div class="form-group">
+          <label for="ajustesTema">Tema do chat</label>
+          <select class="field" id="ajustesTema" onchange="salvarTemaPreferido(this.value)">
+            <option value="light">Claro</option>
+            <option value="dark">Escuro</option>
+          </select>
+        </div>
+        <div style="font-size:13px; color:#64748b;">O tema fica salvo neste navegador.</div>
       </div>
 
       <div style="display:flex; justify-content:flex-end; gap:10px;">
@@ -3265,6 +3462,7 @@
     };
     const REACTION_OPTIONS = ['\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F44F}', '\u{1F525}', '\u{1F440}'];
     const STORAGE_KEY = 'chatinterno.session';
+    const THEME_KEY = 'chatinterno.theme';
     const DEFAULT_TITLE = 'Chat Interno - Equipe';
     const DEFAULT_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Cpath d='M18 22c0-4.4 3.6-8 8-8h12c4.4 0 8 3.6 8 8v9c0 4.4-3.6 8-8 8H31l-8 7v-7h-1c-4.4 0-8-3.6-8-8V22Z' fill='white'/%3E%3Ccircle cx='27' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='33' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='39' cy='27' r='3' fill='%232563eb'/%3E%3C/svg%3E";
     const ALERT_FAVICON_A = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23ef4444'/%3E%3Ccircle cx='32' cy='32' r='23' fill='%23fef2f2'/%3E%3Cpath d='M32 18 18 44h28L32 18Z' fill='%23ef4444'/%3E%3Crect x='30' y='26' width='4' height='10' rx='2' fill='white'/%3E%3Ccircle cx='32' cy='40' r='2.2' fill='white'/%3E%3C/svg%3E";
@@ -3272,6 +3470,36 @@
 
     function getChatKey(tipo, id) {
       return `${tipo}-${id}`;
+    }
+
+    function aplicarTema(theme = localStorage.getItem(THEME_KEY) || 'light') {
+      const normalized = theme === 'dark' ? 'dark' : 'light';
+      document.body.classList.toggle('theme-dark', normalized === 'dark');
+      const select = document.getElementById('ajustesTema');
+      if (select) select.value = normalized;
+    }
+
+    function salvarTemaPreferido(theme) {
+      const normalized = theme === 'dark' ? 'dark' : 'light';
+      localStorage.setItem(THEME_KEY, normalized);
+      aplicarTema(normalized);
+    }
+
+    function setModalTab(scope, tab) {
+      document.querySelectorAll(`[data-${scope}-tab]`).forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset[`${scope}Tab`] === tab);
+      });
+      document.querySelectorAll(`[data-${scope}-panel]`).forEach((panel) => {
+        panel.classList.toggle('hidden', panel.dataset[`${scope}Panel`] !== tab);
+      });
+    }
+
+    function setAdminTab(tab) {
+      setModalTab('admin', tab || 'usuarios');
+    }
+
+    function setSettingsTab(tab) {
+      setModalTab('settings', tab || 'perfil');
     }
 
     function authHeaders(extra = {}) {
@@ -3723,6 +3951,20 @@
       }
     }
 
+    function renderPinnedNotice() {
+      const bar = document.getElementById('pinnedNoticeBar');
+      const text = document.getElementById('pinnedNoticeText');
+      if (!bar || !text) return;
+
+      const grupo = tipoChat === 'grupo'
+        ? gruposCache.find((item) => Number(item.id) === Number(chatIdAtual))
+        : null;
+      const aviso = String(grupo?.aviso_fixado || '').trim();
+
+      text.textContent = aviso;
+      bar.classList.toggle('active', Boolean(aviso));
+    }
+
     function renderTypingIndicator() {
       const el = document.getElementById('typingIndicator');
       const key = `${tipoChat}-${chatIdAtual}`;
@@ -3941,6 +4183,33 @@
         `;
         container.appendChild(item);
       });
+    }
+
+    function renderAvisosGrupoAdmin() {
+      const select = document.getElementById('adminAvisoGrupoSelect');
+      if (!select) return;
+
+      const currentValue = select.value;
+      select.innerHTML = '<option value="">Selecione um grupo</option>';
+      gruposCache.forEach((grupo) => {
+        const option = document.createElement('option');
+        option.value = grupo.id;
+        option.textContent = grupo.nome;
+        select.appendChild(option);
+      });
+
+      if (currentValue && gruposCache.some((grupo) => Number(grupo.id) === Number(currentValue))) {
+        select.value = currentValue;
+      }
+      preencherAvisoGrupoSelecionado();
+    }
+
+    function preencherAvisoGrupoSelecionado() {
+      const select = document.getElementById('adminAvisoGrupoSelect');
+      const textarea = document.getElementById('adminAvisoGrupoTexto');
+      if (!select || !textarea) return;
+      const grupo = gruposCache.find((item) => Number(item.id) === Number(select.value));
+      textarea.value = grupo?.aviso_fixado || '';
     }
 
     function fecharEmojiPicker() {
@@ -4220,6 +4489,19 @@
         await carregarAgendamentoBackupAdmin();
       });
 
+      socket.on('grupo-aviso-atualizado', (data) => {
+        gruposCache = gruposCache.map((grupo) => (
+          Number(grupo.id) === Number(data.grupoId)
+            ? { ...grupo, aviso_fixado: data.aviso || '' }
+            : grupo
+        ));
+        renderPinnedNotice();
+        renderAvisosGrupoAdmin();
+        if (tipoChat === 'grupo' && Number(chatIdAtual) === Number(data.grupoId)) {
+          mostrarNotificacao(data.aviso ? 'Aviso do grupo atualizado' : 'Aviso do grupo removido', 'info');
+        }
+      });
+
       socket.on('usuario-digitando', (data) => {
         if (Number(data.usuarioId) === Number(usuarioAtual.id)) return;
         typingUsers.set(`${data.tipo}-${data.chatId}`, data.usuarioNome);
@@ -4320,10 +4602,14 @@
         gruposCache = await response.json();
         if (!Array.isArray(gruposCache)) gruposCache = [];
         renderGrupos();
+        renderPinnedNotice();
+        renderAvisosGrupoAdmin();
       } catch (err) {
         console.error(err);
         gruposCache = [];
         renderGrupos();
+        renderPinnedNotice();
+        renderAvisosGrupoAdmin();
       }
     }
 
@@ -4517,6 +4803,7 @@
       document.getElementById('headerTitle').textContent = (tipo === 'grupo' ? '# ' : '') + nome;
       updateHeaderIcon(tipo, nome);
       updateHeaderStatus();
+      renderPinnedNotice();
       document.getElementById('messagesContainer').innerHTML = '';
 
       try {
@@ -5233,14 +5520,18 @@
     }
 
     function abrirPainelAdmin() {
+      setAdminTab('usuarios');
       carregarUsuariosAdmin();
+      carregarGrupos();
       carregarBackupsAdmin();
       carregarAgendamentoBackupAdmin();
       document.getElementById('adminModal').classList.add('active');
     }
 
     function abrirAjustes() {
+      setSettingsTab('perfil');
       preencherFormularioAjustes();
+      aplicarTema();
       document.getElementById('ajustesModal').classList.add('active');
     }
 
@@ -5394,6 +5685,45 @@
       }
     }
 
+    async function salvarAvisoGrupoAdmin() {
+      const grupoId = Number(document.getElementById('adminAvisoGrupoSelect').value);
+      const aviso = document.getElementById('adminAvisoGrupoTexto').value.trim();
+      if (!grupoId) {
+        mostrarNotificacao('Selecione um grupo para fixar o aviso', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/admin/grupos/${grupoId}/aviso`, {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ aviso })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          mostrarNotificacao(data.erro || 'Erro ao salvar aviso', 'error');
+          return;
+        }
+
+        gruposCache = gruposCache.map((grupo) => (
+          Number(grupo.id) === Number(grupoId)
+            ? { ...grupo, aviso_fixado: aviso }
+            : grupo
+        ));
+        renderPinnedNotice();
+        renderAvisosGrupoAdmin();
+        mostrarNotificacao(aviso ? 'Aviso fixado salvo' : 'Aviso removido', 'success');
+      } catch (err) {
+        mostrarNotificacao('Erro ao salvar aviso: ' + err.message, 'error');
+      }
+    }
+
+    async function limparAvisoGrupoAdmin() {
+      const textarea = document.getElementById('adminAvisoGrupoTexto');
+      if (textarea) textarea.value = '';
+      await salvarAvisoGrupoAdmin();
+    }
+
     function abrirNovoGrupo() { abrirPainelAdmin(); }
     function abrirNovoContato() { mostrarNotificacao('Todos os contatos cadastrados aparecem na lista', 'success'); }
 
@@ -5433,6 +5763,7 @@
       document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
       document.getElementById('headerMotivation').classList.remove('hidden');
       document.getElementById('typingIndicator').textContent = '';
+      renderPinnedNotice();
       document.getElementById('fileInput').value = '';
       setUploadStatus('');
       updateHeaderIcon(null);
@@ -5452,6 +5783,7 @@
       }
     };
 
+    aplicarTema();
     restaurarSessao();
   </script>
 </body>

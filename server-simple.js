@@ -961,6 +961,33 @@ app.post('/api/admin/criar-grupo', verificarToken, (req, res) => {
   }
 });
 
+app.put('/api/admin/grupos/:id/aviso', verificarToken, (req, res) => {
+  try {
+    const usuarioAdmin = db.usuarios.find((u) => u.id === req.userId);
+    if (!usuarioAdmin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
+
+    const grupoId = Number(req.params.id);
+    const grupo = db.grupos.find((item) => Number(item.id) === grupoId);
+    if (!grupo) return res.status(404).json({ erro: 'Grupo nao encontrado' });
+
+    const aviso = sanitizeText(req.body?.aviso).slice(0, 500);
+    grupo.aviso_fixado = aviso;
+    grupo.aviso_atualizado_em = aviso ? new Date().toISOString() : null;
+    grupo.aviso_atualizado_por = aviso ? Number(req.userId) : null;
+    db.save();
+
+    io.to(`grupo-${grupoId}`).emit('grupo-aviso-atualizado', {
+      grupoId,
+      aviso,
+      atualizadoEm: grupo.aviso_atualizado_em
+    });
+
+    res.json({ grupo });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.get('/api/grupos', verificarToken, (req, res) => {
   try {
     res.json(
