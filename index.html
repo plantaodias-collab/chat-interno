@@ -4579,6 +4579,7 @@
       priorityBtn.textContent = isPriority ? 'Prioridade ativa' : 'Prioridade';
       priorityBtn.classList.toggle('priority-active', isPriority);
       priorityBtn.title = isPriority ? 'Remover prioridade' : 'Marcar como prioridade';
+      atualizarPainelInicialSeAberto();
     }
 
     function alternarFavoritoAtual() {
@@ -4601,7 +4602,7 @@
       atualizarBotaoFavorito();
       renderGrupos();
       renderContatos();
-      if (!tipoChat || !chatIdAtual) renderWelcomeState();
+      atualizarPainelInicialSeAberto();
     }
 
     function aplicarTema(theme = localStorage.getItem(THEME_KEY) || 'light') {
@@ -5596,6 +5597,7 @@
       await carregarResumoConversas();
       await registrarServiceWorkerNotificacoes();
       updateBrowserTitle();
+      atualizarPainelInicialSeAberto();
 
       if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
@@ -5622,7 +5624,7 @@
     }
 
     function getWelcomeStateHtml() {
-      const totalOnline = onlineState.size;
+      const totalOnline = contatosCache.filter((usuario) => onlineState.has(Number(usuario.id))).length;
       const totalGrupos = gruposCache.length;
       const totalNaoLidas = Object.values(unreadState).reduce((sum, value) => sum + (Number(value) || 0), 0);
       const totalPrioridades = priorityChats.size;
@@ -5673,6 +5675,10 @@
 
     function renderWelcomeState() {
       document.getElementById('messagesContainer').innerHTML = getWelcomeStateHtml();
+    }
+
+    function atualizarPainelInicialSeAberto() {
+      if (!tipoChat && !chatIdAtual) renderWelcomeState();
     }
 
     function voltarTelaInicial() {
@@ -5763,6 +5769,7 @@
       typingUsers.delete(`grupo-${data.grupoId}`);
       renderTypingSurfaces();
       updateBrowserTitle();
+      atualizarPainelInicialSeAberto();
 
       if (Number(data.usuarioId) !== Number(usuarioAtual.id)) {
         mostrarNotificacao(`${data.usuarioNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem'} no grupo`, 'success');
@@ -5805,6 +5812,7 @@
       typingUsers.delete(`privado-${data.remetente_id}`);
       renderTypingSurfaces();
       updateBrowserTitle();
+      atualizarPainelInicialSeAberto();
 
       mostrarNotificacao(`${data.remetenteNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem privada'}`, 'success');
 
@@ -5865,6 +5873,7 @@
         userStatusState = data.status || userStatusState || {};
         renderContatos();
         updateHeaderStatus();
+        atualizarPainelInicialSeAberto();
       });
 
       socket.on('painel-senhas-atualizado', (data) => {
@@ -6004,12 +6013,14 @@
         renderGrupos();
         renderPinnedNotice();
         renderAvisosGrupoAdmin();
+        atualizarPainelInicialSeAberto();
       } catch (err) {
         console.error(err);
         gruposCache = [];
         renderGrupos();
         renderPinnedNotice();
         renderAvisosGrupoAdmin();
+        atualizarPainelInicialSeAberto();
       }
     }
 
@@ -6021,10 +6032,12 @@
         if (!Array.isArray(contatosCache)) contatosCache = [];
         contatosCache = contatosCache.filter(u => Number(u.id) !== Number(usuarioAtual.id));
         renderContatos();
+        atualizarPainelInicialSeAberto();
       } catch (err) {
         console.error(err);
         contatosCache = [];
         renderContatos();
+        atualizarPainelInicialSeAberto();
       }
     }
 
@@ -6045,6 +6058,7 @@
 
         renderContatos();
         updateBrowserTitle();
+        atualizarPainelInicialSeAberto();
       } catch (err) {
         console.error(err);
       }
