@@ -4029,6 +4029,106 @@
       }
     }
 
+    @media (max-height: 760px) and (min-width: 981px) {
+      .container {
+        padding: 4px;
+        gap: 8px;
+        grid-template-columns: minmax(340px, 370px) minmax(0, 1fr);
+      }
+
+      .sidebar,
+      .main-content {
+        border-radius: 14px;
+      }
+
+      .sidebar-brand {
+        padding: 10px 14px;
+      }
+
+      .sidebar-brand-mark {
+        width: 42px;
+        height: 42px;
+      }
+
+      .user-info {
+        padding: 12px 14px;
+      }
+
+      .user-info .avatar {
+        width: 46px;
+        height: 46px;
+      }
+
+      .workspace-search {
+        padding: 10px 14px;
+      }
+
+      .workspace-search-input {
+        padding: 10px 12px;
+      }
+
+      .conversation-filters {
+        padding: 0 14px 10px;
+        gap: 7px;
+      }
+
+      .conversation-filter-btn {
+        padding: 7px 8px;
+      }
+
+      .sidebar > .sidebar-section:not(.contacts-section) {
+        padding-top: 8px;
+        padding-bottom: 8px;
+      }
+
+      .sidebar > .sidebar-section:not(.contacts-section) .menu-list {
+        max-height: 70px;
+      }
+
+      .sidebar > .sidebar-section:not(.contacts-section) .chat-item {
+        min-height: 42px;
+      }
+
+      .contacts-section {
+        padding-top: 8px;
+        min-height: 0;
+      }
+
+      .contacts-section .menu-list {
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+
+      .contact-groups {
+        flex: 0 0 auto;
+        gap: 8px;
+        min-height: auto;
+      }
+
+      .contact-group,
+      .contact-group.online-group,
+      .contact-group.offline-group {
+        flex: 0 0 auto;
+        min-height: auto;
+        padding: 8px;
+      }
+
+      .contact-group.online-group .contact-group-items,
+      .contact-group.offline-group .contact-group-items {
+        max-height: none;
+        overflow: visible;
+      }
+
+      .chat-item {
+        min-height: 62px;
+        padding: 10px 10px;
+      }
+
+      .header {
+        min-height: 96px;
+      }
+    }
+
   </style>
 </head>
 <body>
