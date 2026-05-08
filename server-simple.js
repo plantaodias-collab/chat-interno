@@ -430,6 +430,12 @@ function enrichMessage(m) {
   const replyTarget = m.reply_to_id
     ? db.mensagens.find((item) => Number(item.id) === Number(m.reply_to_id))
     : null;
+  const reacoes = typeof m.reacoes === 'object' && m.reacoes ? m.reacoes : {};
+  const reacoesNomes = Object.fromEntries(Object.entries(reacoes).map(([emoji, userIds]) => {
+    const nomes = (Array.isArray(userIds) ? userIds : [])
+      .map((id) => db.usuarios.find((u) => Number(u.id) === Number(id))?.nome || 'Desconhecido');
+    return [emoji, nomes];
+  }));
   const leiturasGrupo = Array.isArray(m.leituras_grupo)
     ? m.leituras_grupo
         .map((item) => ({
@@ -446,7 +452,8 @@ function enrichMessage(m) {
       ...item,
       usuario_nome: db.usuarios.find((u) => u.id === item.usuario_id)?.nome || 'Desconhecido'
     })),
-    reacoes: typeof m.reacoes === 'object' && m.reacoes ? m.reacoes : {},
+    reacoes,
+    reacoes_nomes: reacoesNomes,
     reply_preview: replyTarget ? {
       id: replyTarget.id,
       usuario_nome: db.usuarios.find((u) => u.id === replyTarget.usuario_id)?.nome || 'Desconhecido',

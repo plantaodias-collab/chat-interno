@@ -1056,6 +1056,19 @@
       padding: 4px 8px;
       font-size: 12px;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .reaction-chip small {
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 10px;
+      font-weight: 800;
+      opacity: .74;
     }
 
     .message.other .reaction-chip {
@@ -3873,6 +3886,41 @@
       border-color: #d9e2ea;
     }
 
+    body:not(.theme-dark) .message-read-summary {
+      width: fit-content;
+      max-width: 100%;
+      margin-left: auto;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(37,99,235,.08);
+      color: #31537f;
+      opacity: 1;
+      font-weight: 800;
+    }
+
+    body:not(.theme-dark) .message-read-summary.has-readers {
+      background: #eef6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+    }
+
+    body:not(.theme-dark) .reaction-chip {
+      background: #ffffff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+      box-shadow: 0 6px 16px rgba(37,99,235,.08);
+    }
+
+    body:not(.theme-dark) .reaction-chip small {
+      color: #334155;
+      opacity: .9;
+    }
+
+    body.theme-dark .message-read-summary {
+      color: #bfdbfe;
+      opacity: 1;
+    }
+
     @media (max-width: 980px) {
       .sidebar-brand {
         padding: 12px 14px 10px;
@@ -4747,6 +4795,7 @@
         lido: Number(msg.lido || 0),
         tipo: msg.tipo || 'texto',
         reacoes: typeof msg.reacoes === 'object' && msg.reacoes ? msg.reacoes : {},
+        reacoes_nomes: typeof msg.reacoes_nomes === 'object' && msg.reacoes_nomes ? msg.reacoes_nomes : {},
         leituras_grupo: Array.isArray(msg.leituras_grupo)
           ? msg.leituras_grupo
               .map((item) => ({
@@ -4792,8 +4841,21 @@
       return {
         status: '\u2713\u2713',
         detalhe,
-        tooltip: `Lido por: ${nomes.join(', ')}`
+        tooltip: `Lido por: ${nomes.join(', ')}`,
+        total: nomes.length
       };
+    }
+
+    function getReactionNames(message, emoji, userIds = []) {
+      const fromServer = Array.isArray(message?.reacoes_nomes?.[emoji])
+        ? message.reacoes_nomes[emoji].filter(Boolean)
+        : [];
+      if (fromServer.length) return fromServer;
+
+      return userIds.map((id) => {
+        if (Number(id) === Number(usuarioAtual?.id)) return usuarioAtual?.nome || 'Voce';
+        return contatosCache.find((usuario) => Number(usuario.id) === Number(id))?.nome || `Usuario ${id}`;
+      });
     }
 
     function getMessageSnippet(message) {
@@ -6174,7 +6236,14 @@
             ${reactions.map(([emoji, users]) => {
               const userIds = Array.isArray(users) ? users.map(Number) : [];
               const active = userIds.includes(Number(usuarioAtual.id));
-              return `<button class="reaction-chip ${active ? 'active' : ''}" onclick="alternarReacao(${Number(message.id)}, '${escapeHtml(emoji).replace(/'/g, '&#039;')}')">${escapeHtml(emoji)} ${userIds.length}</button>`;
+              const nomes = getReactionNames(message, emoji, userIds);
+              const title = nomes.length
+                ? `${emoji} ${nomes.join(', ')}`
+                : `${emoji} Sem reacoes`;
+              const label = nomes.length === 1
+                ? nomes[0]
+                : `${userIds.length} pessoas`;
+              return `<button class="reaction-chip ${active ? 'active' : ''}" onclick="alternarReacao(${Number(message.id)}, '${escapeHtml(emoji).replace(/'/g, '&#039;')}')" title="${escapeHtml(title)}"><span>${escapeHtml(emoji)} ${userIds.length}</span><small>${escapeHtml(label)}</small></button>`;
             }).join('')}
           </div>`
         : '';
@@ -6222,7 +6291,7 @@
         ? (getLeiturasGrupo(message).length ? 'Lida' : 'Enviada')
         : (message.lido ? 'Lida' : 'Enviada');
       const resumoHtml = tipoChat === 'grupo'
-        ? `<div class="message-read-summary" title="${escapeHtml(resumoLeituraGrupo?.tooltip || '')}"><strong>Leitura:</strong> ${escapeHtml(resumoLeituraGrupo?.detalhe || 'Ninguem do grupo leu ainda')}</div>`
+        ? `<div class="message-read-summary ${resumoLeituraGrupo?.total ? 'has-readers' : ''}" title="${escapeHtml(resumoLeituraGrupo?.tooltip || '')}"><strong>Leitura:</strong> ${escapeHtml(resumoLeituraGrupo?.detalhe || 'Ninguem do grupo leu ainda')}</div>`
         : '';
 
       return `
