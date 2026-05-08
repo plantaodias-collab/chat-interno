@@ -3428,6 +3428,333 @@
       color: var(--muted);
     }
 
+    /* Impact redesign */
+    body:not(.theme-dark) {
+      background:
+        radial-gradient(circle at top left, rgba(37,99,235,.13), transparent 34%),
+        linear-gradient(135deg, #eef5ff 0%, #f8fbff 44%, #edf4f8 100%);
+    }
+
+    body:not(.theme-dark) .container {
+      background: rgba(255,255,255,.64);
+    }
+
+    body:not(.theme-dark) .sidebar {
+      background:
+        linear-gradient(180deg, #111827 0%, #172033 58%, #0f172a 100%);
+      color: #e5edf7;
+      border-right: 1px solid rgba(148,163,184,.28);
+      box-shadow: 18px 0 46px rgba(15,23,42,.20);
+    }
+
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 14px 12px;
+      border-bottom: 1px solid rgba(148,163,184,.18);
+    }
+
+    .sidebar-brand-mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #f8fafc, #b6c2d1);
+      color: #0f172a;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-weight: 900;
+      letter-spacing: 0;
+      box-shadow: 0 12px 24px rgba(0,0,0,.22);
+    }
+
+    .sidebar-brand-name {
+      font-size: 15px;
+      font-weight: 900;
+      color: #ffffff;
+    }
+
+    .sidebar-brand-label {
+      margin-top: 2px;
+      font-size: 12px;
+      color: #9fb0c7;
+    }
+
+    body:not(.theme-dark) .user-info,
+    body:not(.theme-dark) .workspace-search,
+    body:not(.theme-dark) .conversation-filters,
+    body:not(.theme-dark) .sidebar-section,
+    body:not(.theme-dark) .contacts-section,
+    body:not(.theme-dark) .admin-section {
+      background: transparent;
+      border-color: rgba(148,163,184,.18);
+    }
+
+    body:not(.theme-dark) .user-name,
+    body:not(.theme-dark) .section-title,
+    body:not(.theme-dark) .contact-group-title {
+      color: #f8fafc;
+    }
+
+    body:not(.theme-dark) .user-email,
+    body:not(.theme-dark) .chat-preview,
+    body:not(.theme-dark) .chat-time,
+    body:not(.theme-dark) .contact-ticket-note,
+    body:not(.theme-dark) .empty-list {
+      color: #9fb0c7;
+    }
+
+    body:not(.theme-dark) .workspace-search-input,
+    body:not(.theme-dark) .user-status-select {
+      background: rgba(255,255,255,.08);
+      border-color: rgba(203,213,225,.18);
+      color: #e5edf7;
+      box-shadow: none;
+    }
+
+    body:not(.theme-dark) .workspace-search-input::placeholder {
+      color: #94a3b8;
+    }
+
+    body:not(.theme-dark) .conversation-filter-btn {
+      background: rgba(255,255,255,.07);
+      color: #cbd5e1;
+      border-color: rgba(203,213,225,.13);
+    }
+
+    body:not(.theme-dark) .conversation-filter-btn.active {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 12px 24px rgba(37,99,235,.28);
+    }
+
+    body:not(.theme-dark) .chat-item {
+      color: #e5edf7;
+      border-radius: 14px;
+      margin: 4px 8px;
+      background: rgba(255,255,255,.045);
+      border-color: rgba(255,255,255,.07);
+    }
+
+    body:not(.theme-dark) .chat-item:hover {
+      background: rgba(96,165,250,.14);
+      border-color: rgba(96,165,250,.28);
+      transform: translateX(3px);
+    }
+
+    body:not(.theme-dark) .chat-item.active {
+      background: linear-gradient(135deg, rgba(37,99,235,.95), rgba(14,165,233,.76));
+      border-color: rgba(191,219,254,.46);
+      box-shadow: 0 16px 34px rgba(37,99,235,.28);
+    }
+
+    body:not(.theme-dark) .chat-item.unread {
+      background: linear-gradient(135deg, rgba(30,64,175,.80), rgba(15,23,42,.82));
+      border-color: rgba(147,197,253,.52);
+      box-shadow: 0 12px 26px rgba(37,99,235,.20);
+    }
+
+    body:not(.theme-dark) .chat-name {
+      color: #ffffff;
+    }
+
+    body:not(.theme-dark) .chat-item.active .chat-preview,
+    body:not(.theme-dark) .chat-item.active .chat-time,
+    body:not(.theme-dark) .chat-item.active .chat-name {
+      color: #ffffff;
+    }
+
+    body:not(.theme-dark) .chat-icon.private,
+    body:not(.theme-dark) .message-avatar {
+      background: linear-gradient(135deg, #60a5fa, #2563eb);
+      border-radius: 12px;
+    }
+
+    body:not(.theme-dark) .chat-icon.group {
+      color: #93c5fd;
+    }
+
+    body:not(.theme-dark) .contact-group-count,
+    body:not(.theme-dark) .notification-badge {
+      background: #ef4444;
+      box-shadow: 0 8px 18px rgba(239,68,68,.28);
+    }
+
+    body:not(.theme-dark) .main-content {
+      background:
+        radial-gradient(circle at 75% 10%, rgba(37,99,235,.12), transparent 25%),
+        linear-gradient(180deg, rgba(255,255,255,.84), rgba(248,250,252,.95));
+    }
+
+    body:not(.theme-dark) .header {
+      margin: 14px 18px 0;
+      border: 1px solid rgba(203,213,225,.72);
+      border-radius: 18px;
+      background: rgba(255,255,255,.82);
+      box-shadow: 0 18px 46px rgba(15,23,42,.10);
+      backdrop-filter: blur(12px);
+    }
+
+    body:not(.theme-dark) .header h2 {
+      color: #101828;
+      font-size: 20px;
+    }
+
+    body:not(.theme-dark) .header-subtitle {
+      color: #53647a;
+    }
+
+    body:not(.theme-dark) .header-motivation {
+      background: linear-gradient(135deg, #dbeafe, #eef6ff);
+      border: 1px solid #bfdbfe;
+      color: #17449e;
+      box-shadow: 0 10px 24px rgba(37,99,235,.12);
+    }
+
+    body:not(.theme-dark) .header-search,
+    body:not(.theme-dark) .header-btn {
+      background: #ffffff;
+      border-color: #d7e2ee;
+      color: #22324a;
+      box-shadow: 0 8px 18px rgba(15,23,42,.06);
+    }
+
+    body:not(.theme-dark) .header-btn:hover {
+      background: #eef4ff;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+    }
+
+    body:not(.theme-dark) .messages-container {
+      margin: 12px 18px 0;
+      border: 1px solid rgba(203,213,225,.72);
+      border-bottom: none;
+      border-radius: 22px 22px 0 0;
+      background:
+        radial-gradient(circle at 15% 8%, rgba(59,130,246,.10), transparent 24%),
+        linear-gradient(rgba(255,255,255,.90), rgba(255,255,255,.90)),
+        repeating-linear-gradient(135deg, rgba(37,99,235,.045) 0 1px, transparent 1px 22px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+    }
+
+    body:not(.theme-dark) .input-area {
+      margin: 0 18px 14px;
+      border: 1px solid rgba(203,213,225,.72);
+      border-top: none;
+      border-radius: 0 0 22px 22px;
+      background: rgba(255,255,255,.82);
+      box-shadow: 0 18px 46px rgba(15,23,42,.10);
+    }
+
+    .welcome-state {
+      width: min(760px, 94%);
+      gap: 14px;
+      padding: 24px;
+      border-radius: 26px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.92), rgba(248,250,252,.88));
+      border: 1px solid rgba(203,213,225,.72);
+      box-shadow: 0 24px 60px rgba(15,23,42,.12);
+    }
+
+    .welcome-logo-card {
+      width: clamp(150px, 17vw, 230px);
+      border-radius: 30px;
+      box-shadow: 0 26px 60px rgba(15,23,42,.24);
+    }
+
+    .welcome-eyebrow {
+      font-size: 12px;
+      font-weight: 900;
+      color: #2563eb;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .welcome-title {
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.02;
+      color: #101828;
+    }
+
+    .welcome-copy {
+      max-width: 560px;
+      font-size: 16px;
+      color: #526173;
+    }
+
+    .welcome-stats {
+      width: min(560px, 100%);
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .welcome-stat-card {
+      display: grid;
+      gap: 4px;
+      padding: 14px 12px;
+      border-radius: 16px;
+      background: #ffffff;
+      border: 1px solid #dbe4ee;
+      box-shadow: 0 12px 26px rgba(15,23,42,.07);
+    }
+
+    .welcome-stat-card strong {
+      font-size: 22px;
+      font-weight: 900;
+      color: #1d4ed8;
+    }
+
+    .welcome-stat-card span {
+      font-size: 12px;
+      font-weight: 800;
+      color: #64748b;
+    }
+
+    body.theme-dark .sidebar-brand {
+      border-bottom-color: rgba(148,163,184,.18);
+    }
+
+    body.theme-dark .welcome-state {
+      background: linear-gradient(180deg, rgba(23,32,51,.92), rgba(15,23,42,.88));
+      border-color: rgba(148,163,184,.22);
+      box-shadow: 0 24px 60px rgba(0,0,0,.26);
+    }
+
+    body.theme-dark .welcome-stat-card {
+      background: #172033;
+      border-color: rgba(148,163,184,.22);
+    }
+
+    body.theme-dark .welcome-stat-card strong {
+      color: #93c5fd;
+    }
+
+    body.theme-dark .welcome-stat-card span,
+    body.theme-dark .welcome-copy {
+      color: #9fb0c7;
+    }
+
+    @media (max-width: 980px) {
+      .sidebar-brand {
+        padding: 12px 14px 10px;
+      }
+
+      body:not(.theme-dark) .header,
+      body:not(.theme-dark) .messages-container,
+      body:not(.theme-dark) .input-area {
+        margin-left: 10px;
+        margin-right: 10px;
+      }
+
+      .welcome-stats {
+        grid-template-columns: 1fr;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -3453,6 +3780,14 @@
 
   <div id="chatContainer" class="container hidden">
     <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-mark">DC</div>
+        <div>
+          <div class="sidebar-brand-name">Dias de Castro</div>
+          <div class="sidebar-brand-label">Chat interno</div>
+        </div>
+      </div>
+
       <div class="user-info">
         <div class="avatar">
           <span id="currentUserAvatar">U</span>
@@ -3582,8 +3917,23 @@
               <text x="180" y="365" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="142" fill="url(#logoSilver)">C</text>
             </svg>
           </div>
-          <div class="welcome-title">Seu chat está pronto</div>
-          <div class="welcome-copy">Selecione um grupo ou contato para iniciar a conversa.</div>
+          <div class="welcome-eyebrow">Cartorio Dias de Castro</div>
+          <div class="welcome-title">Central de conversas</div>
+          <div class="welcome-copy">Escolha uma conversa na lateral para continuar um atendimento, acompanhar avisos ou responder sua equipe.</div>
+          <div class="welcome-stats">
+            <div class="welcome-stat-card">
+              <strong>Online</strong>
+              <span>Equipe ativa</span>
+            </div>
+            <div class="welcome-stat-card">
+              <strong>Grupos</strong>
+              <span>Avisos e setores</span>
+            </div>
+            <div class="welcome-stat-card">
+              <strong>Busca</strong>
+              <span>Mensagens e arquivos</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -4922,6 +5272,9 @@
     }
 
     function getWelcomeStateHtml() {
+      const totalOnline = onlineState.size;
+      const totalGrupos = gruposCache.length;
+      const totalNaoLidas = Object.values(unreadState).reduce((sum, value) => sum + (Number(value) || 0), 0);
       return `
         <div class="empty-state welcome-state">
           <div class="welcome-logo-card" aria-label="Logo Dias de Castro">
@@ -4941,8 +5294,23 @@
               <text x="180" y="365" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="142" fill="url(#logoSilverRuntime)">C</text>
             </svg>
           </div>
-          <div class="welcome-title">Seu chat está pronto</div>
-          <div class="welcome-copy">Selecione um grupo ou contato para iniciar a conversa.</div>
+          <div class="welcome-eyebrow">Cartorio Dias de Castro</div>
+          <div class="welcome-title">Central de conversas</div>
+          <div class="welcome-copy">Escolha uma conversa na lateral para continuar um atendimento, acompanhar avisos ou responder sua equipe.</div>
+          <div class="welcome-stats">
+            <div class="welcome-stat-card">
+              <strong>${totalOnline}</strong>
+              <span>online agora</span>
+            </div>
+            <div class="welcome-stat-card">
+              <strong>${totalNaoLidas}</strong>
+              <span>nao lidas</span>
+            </div>
+            <div class="welcome-stat-card">
+              <strong>${totalGrupos}</strong>
+              <span>grupos</span>
+            </div>
+          </div>
         </div>
       `;
     }
