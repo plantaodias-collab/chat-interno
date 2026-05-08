@@ -207,12 +207,12 @@
     }
 
     .conversation-filters {
-      display: flex;
-      gap: 6px;
-      padding: 0 14px 12px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+      padding: 0 14px 14px;
       background: rgba(15,23,42,.36);
       border-bottom: 1px solid var(--line);
-      overflow-x: auto;
     }
 
     .conversation-filter-btn {
@@ -225,6 +225,7 @@
       font-weight: 800;
       cursor: pointer;
       white-space: nowrap;
+      text-align: center;
     }
 
     .conversation-filter-btn.active {
@@ -526,6 +527,12 @@
       font-weight: 800;
       color: var(--text);
       background: rgba(255,255,255,.07);
+    }
+
+    .contact-group-count.zero {
+      background: rgba(148,163,184,.16);
+      color: #94a3b8;
+      box-shadow: none;
     }
 
     .contact-group-items {
@@ -3534,6 +3541,7 @@
       background: rgba(255,255,255,.07);
       color: #cbd5e1;
       border-color: rgba(203,213,225,.13);
+      min-width: 0;
     }
 
     body:not(.theme-dark) .conversation-filter-btn.active {
@@ -3609,6 +3617,12 @@
       box-shadow: 0 8px 18px rgba(239,68,68,.28);
     }
 
+    body:not(.theme-dark) .contact-group-count.zero {
+      background: rgba(148,163,184,.18);
+      color: #94a3b8;
+      box-shadow: none;
+    }
+
     body:not(.theme-dark) .main-content {
       background:
         radial-gradient(circle at 75% 10%, rgba(37,99,235,.12), transparent 25%),
@@ -3676,9 +3690,9 @@
     }
 
     .welcome-state {
-      width: min(760px, 94%);
-      gap: 14px;
-      padding: 24px;
+      width: min(680px, 94%);
+      gap: 12px;
+      padding: 22px;
       border-radius: 26px;
       background:
         linear-gradient(180deg, rgba(255,255,255,.92), rgba(248,250,252,.88));
@@ -3687,9 +3701,9 @@
     }
 
     .welcome-logo-card {
-      width: clamp(150px, 17vw, 230px);
-      border-radius: 30px;
-      box-shadow: 0 26px 60px rgba(15,23,42,.24);
+      width: clamp(124px, 13vw, 178px);
+      border-radius: 24px;
+      box-shadow: 0 20px 48px rgba(15,23,42,.20);
     }
 
     .welcome-eyebrow {
@@ -3701,14 +3715,14 @@
     }
 
     .welcome-title {
-      font-size: clamp(28px, 4vw, 44px);
+      font-size: clamp(26px, 3.4vw, 38px);
       line-height: 1.02;
       color: #101828;
     }
 
     .welcome-copy {
-      max-width: 560px;
-      font-size: 16px;
+      max-width: 520px;
+      font-size: 15px;
       color: #526173;
     }
 
@@ -4004,7 +4018,7 @@
       </div>
       <div class="conversation-filters" id="conversationFilters">
         <button class="conversation-filter-btn active" type="button" data-filter="todos" onclick="setConversationFilter('todos')">Todos</button>
-        <button class="conversation-filter-btn" type="button" data-filter="nao-lidas" onclick="setConversationFilter('nao-lidas')">Nao lidas</button>
+        <button class="conversation-filter-btn" type="button" data-filter="nao-lidas" onclick="setConversationFilter('nao-lidas')">Não lidas</button>
         <button class="conversation-filter-btn" type="button" data-filter="online" onclick="setConversationFilter('online')">Online</button>
         <button class="conversation-filter-btn" type="button" data-filter="grupos" onclick="setConversationFilter('grupos')">Grupos</button>
       </div>
@@ -6057,7 +6071,7 @@
         group.innerHTML = `
           <div class="contact-group-header">
             <div class="contact-group-title">${titulo}</div>
-            <span class="contact-group-count">${quantidade}</span>
+            <span class="contact-group-count ${quantidade ? '' : 'zero'}">${quantidade}</span>
           </div>
         `;
         group.appendChild(container);
