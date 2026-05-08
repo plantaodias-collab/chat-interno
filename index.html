@@ -3471,8 +3471,20 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      width: 100%;
       padding: 16px 14px 12px;
       border-bottom: 1px solid rgba(148,163,184,.18);
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      transition: background .16s ease;
+    }
+
+    .sidebar-brand:hover {
+      background: rgba(255,255,255,.06);
     }
 
     .sidebar-brand-mark {
@@ -3977,13 +3989,13 @@
 
   <div id="chatContainer" class="container hidden">
     <aside class="sidebar">
-      <div class="sidebar-brand">
+      <button class="sidebar-brand" type="button" onclick="voltarTelaInicial()" title="Voltar para a tela inicial">
         <div class="sidebar-brand-mark">DC</div>
         <div>
           <div class="sidebar-brand-name">Dias de Castro</div>
           <div class="sidebar-brand-label">Chat interno</div>
         </div>
-      </div>
+      </button>
 
       <div class="user-info">
         <div class="avatar">
@@ -4077,6 +4089,7 @@
         </div>
 
         <div class="header-actions">
+          <button class="header-btn hidden" id="homeChatBtn" onclick="voltarTelaInicial()" title="Voltar para a tela inicial">Início</button>
           <input class="header-search" id="messageSearchInput" type="text" placeholder="Buscar na conversa" oninput="atualizarBuscaMensagens(this.value)" />
           <button class="header-btn" onclick="abrirBuscaGlobal()">Busca global</button>
           <button class="header-btn hidden" id="favoriteChatBtn" onclick="alternarFavoritoAtual()" title="Fixar conversa no topo">☆</button>
@@ -4550,8 +4563,10 @@
       const btn = document.getElementById('favoriteChatBtn');
       const priorityBtn = document.getElementById('priorityChatBtn');
       const exportBtn = document.getElementById('exportChatBtn');
-      if (!btn || !priorityBtn || !exportBtn) return;
+      const homeBtn = document.getElementById('homeChatBtn');
+      if (!btn || !priorityBtn || !exportBtn || !homeBtn) return;
       const hasChat = Boolean(tipoChat && chatIdAtual);
+      homeBtn.classList.toggle('hidden', !hasChat);
       btn.classList.toggle('hidden', !hasChat);
       priorityBtn.classList.toggle('hidden', !hasChat);
       exportBtn.classList.toggle('hidden', !hasChat);
@@ -5658,6 +5673,34 @@
 
     function renderWelcomeState() {
       document.getElementById('messagesContainer').innerHTML = getWelcomeStateHtml();
+    }
+
+    function voltarTelaInicial() {
+      tipoChat = null;
+      chatIdAtual = null;
+      currentMessageSearch = '';
+      currentMessagesCache = [];
+      currentMessagesHasMore = false;
+      currentMessagesNextBefore = null;
+      currentMessagesLoadingOlder = false;
+      activeReplyMessageId = null;
+      editingMessageId = null;
+
+      document.getElementById('messageSearchInput').value = '';
+      document.getElementById('messageInput').value = '';
+      document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat do Cartorio Dias de Castro';
+      document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
+      document.getElementById('typingIndicator').textContent = '';
+      autoResizeComposer();
+      atualizarBarraContexto();
+      updateHeaderIcon(null);
+      updateHeaderStatus();
+      renderPinnedNotice();
+      atualizarBotaoFavorito();
+      renderGrupos();
+      renderContatos();
+      renderWelcomeState();
+      updateBrowserTitle();
     }
 
     function abrirChamadorSenha() {
@@ -7319,6 +7362,7 @@
       document.getElementById('adminSection').classList.add('hidden');
       document.getElementById('novoGrupoBtn').style.display = 'none';
       document.getElementById('ajustesBtn').classList.add('hidden');
+      document.getElementById('homeChatBtn').classList.add('hidden');
       document.getElementById('favoriteChatBtn').classList.add('hidden');
       document.getElementById('priorityChatBtn').classList.add('hidden');
       document.getElementById('exportChatBtn').classList.add('hidden');
