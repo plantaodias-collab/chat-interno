@@ -3947,6 +3947,71 @@
       opacity: 1;
     }
 
+    /* Sidebar readability polish */
+    .container {
+      grid-template-columns: minmax(400px, 420px) minmax(0, 1fr);
+    }
+
+    .user-info {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+
+    .user-meta {
+      min-width: 0;
+    }
+
+    .user-email {
+      max-width: 190px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .contact-group.online-group .contact-group-items {
+      max-height: 34vh;
+    }
+
+    .chat-item {
+      gap: 10px;
+      margin-left: 8px;
+      margin-right: 8px;
+      padding: 11px 12px;
+    }
+
+    .chat-icon {
+      width: 36px;
+      height: 36px;
+      font-size: 14px;
+    }
+
+    .chat-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 10px;
+    }
+
+    .chat-name {
+      min-width: 0;
+      font-size: 13px;
+      line-height: 1.2;
+    }
+
+    .chat-time {
+      padding-top: 1px;
+      font-size: 11px;
+    }
+
+    .chat-preview {
+      line-height: 1.35;
+    }
+
+    .status-chip {
+      margin-left: 0;
+      line-height: 1.2;
+    }
+
     @media (max-width: 980px) {
       .sidebar-brand {
         padding: 12px 14px 10px;
