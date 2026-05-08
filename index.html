@@ -284,6 +284,40 @@
       text-overflow: ellipsis;
     }
 
+    .user-status-select {
+      margin-top: 6px;
+      width: 130px;
+      border: 1px solid rgba(148,163,184,.18);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 800;
+      outline: none;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .status-chip::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+    }
+
+    .status-chip.ocupado::before { background: #f59e0b; }
+    .status-chip.ausente::before { background: #94a3b8; }
+
     .admin-badge {
       background: rgba(239,68,68,.15);
       color: #fca5a5;
@@ -3191,6 +3225,11 @@
             <span class="admin-badge" id="adminBadge" style="display:none;">ADMIN</span>
           </div>
           <div class="user-email" id="currentUserEmail"></div>
+          <select class="user-status-select" id="userStatusSelect" onchange="alterarMeuStatus(this.value)" title="Status">
+            <option value="disponivel">Disponível</option>
+            <option value="ocupado">Ocupado</option>
+            <option value="ausente">Ausente</option>
+          </select>
         </div>
 
         <button class="logout-btn" onclick="fazerLogout()" title="Sair">Sair</button>
@@ -3582,6 +3621,7 @@
     let lastTimeState = {};
     let lastTimestampState = {};
     let onlineState = new Set();
+    let userStatusState = {};
     let typingUsers = new Map();
     let adminUsuariosCache = [];
     let adminBackupsCache = [];
@@ -3793,6 +3833,18 @@
     function getTypingPreviewHtml(tipo, id) {
       const nome = getTypingName(tipo, id);
       return nome ? `<span class="typing-preview">${escapeHtml(nome)} digitando...</span>` : '';
+    }
+
+    function getUserStatus(userId) {
+      return userStatusState[Number(userId)] || 'disponivel';
+    }
+
+    function getStatusLabel(status) {
+      return {
+        disponivel: 'Disponível',
+        ocupado: 'Ocupado',
+        ausente: 'Ausente'
+      }[status] || 'Disponível';
     }
 
     function formatTime(date = new Date()) {
@@ -4251,7 +4303,7 @@
       } else if (tipoChat === 'privado') {
         const contato = contatosCache.find(c => Number(c.id) === Number(chatIdAtual));
         subtitle.textContent = contato
-          ? (onlineState.has(Number(contato.id)) ? 'Online agora' : 'Offline')
+          ? `${onlineState.has(Number(contato.id)) ? 'Online agora' : 'Offline'} · ${getStatusLabel(getUserStatus(contato.id))}`
           : 'Conversa privada';
         motivation.classList.add('hidden');
       } else {
@@ -4618,6 +4670,8 @@
       document.getElementById('currentUserName').textContent = usuarioAtual.nome;
       document.getElementById('currentUserEmail').textContent = usuarioAtual.email;
       document.getElementById('currentUserAvatar').textContent = initials(usuarioAtual.nome);
+      userStatusState[Number(usuarioAtual.id)] = usuarioAtual.status || 'disponivel';
+      document.getElementById('userStatusSelect').value = usuarioAtual.status || 'disponivel';
 
       const isAdmin = Boolean(usuarioAtual.admin);
       document.getElementById('adminBadge').style.display = isAdmin ? 'inline-flex' : 'none';
@@ -4816,6 +4870,7 @@
 
       socket.on('presenca-atualizada', (data) => {
         onlineState = new Set((data.online || []).map(Number));
+        userStatusState = data.status || userStatusState || {};
         renderContatos();
         updateHeaderStatus();
       });
@@ -5088,10 +5143,12 @@
         const unread = unreadState[key] || 0;
         const senhaPainel = String(usuario.senha_painel || '').trim();
         const typingPreviewHtml = getTypingPreviewHtml('privado', usuario.id);
+        const status = getUserStatus(usuario.id);
         const preview = lastPreviewState[key] || (online ? 'Online agora' : usuario.email);
         const atendimentoHtml = senhaPainel
           ? `<div class="contact-ticket-note">Senha: ${escapeHtml(senhaPainel)}</div>`
           : '';
+        const statusHtml = `<div class="status-chip ${escapeHtml(status)}">${escapeHtml(getStatusLabel(status))}</div>`;
 
         const item = document.createElement('div');
         item.className = `chat-item ${tipoChat === 'privado' && Number(chatIdAtual) === Number(usuario.id) ? 'active' : ''} ${unread > 0 ? 'unread' : ''}`;
@@ -5110,6 +5167,7 @@
               ${unread > 0 ? `<span class="notification-badge">${unread > 99 ? '99+' : unread}</span>` : ''}
             </div>
             ${atendimentoHtml}
+            ${statusHtml}
           </div>
         `;
         item.addEventListener('click', () => carregarChat('privado', usuario.id, usuario.nome));
@@ -6088,6 +6146,27 @@
       }
     }
 
+    async function alterarMeuStatus(status) {
+      try {
+        const response = await fetch('/api/me/status', {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ status })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          mostrarNotificacao(data.erro || 'Erro ao alterar status', 'error');
+          return;
+        }
+        usuarioAtual = { ...usuarioAtual, ...data };
+        userStatusState[Number(usuarioAtual.id)] = usuarioAtual.status || 'disponivel';
+        salvarSessao();
+        renderContatos();
+      } catch (err) {
+        mostrarNotificacao('Erro ao alterar status: ' + err.message, 'error');
+      }
+    }
+
     async function cadastrarNovoUsuario() {
       const nome = document.getElementById('adminNovonome').value.trim();
       const email = document.getElementById('adminNovoEmail').value.trim();
@@ -6256,6 +6335,7 @@
       lastTimeState = {};
       lastTimestampState = {};
       onlineState = new Set();
+      userStatusState = {};
       typingUsers = new Map();
 
       if (socket) {
@@ -6270,6 +6350,7 @@
       document.getElementById('currentUserName').textContent = '';
       document.getElementById('currentUserEmail').textContent = '';
       document.getElementById('currentUserAvatar').textContent = 'U';
+      document.getElementById('userStatusSelect').value = 'disponivel';
       document.getElementById('adminBadge').style.display = 'none';
       document.getElementById('adminSection').classList.add('hidden');
       document.getElementById('novoGrupoBtn').style.display = 'none';

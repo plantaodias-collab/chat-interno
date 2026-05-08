@@ -168,6 +168,7 @@ function getUsuarioPublico(usuario) {
     nome: usuario.nome,
     admin: usuario.admin,
     ativo: usuario.ativo,
+    status: usuario.status || 'disponivel',
     senha_painel: String(usuario.senha_painel || '')
   };
 }
@@ -178,6 +179,11 @@ function isUsuarioOnline(usuarioId) {
 
 function isAdminUser(userId) {
   return Boolean(db.usuarios.find((u) => u.id === Number(userId) && u.ativo && u.admin));
+}
+
+function sanitizeUserStatus(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return ['disponivel', 'ocupado', 'ausente'].includes(normalized) ? normalized : 'disponivel';
 }
 
 function formatBackupStamp(date = new Date()) {
@@ -415,7 +421,8 @@ function marcarComoLidas(remetenteId, destinatarioId) {
 
 function emitPresence() {
   io.emit('presenca-atualizada', {
-    online: Array.from(onlineUsers.keys())
+    online: Array.from(onlineUsers.keys()),
+    status: Object.fromEntries(db.usuarios.map((usuario) => [usuario.id, usuario.status || 'disponivel']))
   });
 }
 
@@ -776,6 +783,19 @@ app.put('/api/me', verificarToken, async (req, res) => {
       token,
       usuario: getUsuarioPublico(usuario)
     });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.put('/api/me/status', verificarToken, (req, res) => {
+  try {
+    const usuario = findActiveUserById(req.userId);
+    if (!usuario) return res.status(404).json({ erro: 'Usuario nao encontrado' });
+    usuario.status = sanitizeUserStatus(req.body?.status);
+    db.save();
+    emitPresence();
+    res.json(getUsuarioPublico(usuario));
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
