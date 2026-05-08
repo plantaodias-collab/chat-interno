@@ -3702,7 +3702,7 @@
     .welcome-stats {
       width: min(560px, 100%);
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
       margin-top: 8px;
     }
@@ -3753,6 +3753,126 @@
       color: #9fb0c7;
     }
 
+    .header-btn.priority-active {
+      background: linear-gradient(135deg, #f59e0b, #ef4444) !important;
+      border-color: rgba(251,191,36,.65) !important;
+      color: #ffffff !important;
+      box-shadow: 0 12px 24px rgba(239,68,68,.20) !important;
+    }
+
+    .chat-item.priority {
+      border-color: rgba(251,191,36,.58);
+    }
+
+    .chat-item.priority::after {
+      content: '';
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #f59e0b;
+      box-shadow: 0 0 0 4px rgba(245,158,11,.18), 0 0 18px rgba(245,158,11,.65);
+    }
+
+    .chat-item.priority::before {
+      background: linear-gradient(180deg, #f59e0b, #ef4444);
+      width: 4px;
+    }
+
+    .priority-chip {
+      width: fit-content;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 5px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(245,158,11,.14);
+      border: 1px solid rgba(245,158,11,.28);
+      color: #fbbf24;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .priority-chip::before {
+      content: '!';
+      width: 14px;
+      height: 14px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #f59e0b;
+      color: #111827;
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    body:not(.theme-dark) .chat-item.priority {
+      background:
+        linear-gradient(135deg, rgba(120,53,15,.78), rgba(15,23,42,.86));
+      border-color: rgba(251,191,36,.58);
+      box-shadow: 0 14px 30px rgba(245,158,11,.18);
+    }
+
+    body:not(.theme-dark) .chat-item.priority.unread {
+      background:
+        linear-gradient(135deg, rgba(185,28,28,.86), rgba(30,64,175,.82));
+      border-color: rgba(252,211,77,.72);
+      box-shadow: 0 18px 34px rgba(239,68,68,.22);
+    }
+
+    body:not(.theme-dark) .chat-item.priority .chat-name,
+    body:not(.theme-dark) .chat-item.priority .chat-preview,
+    body:not(.theme-dark) .chat-item.priority .chat-time {
+      color: #ffffff;
+    }
+
+    body:not(.theme-dark) .welcome-stat-card.priority {
+      background: linear-gradient(135deg, #fff7ed, #ffffff);
+      border-color: #fed7aa;
+    }
+
+    body:not(.theme-dark) .welcome-stat-card.priority strong {
+      color: #ea580c;
+    }
+
+    body:not(.theme-dark) .login-container {
+      background:
+        radial-gradient(circle at 20% 20%, rgba(37,99,235,.28), transparent 30%),
+        radial-gradient(circle at 80% 80%, rgba(14,165,233,.18), transparent 28%),
+        linear-gradient(135deg, #0f172a, #172033 46%, #111827);
+    }
+
+    body:not(.theme-dark) .login-box {
+      max-width: 460px;
+      background: rgba(255,255,255,.92);
+      color: #172033;
+      border: 1px solid rgba(203,213,225,.62);
+      box-shadow: 0 28px 70px rgba(0,0,0,.28);
+    }
+
+    body:not(.theme-dark) .login-brand {
+      color: #101828;
+    }
+
+    body:not(.theme-dark) .login-subtitle {
+      color: #64748b;
+    }
+
+    body:not(.theme-dark) .form-group label {
+      color: #334155;
+    }
+
+    body:not(.theme-dark) .login-box .field {
+      background: #f8fafc;
+      color: #172033;
+      border-color: #d9e2ea;
+    }
+
     @media (max-width: 980px) {
       .sidebar-brand {
         padding: 12px 14px 10px;
@@ -3775,8 +3895,8 @@
 <body>
   <div id="loginContainer" class="login-container">
     <div class="login-box">
-      <div class="login-brand"><span class="brand-mark"><span>D</span><small></small><span>C</span></span><span>Chat Interno</span></div>
-      <div class="login-subtitle">Mensagens em tempo real entre a equipe</div>
+      <div class="login-brand"><span class="brand-mark"><span>D</span><small></small><span>C</span></span><span>Dias de Castro</span></div>
+      <div class="login-subtitle">Central interna para atendimentos, avisos e prioridades da equipe</div>
 
       <div class="form-group">
         <label for="loginEmail">E-mail</label>
@@ -3898,6 +4018,7 @@
           <input class="header-search" id="messageSearchInput" type="text" placeholder="Buscar na conversa" oninput="atualizarBuscaMensagens(this.value)" />
           <button class="header-btn" onclick="abrirBuscaGlobal()">Busca global</button>
           <button class="header-btn hidden" id="favoriteChatBtn" onclick="alternarFavoritoAtual()" title="Fixar conversa no topo">☆</button>
+          <button class="header-btn hidden" id="priorityChatBtn" onclick="alternarPrioridadeAtual()" title="Marcar como prioridade">Prioridade</button>
           <button class="header-btn hidden" id="exportChatBtn" onclick="exportarConversaTxt()" title="Exportar conversa">Exportar</button>
           <button class="header-btn hidden" id="ajustesBtn" onclick="abrirAjustes()">&#9881; Ajustes</button>
         </div>
@@ -3947,6 +4068,10 @@
             <div class="welcome-stat-card">
               <strong>Busca</strong>
               <span>Mensagens e arquivos</span>
+            </div>
+            <div class="welcome-stat-card priority">
+              <strong>Prioridade</strong>
+              <span>Acompanhar agora</span>
             </div>
           </div>
         </div>
@@ -4244,6 +4369,7 @@
     let conversationSearchTimer = null;
     let conversationFilter = 'todos';
     let favoriteChats = new Set();
+    let priorityChats = new Set();
     let forwardMessageId = null;
     let globalSearchTimer = null;
     let titleBlinkInterval = null;
@@ -4259,6 +4385,7 @@
     const STORAGE_KEY = 'chatinterno.session';
     const THEME_KEY = 'chatinterno.theme';
     const FAVORITES_KEY = 'chatinterno.favoriteChats';
+    const PRIORITY_KEY = 'chatinterno.priorityChats';
     const MESSAGE_PAGE_SIZE = 50;
     const DAILY_MOTIVATION_MESSAGES = [
       'Cada ato que fazemos transforma vidas, vamos fazer sempre o nosso melhor.',
@@ -4344,17 +4471,37 @@
       localStorage.setItem(FAVORITES_KEY, JSON.stringify(Array.from(favoriteChats)));
     }
 
+    function carregarPrioridades() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(PRIORITY_KEY) || '[]');
+        priorityChats = new Set(Array.isArray(stored) ? stored : []);
+      } catch (_err) {
+        priorityChats = new Set();
+      }
+    }
+
+    function salvarPrioridades() {
+      localStorage.setItem(PRIORITY_KEY, JSON.stringify(Array.from(priorityChats)));
+    }
+
     function atualizarBotaoFavorito() {
       const btn = document.getElementById('favoriteChatBtn');
+      const priorityBtn = document.getElementById('priorityChatBtn');
       const exportBtn = document.getElementById('exportChatBtn');
-      if (!btn || !exportBtn) return;
+      if (!btn || !priorityBtn || !exportBtn) return;
       const hasChat = Boolean(tipoChat && chatIdAtual);
       btn.classList.toggle('hidden', !hasChat);
+      priorityBtn.classList.toggle('hidden', !hasChat);
       exportBtn.classList.toggle('hidden', !hasChat);
       if (!hasChat) return;
-      const isFavorite = favoriteChats.has(getChatKey(tipoChat, chatIdAtual));
+      const key = getChatKey(tipoChat, chatIdAtual);
+      const isFavorite = favoriteChats.has(key);
+      const isPriority = priorityChats.has(key);
       btn.textContent = isFavorite ? '★' : '☆';
       btn.title = isFavorite ? 'Remover dos favoritos' : 'Fixar conversa no topo';
+      priorityBtn.textContent = isPriority ? 'Prioridade ativa' : 'Prioridade';
+      priorityBtn.classList.toggle('priority-active', isPriority);
+      priorityBtn.title = isPriority ? 'Remover prioridade' : 'Marcar como prioridade';
     }
 
     function alternarFavoritoAtual() {
@@ -4366,6 +4513,18 @@
       atualizarBotaoFavorito();
       renderGrupos();
       renderContatos();
+    }
+
+    function alternarPrioridadeAtual() {
+      if (!tipoChat || !chatIdAtual) return;
+      const key = getChatKey(tipoChat, chatIdAtual);
+      if (priorityChats.has(key)) priorityChats.delete(key);
+      else priorityChats.add(key);
+      salvarPrioridades();
+      atualizarBotaoFavorito();
+      renderGrupos();
+      renderContatos();
+      if (!tipoChat || !chatIdAtual) renderWelcomeState();
     }
 
     function aplicarTema(theme = localStorage.getItem(THEME_KEY) || 'light') {
@@ -4422,6 +4581,38 @@
       if (!nome) return '?';
       const partes = nome.trim().split(/\s+/).slice(0, 2);
       return partes.map(p => p[0]?.toUpperCase() || '').join('');
+    }
+
+    function stringHash(value) {
+      return String(value || '').split('').reduce((hash, char) => (
+        ((hash << 5) - hash + char.charCodeAt(0)) | 0
+      ), 0);
+    }
+
+    function avatarGradient(value) {
+      const palettes = [
+        ['#2563eb', '#06b6d4'],
+        ['#7c3aed', '#db2777'],
+        ['#059669', '#84cc16'],
+        ['#ea580c', '#f59e0b'],
+        ['#0f766e', '#14b8a6'],
+        ['#4338ca', '#3b82f6'],
+        ['#be123c', '#fb7185'],
+        ['#155e75', '#38bdf8']
+      ];
+      const pair = palettes[Math.abs(stringHash(value)) % palettes.length];
+      return `linear-gradient(135deg, ${pair[0]}, ${pair[1]})`;
+    }
+
+    function avatarStyle(value) {
+      return `style="background:${avatarGradient(value)}"`;
+    }
+
+    function getGreeting() {
+      const hour = new Date().getHours();
+      if (hour < 12) return 'Bom dia';
+      if (hour < 18) return 'Boa tarde';
+      return 'Boa noite';
     }
 
     function normalizeSearchText(value) {
@@ -4820,6 +5011,9 @@
         const aFav = favoriteChats.has(getChatKey(tipo, a.id)) ? 1 : 0;
         const bFav = favoriteChats.has(getChatKey(tipo, b.id)) ? 1 : 0;
         if (aFav !== bFav) return bFav - aFav;
+        const aPriority = priorityChats.has(getChatKey(tipo, a.id)) ? 1 : 0;
+        const bPriority = priorityChats.has(getChatKey(tipo, b.id)) ? 1 : 0;
+        if (aPriority !== bPriority) return bPriority - aPriority;
         const aTs = lastTimestampState[getChatKey(tipo, a.id)] || 0;
         const bTs = lastTimestampState[getChatKey(tipo, b.id)] || 0;
         return bTs - aTs;
@@ -4937,8 +5131,12 @@
     function updateHeaderIcon(tipo, nome = '') {
       const icon = document.getElementById('chatHeaderAvatar');
       icon.classList.toggle('brand-avatar', !tipo);
+      icon.removeAttribute('style');
       if (tipo === 'grupo') icon.textContent = '#';
-      else if (tipo === 'privado') icon.textContent = initials(nome);
+      else if (tipo === 'privado') {
+        icon.textContent = initials(nome);
+        icon.setAttribute('style', `background:${avatarGradient(nome)}`);
+      }
       else icon.innerHTML = getMiniBrandMarkup();
     }
 
@@ -5319,6 +5517,7 @@
       document.getElementById('currentUserName').textContent = usuarioAtual.nome;
       document.getElementById('currentUserEmail').textContent = usuarioAtual.email;
       document.getElementById('currentUserAvatar').textContent = initials(usuarioAtual.nome);
+      document.getElementById('currentUserAvatar').parentElement.setAttribute('style', `background:${avatarGradient(usuarioAtual.nome || usuarioAtual.email)}`);
       userStatusState[Number(usuarioAtual.id)] = usuarioAtual.status || 'disponivel';
       document.getElementById('userStatusSelect').value = usuarioAtual.status || 'disponivel';
 
@@ -5335,6 +5534,8 @@
       const totalOnline = onlineState.size;
       const totalGrupos = gruposCache.length;
       const totalNaoLidas = Object.values(unreadState).reduce((sum, value) => sum + (Number(value) || 0), 0);
+      const totalPrioridades = priorityChats.size;
+      const firstName = String(usuarioAtual?.nome || '').trim().split(/\s+/)[0] || 'equipe';
       return `
         <div class="empty-state welcome-state">
           <div class="welcome-logo-card" aria-label="Logo Dias de Castro">
@@ -5355,7 +5556,7 @@
             </svg>
           </div>
           <div class="welcome-eyebrow">Cartorio Dias de Castro</div>
-          <div class="welcome-title">Central de conversas</div>
+          <div class="welcome-title">${getGreeting()}, ${escapeHtml(firstName)}</div>
           <div class="welcome-copy">Escolha uma conversa na lateral para continuar um atendimento, acompanhar avisos ou responder sua equipe.</div>
           <div class="welcome-stats">
             <div class="welcome-stat-card">
@@ -5369,6 +5570,10 @@
             <div class="welcome-stat-card">
               <strong>${totalGrupos}</strong>
               <span>grupos</span>
+            </div>
+            <div class="welcome-stat-card priority">
+              <strong>${totalPrioridades}</strong>
+              <span>prioridades</span>
             </div>
           </div>
         </div>
@@ -5747,20 +5952,23 @@
         const key = getChatKey('grupo', grupo.id);
         const unread = unreadState[key] || 0;
         const typingPreviewHtml = getTypingPreviewHtml('grupo', grupo.id);
+        const isPriority = priorityChats.has(key);
+        const isFavorite = favoriteChats.has(key);
 
         const item = document.createElement('div');
-        item.className = `chat-item ${tipoChat === 'grupo' && Number(chatIdAtual) === Number(grupo.id) ? 'active' : ''} ${unread > 0 ? 'unread' : ''}`;
+        item.className = `chat-item ${tipoChat === 'grupo' && Number(chatIdAtual) === Number(grupo.id) ? 'active' : ''} ${unread > 0 ? 'unread' : ''} ${isPriority ? 'priority' : ''}`;
         item.innerHTML = `
           <div class="chat-icon group">#</div>
           <div class="chat-details">
             <div class="chat-top">
-              <div class="chat-name">${favoriteChats.has(key) ? '★ ' : ''}${escapeHtml(grupo.nome)}</div>
+              <div class="chat-name">${isFavorite ? '★ ' : ''}${escapeHtml(grupo.nome)}</div>
               <div class="chat-time">${lastTimeState[key] || ''}</div>
             </div>
             <div class="chat-preview-row">
               <div class="chat-preview">${typingPreviewHtml || escapeHtml(lastPreviewState[key] || grupo.descricao || 'Sem mensagens recentes')}</div>
               ${unread > 0 ? `<span class="notification-badge">${unread > 99 ? '99+' : unread}</span>` : ''}
             </div>
+            ${isPriority ? '<div class="priority-chip">Prioridade</div>' : ''}
           </div>
         `;
         item.addEventListener('click', () => carregarChat('grupo', grupo.id, grupo.nome));
@@ -5809,6 +6017,8 @@
       const criarItemContato = (usuario, online) => {
         const key = getChatKey('privado', usuario.id);
         const unread = unreadState[key] || 0;
+        const isPriority = priorityChats.has(key);
+        const isFavorite = favoriteChats.has(key);
         const senhaPainel = String(usuario.senha_painel || '').trim();
         const typingPreviewHtml = getTypingPreviewHtml('privado', usuario.id);
         const status = getUserStatus(usuario.id);
@@ -5819,15 +6029,15 @@
         const statusHtml = `<div class="status-chip ${escapeHtml(status)}">${escapeHtml(getStatusLabel(status))}</div>`;
 
         const item = document.createElement('div');
-        item.className = `chat-item ${tipoChat === 'privado' && Number(chatIdAtual) === Number(usuario.id) ? 'active' : ''} ${unread > 0 ? 'unread' : ''}`;
+        item.className = `chat-item ${tipoChat === 'privado' && Number(chatIdAtual) === Number(usuario.id) ? 'active' : ''} ${unread > 0 ? 'unread' : ''} ${isPriority ? 'priority' : ''}`;
         item.innerHTML = `
-          <div class="chat-icon private">
+          <div class="chat-icon private" ${avatarStyle(usuario.nome || usuario.email)}>
             ${escapeHtml(initials(usuario.nome))}
             <span class="presence-dot ${online ? 'online' : ''}"></span>
           </div>
           <div class="chat-details">
             <div class="chat-top">
-              <div class="chat-name">${favoriteChats.has(key) ? '★ ' : ''}${escapeHtml(usuario.nome)}</div>
+              <div class="chat-name">${isFavorite ? '★ ' : ''}${escapeHtml(usuario.nome)}</div>
               <div class="chat-time">${lastTimeState[key] || ''}</div>
             </div>
             <div class="chat-preview-row">
@@ -5836,6 +6046,7 @@
             </div>
             ${atendimentoHtml}
             ${statusHtml}
+            ${isPriority ? '<div class="priority-chip">Prioridade</div>' : ''}
           </div>
         `;
         item.addEventListener('click', () => carregarChat('privado', usuario.id, usuario.nome));
@@ -5987,10 +6198,11 @@
         : '';
 
       if (ehOutro) {
+        const nomeMensagem = message.usuarioNome || message.usuario_nome || 'Usuario';
         return `
-          <div class="message-avatar">${escapeHtml(initials(message.usuarioNome || message.usuario_nome))}</div>
+          <div class="message-avatar" ${avatarStyle(nomeMensagem)}>${escapeHtml(initials(nomeMensagem))}</div>
           <div class="message other">
-            <div class="message-sender">${escapeHtml(message.usuarioNome || message.usuario_nome)}</div>
+            <div class="message-sender">${escapeHtml(nomeMensagem)}</div>
             ${replyHtml}
             ${innerContent}
             ${reactionsHtml}
@@ -6014,7 +6226,7 @@
         : '';
 
       return `
-        <div class="message-avatar">${escapeHtml(initials(usuarioAtual.nome))}</div>
+        <div class="message-avatar" ${avatarStyle(usuarioAtual.nome || usuarioAtual.email)}>${escapeHtml(initials(usuarioAtual.nome))}</div>
         <div class="message own">
           <div class="message-sender">${escapeHtml(usuarioAtual.nome || 'Voce')}</div>
           ${replyHtml}
@@ -7018,12 +7230,14 @@
       document.getElementById('currentUserName').textContent = '';
       document.getElementById('currentUserEmail').textContent = '';
       document.getElementById('currentUserAvatar').textContent = 'U';
+      document.getElementById('currentUserAvatar').parentElement.removeAttribute('style');
       document.getElementById('userStatusSelect').value = 'disponivel';
       document.getElementById('adminBadge').style.display = 'none';
       document.getElementById('adminSection').classList.add('hidden');
       document.getElementById('novoGrupoBtn').style.display = 'none';
       document.getElementById('ajustesBtn').classList.add('hidden');
       document.getElementById('favoriteChatBtn').classList.add('hidden');
+      document.getElementById('priorityChatBtn').classList.add('hidden');
       document.getElementById('exportChatBtn').classList.add('hidden');
       document.getElementById('messagesContainer').innerHTML = '';
       document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat do Cartorio Dias de Castro';
@@ -7052,6 +7266,7 @@
     };
 
     carregarFavoritos();
+    carregarPrioridades();
     aplicarTema();
     restaurarSessao();
   </script>
