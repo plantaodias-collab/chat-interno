@@ -4260,6 +4260,38 @@
     const THEME_KEY = 'chatinterno.theme';
     const FAVORITES_KEY = 'chatinterno.favoriteChats';
     const MESSAGE_PAGE_SIZE = 50;
+    const DAILY_MOTIVATION_MESSAGES = [
+      'Cada ato que fazemos transforma vidas, vamos fazer sempre o nosso melhor.',
+      'Cada atendimento carrega uma historia; que hoje a nossa entrega seja cuidadosa e humana.',
+      'Nos detalhes do nosso trabalho nascem seguranca, confianca e tranquilidade para muitas pessoas.',
+      'Que cada conversa de hoje seja conduzida com atencao, respeito e vontade de resolver.',
+      'Fazer bem o simples tambem transforma vidas. Hoje e mais um dia para entregar o nosso melhor.',
+      'Quando trabalhamos com cuidado, cada documento vira parte de uma conquista importante.',
+      'Que o nosso atendimento seja claro, gentil e eficiente do primeiro contato ao ultimo retorno.',
+      'Cada pessoa atendida merece sentir que seu pedido foi tratado com seriedade e respeito.',
+      'Nosso trabalho ganha valor quando unimos agilidade, precisao e empatia.',
+      'Hoje e um bom dia para transformar responsabilidade em confianca.',
+      'Pequenas atitudes de cuidado deixam grandes marcas no atendimento.',
+      'Que cada resposta enviada hoje aproxime alguem da solucao que precisa.',
+      'Excelencia tambem esta na forma como acolhemos, orientamos e finalizamos cada demanda.',
+      'Cada ato feito com atencao reforca a confianca que as pessoas depositam em nosso trabalho.',
+      'Vamos cuidar de cada detalhe, porque por tras de cada pedido existe uma vida em movimento.',
+      'Que hoje a equipe trabalhe com foco, leveza e orgulho pelo que entrega.',
+      'Ser melhor a cada dia tambem e ouvir com calma, responder com clareza e agir com compromisso.',
+      'Cada atendimento bem conduzido mostra que qualidade e cuidado caminham juntos.',
+      'Que a nossa rotina seja feita de colaboracao, respeito e vontade de fazer bem feito.',
+      'O melhor resultado nasce quando cada um faz sua parte com atencao e responsabilidade.',
+      'Hoje, mais uma vez, temos a chance de facilitar caminhos e entregar seguranca.',
+      'Que cada mensagem respondida leve clareza, tranquilidade e confianca.',
+      'Transformar vidas tambem esta em cumprir cada etapa com carinho, criterio e dedicacao.',
+      'Vamos fazer do atendimento de hoje uma experiencia mais simples, humana e eficiente.',
+      'Cada detalhe importa quando o objetivo e servir bem.',
+      'Nossa melhor entrega e aquela que une precisao tecnica e cuidado com as pessoas.',
+      'Que a dedicacao de hoje vire tranquilidade para quem espera uma resposta.',
+      'Atender bem e transformar uma necessidade em confianca.',
+      'Que cada ato de hoje tenha a marca do nosso compromisso com o melhor.',
+      'Trabalhar com excelencia e lembrar que cada processo tem alguem contando conosco.'
+    ];
     const EMOJI_OPTIONS = [
       '😀','😃','😄','😁','😆','😅','😂','🤣','🙂',
       '🙃','😉','😊','😇','🥰','😍','🤩','😘','😗',
@@ -4283,6 +4315,17 @@
     const DEFAULT_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Cpath d='M18 22c0-4.4 3.6-8 8-8h12c4.4 0 8 3.6 8 8v9c0 4.4-3.6 8-8 8H31l-8 7v-7h-1c-4.4 0-8-3.6-8-8V22Z' fill='white'/%3E%3Ccircle cx='27' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='33' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='39' cy='27' r='3' fill='%232563eb'/%3E%3C/svg%3E";
     const ALERT_FAVICON_A = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23ef4444'/%3E%3Ccircle cx='32' cy='32' r='23' fill='%23fef2f2'/%3E%3Cpath d='M32 18 18 44h28L32 18Z' fill='%23ef4444'/%3E%3Crect x='30' y='26' width='4' height='10' rx='2' fill='white'/%3E%3Ccircle cx='32' cy='40' r='2.2' fill='white'/%3E%3C/svg%3E";
     const ALERT_FAVICON_B = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23f59e0b'/%3E%3Ccircle cx='32' cy='32' r='23' fill='%23fffbeb'/%3E%3Cpath d='M32 18 18 44h28L32 18Z' fill='%23f59e0b'/%3E%3Crect x='30' y='26' width='4' height='10' rx='2' fill='%2378360f'/%3E%3Ccircle cx='32' cy='40' r='2.2' fill='%2378360f'/%3E%3C/svg%3E";
+
+    function getDailyMotivationMessage(date = new Date()) {
+      const start = new Date(date.getFullYear(), 0, 0);
+      const dayOfYear = Math.floor((date - start) / 86400000);
+      return DAILY_MOTIVATION_MESSAGES[dayOfYear % DAILY_MOTIVATION_MESSAGES.length];
+    }
+
+    function updateDailyMotivation() {
+      const motivation = document.getElementById('headerMotivation');
+      if (motivation) motivation.textContent = getDailyMotivationMessage();
+    }
 
     function getChatKey(tipo, id) {
       return `${tipo}-${id}`;
@@ -4902,6 +4945,7 @@
     function updateHeaderStatus() {
       const subtitle = document.getElementById('headerSubtitle');
       const motivation = document.getElementById('headerMotivation');
+      updateDailyMotivation();
       if (tipoChat === 'grupo') {
         subtitle.textContent = 'Conversa em grupo';
         motivation.classList.add('hidden');
@@ -5283,6 +5327,7 @@
       document.getElementById('adminSection').classList.toggle('hidden', !isAdmin);
       document.getElementById('novoGrupoBtn').style.display = isAdmin ? 'inline-flex' : 'none';
       document.getElementById('ajustesBtn').classList.remove('hidden');
+      updateDailyMotivation();
       if (!tipoChat || !chatIdAtual) renderWelcomeState();
     }
 
@@ -6983,6 +7028,7 @@
       document.getElementById('messagesContainer').innerHTML = '';
       document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat do Cartorio Dias de Castro';
       document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
+      updateDailyMotivation();
       document.getElementById('headerMotivation').classList.remove('hidden');
       document.getElementById('typingIndicator').textContent = '';
       renderPinnedNotice();
