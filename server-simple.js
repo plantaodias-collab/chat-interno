@@ -30,7 +30,7 @@ const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png']);
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
-const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json'];
+const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json'];
 
 function getDefaultBackupSchedule() {
   return {
@@ -69,6 +69,9 @@ class SimpleDB {
     this.mensagens = this.loadFile('mensagens.json', []);
     this.mensagens_apagadas = this.loadFile('mensagens-apagadas.json', []);
     this.conversas_pendentes = this.loadFile('conversas-pendentes.json', []);
+    this.status_atendimento = this.loadFile('status-atendimento.json', {});
+    this.mensagens_prioritarias = this.loadFile('mensagens-prioritarias.json', []);
+    this.mensagens_fixadas = this.loadFile('mensagens-fixadas.json', []);
     this.painel_senhas = this.loadFile('painel-senhas.json', {
       senhaAtual: '',
       observacao: '',
@@ -108,6 +111,9 @@ class SimpleDB {
     this.saveFile('mensagens.json', this.mensagens);
     this.saveFile('mensagens-apagadas.json', this.mensagens_apagadas);
     this.saveFile('conversas-pendentes.json', this.conversas_pendentes);
+    this.saveFile('status-atendimento.json', this.status_atendimento);
+    this.saveFile('mensagens-prioritarias.json', this.mensagens_prioritarias);
+    this.saveFile('mensagens-fixadas.json', this.mensagens_fixadas);
     this.saveFile('painel-senhas.json', this.painel_senhas);
     this.saveFile('backup-agendamento.json', this.backup_agendamento);
   }
@@ -454,6 +460,7 @@ function enrichMessage(m) {
     })),
     reacoes,
     reacoes_nomes: reacoesNomes,
+    prioridade: isPriorityMessage(m.id),
     reply_preview: replyTarget ? {
       id: replyTarget.id,
       usuario_nome: db.usuarios.find((u) => u.id === replyTarget.usuario_id)?.nome || 'Desconhecido',
@@ -467,6 +474,197 @@ function enrichMessage(m) {
 
 function getMessageById(messageId) {
   return db.mensagens.find((m) => Number(m.id) === Number(messageId));
+}
+
+function normalizeConversationType(tipo) {
+  const normalized = String(tipo || '').trim().toLowerCase();
+  return ['grupo', 'privado'].includes(normalized) ? normalized : '';
+}
+
+function getConversationKey(tipo, id) {
+  const normalized = normalizeConversationType(tipo);
+  const numericId = Number(id);
+  if (!normalized || !numericId) return '';
+  return `${normalized}-${numericId}`;
+}
+
+function getStoredConversationKey(tipo, id, userId) {
+  const normalized = normalizeConversationType(tipo);
+  const numericId = Number(id);
+  const numericUserId = Number(userId);
+  if (!normalized || !numericId) return '';
+  if (normalized === 'grupo') return `grupo-${numericId}`;
+  if (!numericUserId || numericUserId === numericId) return '';
+  return `privado-${[numericUserId, numericId].sort((a, b) => a - b).join('-')}`;
+}
+
+function getClientConversationKey(tipo, id) {
+  return getConversationKey(tipo, id);
+}
+
+function isValidAttendanceStatus(status) {
+  return ['pendente', 'aguardando', 'resolvido', 'urgente'].includes(String(status || '').trim().toLowerCase());
+}
+
+function canUserAccessConversation(userId, tipo, id) {
+  const normalized = normalizeConversationType(tipo);
+  const numericId = Number(id);
+  if (!normalized || !numericId) return false;
+  if (normalized === 'grupo') return usuarioPodeAcessarGrupo(userId, numericId);
+  return Boolean(findActiveUserById(numericId)) && Number(userId) !== numericId;
+}
+
+function emitConversationWorkflow(tipo, id, payload) {
+  const normalized = normalizeConversationType(tipo);
+  const numericId = Number(id);
+  if (normalized === 'grupo') {
+    io.to(`grupo-${numericId}`).emit('workflow-conversa-atualizado', payload);
+    return;
+  }
+
+  const actorId = Number(payload.usuarioId);
+  io.to(`usuario-${numericId}`).emit('workflow-conversa-atualizado', {
+    ...payload,
+    key: getClientConversationKey('privado', actorId),
+    chatId: actorId
+  });
+  if (actorId) {
+    io.to(`usuario-${actorId}`).emit('workflow-conversa-atualizado', {
+      ...payload,
+      key: getClientConversationKey('privado', numericId),
+      chatId: numericId
+    });
+  }
+}
+
+function isPriorityMessage(messageId) {
+  return db.mensagens_prioritarias.some((item) => Number(item?.message_id) === Number(messageId));
+}
+
+function getStoredKeyForMessage(message) {
+  if (!message) return '';
+  if (message.grupo_id) return `grupo-${Number(message.grupo_id)}`;
+  const ids = [Number(message.usuario_id), Number(message.usuario_destino_id)].filter(Boolean).sort((a, b) => a - b);
+  return ids.length === 2 ? `privado-${ids.join('-')}` : '';
+}
+
+function getClientKeyForMessage(message, userId) {
+  if (!message) return '';
+  if (message.grupo_id) return `grupo-${Number(message.grupo_id)}`;
+  const otherId = Number(message.usuario_id) === Number(userId)
+    ? Number(message.usuario_destino_id)
+    : Number(message.usuario_id);
+  return otherId ? `privado-${otherId}` : '';
+}
+
+function setPriorityMessage(messageId, userId, highlighted) {
+  const numericId = Number(messageId);
+  const index = db.mensagens_prioritarias.findIndex((item) => Number(item?.message_id) === numericId);
+
+  if (highlighted) {
+    const entry = {
+      message_id: numericId,
+      atualizado_por: Number(userId),
+      atualizado_em: new Date().toISOString()
+    };
+    if (index >= 0) db.mensagens_prioritarias[index] = entry;
+    else db.mensagens_prioritarias.push(entry);
+    return entry;
+  }
+
+  if (index >= 0) db.mensagens_prioritarias.splice(index, 1);
+  return null;
+}
+
+function emitMessagePriority(message, highlighted, userId) {
+  const payload = {
+    messageId: Number(message.id),
+    highlighted: Boolean(highlighted),
+    tipoChat: message.grupo_id ? 'grupo' : 'privado',
+    grupoId: message.grupo_id || null,
+    remetenteId: Number(message.usuario_id),
+    destinatarioId: message.usuario_destino_id || null,
+    atualizadoPor: Number(userId)
+  };
+
+  if (message.grupo_id) {
+    io.to(`grupo-${message.grupo_id}`).emit('mensagem-prioridade-atualizada', payload);
+  } else {
+    io.to(`usuario-${message.usuario_id}`).emit('mensagem-prioridade-atualizada', payload);
+    if (message.usuario_destino_id) {
+      io.to(`usuario-${message.usuario_destino_id}`).emit('mensagem-prioridade-atualizada', payload);
+    }
+  }
+}
+
+function getPinnedMessageEntry(messageId) {
+  return db.mensagens_fixadas.find((item) => Number(item?.message_id) === Number(messageId));
+}
+
+function setPinnedMessage(message, userId, pinned) {
+  const conversationKey = getStoredKeyForMessage(message);
+  const messageId = Number(message.id);
+  db.mensagens_fixadas = db.mensagens_fixadas.filter((item) => Number(item?.message_id) !== messageId);
+
+  if (!pinned) return null;
+
+  const entry = {
+    conversation_key: conversationKey,
+    message_id: messageId,
+    fixado_por: Number(userId),
+    fixado_em: new Date().toISOString()
+  };
+  db.mensagens_fixadas.push(entry);
+  return entry;
+}
+
+function getPinnedMessagesForUser(userId) {
+  const result = {};
+  db.mensagens_fixadas.forEach((item) => {
+    const message = getMessageById(item?.message_id);
+    if (!canUserAccessMessage(userId, message)) return;
+    const key = getClientKeyForMessage(message, userId);
+    if (!key) return;
+    if (!result[key]) result[key] = [];
+    result[key].push({
+      messageId: Number(message.id),
+      usuarioNome: db.usuarios.find((u) => Number(u.id) === Number(message.usuario_id))?.nome || 'Usuario',
+      texto: message.tipo === 'arquivo' ? (message.arquivo_nome_original || 'Arquivo') : String(message.conteudo || '').slice(0, 160),
+      tipo: message.tipo || 'texto',
+      fixadoEm: item.fixado_em || null
+    });
+  });
+  return result;
+}
+
+function emitPinnedMessage(message, pinned, userId) {
+  const payloadBase = {
+    messageId: Number(message.id),
+    pinned: Boolean(pinned),
+    texto: message.tipo === 'arquivo' ? (message.arquivo_nome_original || 'Arquivo') : String(message.conteudo || '').slice(0, 160),
+    usuarioNome: db.usuarios.find((u) => Number(u.id) === Number(message.usuario_id))?.nome || 'Usuario',
+    tipo: message.tipo || 'texto',
+    fixadoEm: new Date().toISOString(),
+    atualizadoPor: Number(userId),
+    tipoChat: message.grupo_id ? 'grupo' : 'privado',
+    grupoId: message.grupo_id || null,
+    remetenteId: Number(message.usuario_id),
+    destinatarioId: message.usuario_destino_id || null
+  };
+
+  if (message.grupo_id) {
+    io.to(`grupo-${message.grupo_id}`).emit('mensagem-fixada-atualizada', {
+      ...payloadBase,
+      key: getClientKeyForMessage(message, userId)
+    });
+  } else {
+    [Number(message.usuario_id), Number(message.usuario_destino_id)].filter(Boolean).forEach((recipientId) => {
+      io.to(`usuario-${recipientId}`).emit('mensagem-fixada-atualizada', {
+        ...payloadBase,
+        key: getClientKeyForMessage(message, recipientId)
+      });
+    });
+  }
 }
 
 function isSamePrivateConversation(message, userA, userB) {
@@ -1145,6 +1343,8 @@ app.get('/api/mensagens/grupo/:grupoId', verificarToken, (req, res) => {
       return res.status(403).json({ erro: 'Acesso negado a este grupo' });
     }
 
+    marcarMensagensGrupoComoLidas(grupoId, req.userId);
+
     const mensagens = db.mensagens
       .filter((m) => m.grupo_id === grupoId)
       .map((m) => ensureGroupReadTracking(m))
@@ -1159,7 +1359,13 @@ app.get('/api/mensagens/grupo/:grupoId', verificarToken, (req, res) => {
 app.get('/api/mensagens/privadas/:usuarioId', verificarToken, (req, res) => {
   try {
     const outroUsuarioId = parseInt(req.params.usuarioId, 10);
-    marcarComoLidas(outroUsuarioId, req.userId);
+    const alterouLeitura = marcarComoLidas(outroUsuarioId, req.userId);
+    if (alterouLeitura) {
+      io.to(`usuario-${outroUsuarioId}`).emit('mensagens-lidas', {
+        remetenteId: Number(outroUsuarioId),
+        destinatarioId: Number(req.userId)
+      });
+    }
     limparConversaPrivadaPendente(req.userId, outroUsuarioId);
 
     const mensagens = db.mensagens
@@ -1220,6 +1426,84 @@ app.get('/api/conversas/privadas/resumo', verificarToken, (req, res) => {
       });
 
     res.json(Object.values(resumo));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.get('/api/workflow', verificarToken, (req, res) => {
+  try {
+    const statusAtendimento = {};
+    Object.entries(db.status_atendimento || {}).forEach(([key, value]) => {
+      const [tipo, id] = String(key).split('-');
+      if (!isValidAttendanceStatus(value)) return;
+      if (tipo === 'grupo') {
+        if (!canUserAccessConversation(req.userId, tipo, id)) return;
+        statusAtendimento[key] = value;
+        return;
+      }
+
+      if (tipo === 'privado') {
+        const ids = String(key).split('-').slice(1).map(Number).filter(Boolean);
+        if (ids.length !== 2 || !ids.includes(Number(req.userId))) return;
+        const otherId = ids.find((item) => Number(item) !== Number(req.userId));
+        if (!otherId || !canUserAccessConversation(req.userId, 'privado', otherId)) return;
+        statusAtendimento[getClientConversationKey('privado', otherId)] = value;
+      }
+    });
+
+    const mensagensPrioritarias = db.mensagens_prioritarias
+      .map((item) => Number(item?.message_id))
+      .filter((messageId) => {
+        const message = getMessageById(messageId);
+        return canUserAccessMessage(req.userId, message);
+      });
+
+    res.json({
+      statusAtendimento,
+      mensagensPrioritarias,
+      mensagensFixadas: getPinnedMessagesForUser(req.userId)
+    });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.put('/api/conversas/:tipo/:id/status-atendimento', verificarToken, (req, res) => {
+  try {
+    const tipo = normalizeConversationType(req.params.tipo);
+    const chatId = Number(req.params.id);
+    const key = getStoredConversationKey(tipo, chatId, req.userId);
+    const clientKey = getClientConversationKey(tipo, chatId);
+    const status = String(req.body?.status || '').trim().toLowerCase();
+
+    if (!key) return res.status(400).json({ erro: 'Conversa invalida' });
+    if (!canUserAccessConversation(req.userId, tipo, chatId)) {
+      return res.status(403).json({ erro: 'Acesso negado a esta conversa' });
+    }
+
+    if (status) {
+      if (!isValidAttendanceStatus(status)) {
+        return res.status(400).json({ erro: 'Status invalido' });
+      }
+      db.status_atendimento[key] = status;
+    } else {
+      delete db.status_atendimento[key];
+    }
+
+    db.save();
+
+    const payload = {
+      tipoChat: tipo,
+      chatId,
+      key: clientKey,
+      status: db.status_atendimento[key] || '',
+      usuarioId: Number(req.userId),
+      atualizadoEm: new Date().toISOString()
+    };
+
+    emitConversationWorkflow(tipo, chatId, payload);
+    res.json(payload);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -1449,6 +1733,54 @@ app.post('/api/mensagens/:id/reacoes', verificarToken, (req, res) => {
     db.save();
     emitMessageUpdated(mensagem, { acao: 'reacao' });
     res.json({ mensagem: 'Rea��o atualizada com sucesso', message: enrichMessage(mensagem) });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.post('/api/mensagens/:id/prioridade', verificarToken, (req, res) => {
+  try {
+    const messageId = parseInt(req.params.id, 10);
+    const mensagem = getMessageById(messageId);
+    if (!mensagem) return res.status(404).json({ erro: 'Mensagem nao encontrada' });
+    if (!canUserAccessMessage(req.userId, mensagem)) {
+      return res.status(403).json({ erro: 'Acesso negado a esta mensagem' });
+    }
+
+    const highlighted = Boolean(req.body?.highlighted);
+    setPriorityMessage(messageId, req.userId, highlighted);
+    db.save();
+    emitMessagePriority(mensagem, highlighted, req.userId);
+
+    res.json({
+      messageId,
+      highlighted,
+      message: enrichMessage(mensagem)
+    });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.post('/api/mensagens/:id/fixar', verificarToken, (req, res) => {
+  try {
+    const messageId = parseInt(req.params.id, 10);
+    const mensagem = getMessageById(messageId);
+    if (!mensagem) return res.status(404).json({ erro: 'Mensagem nao encontrada' });
+    if (!canUserAccessMessage(req.userId, mensagem)) {
+      return res.status(403).json({ erro: 'Acesso negado a esta mensagem' });
+    }
+
+    const pinned = Boolean(req.body?.pinned);
+    const entry = setPinnedMessage(mensagem, req.userId, pinned);
+    db.save();
+    emitPinnedMessage(mensagem, pinned, req.userId);
+
+    res.json({
+      messageId,
+      pinned,
+      entry
+    });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
