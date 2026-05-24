@@ -1457,55 +1457,6 @@ mark.message-search-hit {
   pointer-events: none;
 }
 
-.main-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  padding: 10px 18px 0;
-  pointer-events: none;
-  position: relative;
-  z-index: 6;
-}
-
-.main-theme-toggle {
-  pointer-events: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 38px;
-  border: 1px solid rgba(203,213,225,.72);
-  border-radius: 999px;
-  background: rgba(255,255,255,.92);
-  color: #22324a;
-  padding: 8px 13px;
-  font-size: 12px;
-  font-weight: 900;
-  cursor: pointer;
-  box-shadow: 0 10px 22px rgba(15,23,42,.10);
-  backdrop-filter: blur(10px);
-}
-
-.main-theme-toggle:hover {
-  background: #eef4ff;
-  border-color: #93c5fd;
-  color: #1d4ed8;
-}
-
-.main-theme-icon,
-.main-theme-icon svg {
-  width: 17px;
-  height: 17px;
-  display: inline-grid;
-  place-items: center;
-}
-
-.main-theme-icon svg {
-  stroke: currentColor;
-  stroke-width: 2.2;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
 .main-content.dragging-file .drop-hint {
   display: grid;
 }
@@ -4944,10 +4895,6 @@ body.theme-dark .quick-reply-btn:hover {
     display: none;
   }
 
-  .main-toolbar {
-    padding-left: 10px;
-    padding-right: 10px;
-  }
 }
 
 /* Dashboard home */
@@ -4995,18 +4942,6 @@ body.theme-dark .quick-reply-btn:hover {
 .dashboard-action-btn.primary {
   border-color: #93c5fd;
   background: #2563eb;
-  color: #ffffff;
-}
-
-.dashboard-action-btn.visual {
-  border-color: #bfdbfe;
-  background: linear-gradient(135deg, #eff6ff, #ffffff);
-  color: #1d4ed8;
-}
-
-.dashboard-action-btn.visual.is-active {
-  border-color: #334155;
-  background: linear-gradient(135deg, #172033, #334155);
   color: #ffffff;
 }
 
@@ -5167,12 +5102,6 @@ body.theme-dark .dashboard-action-btn.primary {
   background: #2563eb;
   border-color: rgba(96,165,250,.52);
   color: #ffffff;
-}
-
-body.theme-dark .dashboard-action-btn.visual {
-  background: rgba(96,165,250,.16);
-  border-color: rgba(96,165,250,.38);
-  color: #bfdbfe;
 }
 
 body.theme-dark .dashboard-panel-title,
@@ -5464,19 +5393,6 @@ body.theme-dark .table tbody tr:hover {
 body.theme-dark .modal-content .btn-secondary {
   background: #334155;
   color: #e5edf7;
-}
-
-body.theme-dark .main-theme-toggle {
-  background: rgba(23,32,51,.92);
-  border-color: rgba(148,163,184,.28);
-  color: #e5edf7;
-}
-
-body.theme-dark .main-theme-toggle:hover,
-body.theme-dark .main-theme-toggle.is-active {
-  background: rgba(96,165,250,.16);
-  border-color: rgba(96,165,250,.38);
-  color: #bfdbfe;
 }
 
 body.theme-dark .message-action-btn.active {
@@ -6381,7 +6297,6 @@ body.theme-dark .send-btn {
   background: linear-gradient(135deg, #2563eb, #06b6d4);
 }
 
-/* Theme toggle beside the conversation title */
 .header-title-row {
   min-width: 0;
   display: flex;
@@ -6393,57 +6308,8 @@ body.theme-dark .send-btn {
   min-width: 0;
 }
 
-.title-theme-toggle {
-  flex: 0 0 auto;
-  min-height: 32px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 900;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
-}
-
-body:not(.theme-dark) .title-theme-toggle {
-  background: linear-gradient(135deg, #dbeafe, #cffafe);
-  border-color: #93c5fd;
-  color: #075985;
-  box-shadow: 0 8px 18px rgba(6,182,212,.14);
-}
-
-body:not(.theme-dark) .title-theme-toggle:hover {
-  background: linear-gradient(135deg, #2563eb, #06b6d4);
-  border-color: #67e8f9;
-  color: #ffffff;
-}
-
-body.theme-dark .title-theme-toggle {
-  background: rgba(96,165,250,.16);
-  border-color: rgba(103,232,249,.34);
-  color: #bfdbfe;
-}
-
-body.theme-dark .title-theme-toggle:hover,
-body.theme-dark .title-theme-toggle.is-active {
-  background: linear-gradient(135deg, #2563eb, #06b6d4);
-  border-color: rgba(103,232,249,.56);
-  color: #ffffff;
-}
-
 @media (max-width: 620px) {
   .header-title-row {
     align-items: flex-start;
-    flex-direction: column;
-    gap: 7px;
-  }
-
-  .title-theme-toggle {
-    min-height: 30px;
-    padding: 5px 9px;
   }
 }

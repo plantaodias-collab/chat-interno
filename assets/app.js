@@ -417,14 +417,6 @@ function atualizarBotaoTema(theme = localStorage.getItem(THEME_KEY) || 'light') 
   const btn = document.getElementById('themeToggleBtn');
   const icon = document.getElementById('themeToggleIcon');
   const text = document.getElementById('themeToggleText');
-  const mainBtn = document.getElementById('mainThemeToggleBtn');
-  const mainIcon = document.getElementById('mainThemeToggleIcon');
-  const mainText = document.getElementById('mainThemeToggleText');
-  const titleBtn = document.getElementById('titleThemeToggleBtn');
-  const titleIcon = document.getElementById('titleThemeToggleIcon');
-  const titleText = document.getElementById('titleThemeToggleText');
-  const dashboardBtn = document.getElementById('dashboardThemeToggleBtn');
-  const dashboardText = document.getElementById('dashboardThemeToggleText');
   const nextTitle = normalized === 'dark' ? 'Usar tema claro' : 'Usar tema escuro';
   if (btn) {
     btn.classList.toggle('is-active', normalized === 'dark');
@@ -433,26 +425,6 @@ function atualizarBotaoTema(theme = localStorage.getItem(THEME_KEY) || 'light') 
   }
   if (icon) icon.innerHTML = uiIcon(normalized === 'dark' ? 'sun' : 'moon');
   if (text) text.textContent = normalized === 'dark' ? 'Claro' : 'Escuro';
-  if (mainBtn) {
-    mainBtn.classList.toggle('is-active', normalized === 'dark');
-    mainBtn.setAttribute('aria-pressed', String(normalized === 'dark'));
-    mainBtn.title = nextTitle;
-  }
-  if (mainIcon) mainIcon.innerHTML = uiIcon(normalized === 'dark' ? 'sun' : 'moon');
-  if (mainText) mainText.textContent = normalized === 'dark' ? 'Modo claro' : 'Modo escuro';
-  if (titleBtn) {
-    titleBtn.classList.toggle('is-active', normalized === 'dark');
-    titleBtn.setAttribute('aria-pressed', String(normalized === 'dark'));
-    titleBtn.title = nextTitle;
-  }
-  if (titleIcon) titleIcon.innerHTML = uiIcon(normalized === 'dark' ? 'sun' : 'moon');
-  if (titleText) titleText.textContent = normalized === 'dark' ? 'Claro' : 'Escuro';
-  if (dashboardBtn) {
-    dashboardBtn.classList.toggle('is-active', normalized === 'dark');
-    dashboardBtn.setAttribute('aria-pressed', String(normalized === 'dark'));
-    dashboardBtn.title = nextTitle;
-  }
-  if (dashboardText) dashboardText.textContent = normalized === 'dark' ? 'Visual claro' : 'Visual escuro';
 }
 
 function alternarTemaRapido() {
@@ -1726,7 +1698,6 @@ function getWelcomeStateHtml() {
             <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('urgentes')">Urgentes</button>
             <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('online')">Equipe online</button>
             <button class="dashboard-action-btn" type="button" onclick="abrirBuscaGlobal()">Busca global</button>
-            <button class="dashboard-action-btn visual" id="dashboardThemeToggleBtn" type="button" onclick="alternarTemaRapido()" aria-label="Alternar visual claro ou escuro" aria-pressed="false"><span id="dashboardThemeToggleText">Visual</span></button>
           </div>
         </div>
       </div>
