@@ -50,6 +50,14 @@ if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
 app.use(cors());
 app.use(express.json());
+app.use((req, res, next) => {
+  if (req.path === '/' || req.path.endsWith('.html') || req.path.startsWith('/assets/')) {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  }
+  next();
+});
 app.use(express.static(path.join(__dirname, '.')));
 app.use('/uploads', express.static(UPLOAD_DIR));
 
