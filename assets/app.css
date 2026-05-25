@@ -4899,25 +4899,44 @@ body.theme-dark .quick-reply-btn:hover {
 
 /* Dashboard home */
 .welcome-state.dashboard-home {
-  width: min(980px, 94%);
+  width: min(1120px, calc(100% - 48px));
+  max-width: 1120px;
+  margin: 20px auto 28px;
   align-items: stretch;
   justify-items: stretch;
   text-align: left;
-  gap: 18px;
-  padding: 24px;
+  gap: 22px;
+  padding: 30px 32px;
 }
 
 .dashboard-hero {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(190px, 260px) minmax(360px, 1fr);
+  gap: 30px;
   align-items: center;
+}
+
+.dashboard-home .welcome-logo-card {
+  width: 100%;
+  max-width: 260px;
+  justify-self: center;
 }
 
 .dashboard-title-group {
   min-width: 0;
   display: grid;
-  gap: 8px;
+  gap: 10px;
+}
+
+.dashboard-home .welcome-title {
+  font-size: clamp(30px, 3vw, 46px);
+  line-height: 1.04;
+}
+
+.dashboard-home .welcome-copy {
+  max-width: 560px;
+  font-size: 14px;
+  line-height: 1.55;
 }
 
 .dashboard-actions {
@@ -4925,6 +4944,7 @@ body.theme-dark .quick-reply-btn:hover {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 4px;
+  max-width: 620px;
 }
 
 .dashboard-action-btn {
@@ -4951,7 +4971,7 @@ body.theme-dark .quick-reply-btn:hover {
 
 .welcome-stats.dashboard-stats {
   width: 100%;
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
   margin-top: 0;
 }
 
@@ -5125,6 +5145,15 @@ body.theme-dark .dashboard-chat-meta {
   .dashboard-hero,
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .welcome-state.dashboard-home {
+    width: min(760px, calc(100% - 28px));
+    padding: 24px 20px;
+  }
+
+  .dashboard-home .welcome-logo-card {
+    max-width: 190px;
   }
 
   .welcome-stats.dashboard-stats {
