@@ -823,6 +823,10 @@ function isPdfAttachment(message) {
   return message?.tipo === 'arquivo' && /\.pdf$/i.test(String(message.arquivo_nome_original || message.arquivo_url || ''));
 }
 
+function isVideoAttachment(message) {
+  return message?.tipo === 'arquivo' && /\.(avi)$/i.test(String(message.arquivo_nome_original || message.arquivo_url || ''));
+}
+
 function linkifyTextHtml(text, query) {
   const highlighted = highlightText(text, query);
   return highlighted.replace(/(https?:\/\/[^\s<]+)/g, '<a class="message-link" href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
@@ -2392,6 +2396,8 @@ function renderMessageRow(message) {
     ? `<div class="file-preview"><img src="${escapeHtml(message.arquivo_url)}" alt="${escapeHtml(message.arquivo_nome_original || 'Imagem anexada')}" loading="lazy" /></div>`
     : message.tipo === 'arquivo' && isPdfAttachment(message)
       ? `<div class="file-preview pdf"><span>&#128196;</span><span>Previa de PDF disponivel ao abrir o arquivo</span></div>`
+      : message.tipo === 'arquivo' && isVideoAttachment(message)
+        ? `<div class="file-preview video"><video src="${escapeHtml(message.arquivo_url)}" controls preload="metadata"></video></div>`
       : '';
   const innerContent = message.tipo === 'arquivo'
     ? `<a class="file-card" href="${escapeHtml(message.arquivo_url)}" target="_blank" rel="noopener noreferrer">
