@@ -156,6 +156,8 @@
     .msg-text { padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.45; word-break: break-word; white-space: pre-wrap; }
     .msg-bubble.own   .msg-text { background: rgba(37,99,235,.35); color: #dbeafe; border-bottom-right-radius: 3px; }
     .msg-bubble.other .msg-text { background: var(--surface2); color: var(--text); border-bottom-left-radius: 3px; }
+    .msg-bubble.deleted { opacity: .72; }
+    .msg-bubble.deleted .msg-text { background: rgba(239,68,68,.10); color: #fca5a5; border: 1px dashed rgba(248,113,113,.35); font-style: italic; }
     .msg-time { font-size: 10px; color: #475569; }
     .msg-bubble.own .msg-time { text-align: right; }
     .pag-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 4px 12px; font-size: 12px; cursor: pointer; transition: background .1s; }
@@ -598,9 +600,15 @@ async function carregarMsgsConv() {
 function renderMsgBubble(m, refUid) {
   const isOwn = refUid ? m.usuario_id === refUid : false;
   const nome = m.usuario_nome || 'Desconhecido';
-  const hora = fmtDate(m.criado_em);
+  const hora = m.apagada
+    ? `${fmtDate(m.criado_em)} · apagada em ${fmtDate(m.apagada_em)} por ${esc(m.apagada_por_nome || 'Desconhecido')}`
+    : fmtDate(m.criado_em);
   let txt = '';
-  if (m.tipo === 'arquivo') {
+  if (m.apagada) {
+    txt = m.tipo === 'arquivo'
+      ? `Arquivo apagado: ${esc(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo')}`
+      : `Mensagem apagada: ${esc(String(m.conteudo || 'sem conteudo'))}`;
+  } else if (m.tipo === 'arquivo') {
     txt = `📎 <a href="/uploads/${esc(m.arquivo_nome_salvo)}" target="_blank" style="color:#60a5fa;">${esc(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo')}</a>`;
   } else {
     txt = esc(String(m.conteudo || ''));
@@ -609,7 +617,7 @@ function renderMsgBubble(m, refUid) {
       txt = txt.replace(re, '<mark style="background:#fbbf24;color:#1e293b;border-radius:3px;padding:0 2px;">$1</mark>');
     }
   }
-  return `<div class="msg-bubble ${isOwn?'own':'other'}">
+  return `<div class="msg-bubble ${isOwn?'own':'other'} ${m.apagada?'deleted':''}">
     <div class="msg-av" style="background:${gradient(nome)}">${initials(nome)}</div>
     <div class="msg-body">
       <div class="msg-name">${esc(nome)}</div>

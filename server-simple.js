@@ -486,6 +486,26 @@ function enrichMessage(m) {
   };
 }
 
+function enrichAdminMessage(m) {
+  const message = enrichMessage(m);
+  if (!m.apagada_em) return message;
+  const apagadaPor = db.usuarios.find((u) => Number(u.id) === Number(m.apagada_por));
+  return {
+    ...message,
+    apagada: true,
+    apagada_em: m.apagada_em,
+    apagada_por: m.apagada_por || null,
+    apagada_por_nome: apagadaPor?.nome || 'Desconhecido'
+  };
+}
+
+function getAdminConversationMessages() {
+  return [
+    ...db.mensagens,
+    ...db.mensagens_apagadas.map((message) => ({ ...message, apagada: true }))
+  ].sort((a, b) => new Date(a.criado_em || 0) - new Date(b.criado_em || 0));
+}
+
 function getMessageById(messageId) {
   return db.mensagens.find((m) => Number(m.id) === Number(messageId));
 }
@@ -2118,24 +2138,25 @@ app.get('/api/admin/conversas', verificarToken, (req, res) => {
 
   // Pares privados únicos
   const pares = new Map();
-  db.mensagens.forEach((m) => {
+  getAdminConversationMessages().forEach((m) => {
     if (!m.usuario_destino_id) return;
     const ids = [Number(m.usuario_id), Number(m.usuario_destino_id)].sort((a, b) => a - b);
     const key = `${ids[0]}-${ids[1]}`;
     if (!pares.has(key)) {
       const u1 = db.usuarios.find((u) => u.id === ids[0]);
       const u2 = db.usuarios.find((u) => u.id === ids[1]);
-      pares.set(key, { tipo: 'privado', usuario1_id: ids[0], usuario1_nome: u1?.nome || `#${ids[0]}`, usuario2_id: ids[1], usuario2_nome: u2?.nome || `#${ids[1]}`, total: 0, ultima_em: null });
+      pares.set(key, { tipo: 'privado', usuario1_id: ids[0], usuario1_nome: u1?.nome || `#${ids[0]}`, usuario2_id: ids[1], usuario2_nome: u2?.nome || `#${ids[1]}`, total: 0, apagadas: 0, ultima_em: null });
     }
     const par = pares.get(key);
     par.total++;
+    if (m.apagada) par.apagadas++;
     if (!par.ultima_em || m.criado_em > par.ultima_em) par.ultima_em = m.criado_em;
   });
 
   // Grupos
   const grupos = db.grupos.map((g) => {
-    const msgs = db.mensagens.filter((m) => m.grupo_id === g.id);
-    return { tipo: 'grupo', grupo_id: g.id, nome: g.nome, total: msgs.length, ultima_em: msgs.length ? msgs[msgs.length - 1].criado_em : null };
+    const msgs = getAdminConversationMessages().filter((m) => m.grupo_id === g.id);
+    return { tipo: 'grupo', grupo_id: g.id, nome: g.nome, total: msgs.length, apagadas: msgs.filter((m) => m.apagada).length, ultima_em: msgs.length ? msgs[msgs.length - 1].criado_em : null };
   });
 
   const privados = Array.from(pares.values()).sort((a, b) => (b.ultima_em || '') > (a.ultima_em || '') ? 1 : -1);
@@ -2150,10 +2171,10 @@ app.get('/api/admin/conversas/privadas/:uid1/:uid2', verificarToken, (req, res) 
   const uid1 = parseInt(req.params.uid1, 10);
   const uid2 = parseInt(req.params.uid2, 10);
   const { busca = '', pagina = 1, por_pagina = 100 } = req.query;
-  let msgs = db.mensagens.filter(
+  let msgs = getAdminConversationMessages().filter(
     (m) => (m.usuario_id === uid1 && m.usuario_destino_id === uid2) ||
             (m.usuario_id === uid2 && m.usuario_destino_id === uid1)
-  ).map(enrichMessage);
+  ).map(enrichAdminMessage);
   if (busca) {
     const q = String(busca).toLowerCase();
     msgs = msgs.filter((m) => String(m.conteudo || '').toLowerCase().includes(q));
@@ -2168,7 +2189,7 @@ app.get('/api/admin/conversas/grupo/:grupoId', verificarToken, (req, res) => {
   if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
   const grupoId = parseInt(req.params.grupoId, 10);
   const { busca = '', pagina = 1, por_pagina = 100 } = req.query;
-  let msgs = db.mensagens.filter((m) => m.grupo_id === grupoId).map(enrichMessage);
+  let msgs = getAdminConversationMessages().filter((m) => m.grupo_id === grupoId).map(enrichAdminMessage);
   if (busca) {
     const q = String(busca).toLowerCase();
     msgs = msgs.filter((m) => String(m.conteudo || '').toLowerCase().includes(q));
