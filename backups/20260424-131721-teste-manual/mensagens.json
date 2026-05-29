@@ -1,0 +1,26 @@
+[
+    {
+        "id":  1776360955783,
+        "usuario_id":  1,
+        "grupo_id":  1776360618480,
+        "usuario_destino_id":  null,
+        "conteudo":  "olá",
+        "lido":  0,
+        "criado_em":  "2026-04-16T17:35:55.783Z"
+    },
+    {
+        "id":  1776377227989,
+        "usuario_id":  1776360760070,
+        "grupo_id":  null,
+        "usuario_destino_id":  1776360779684,
+        "conteudo":  "",
+        "tipo":  "arquivo",
+        "arquivo_nome_original":  "chatinterno-teste.pdf",
+        "arquivo_nome_salvo":  "1776377227985_chatinterno-teste.pdf",
+        "arquivo_url":  "/uploads/1776377227985_chatinterno-teste.pdf",
+        "arquivo_mimetype":  "application/pdf",
+        "arquivo_tamanho":  29,
+        "lido":  0,
+        "criado_em":  "2026-04-16T22:07:07.989Z"
+    }
+]

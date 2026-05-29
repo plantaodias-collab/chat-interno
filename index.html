@@ -6,6 +6,8 @@
   <title>Chat Interno - Equipe</title>
   <link rel="icon" id="appFavicon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Cpath d='M18 22c0-4.4 3.6-8 8-8h12c4.4 0 8 3.6 8 8v9c0 4.4-3.6 8-8 8H31l-8 7v-7h-1c-4.4 0-8-3.6-8-8V22Z' fill='white'/%3E%3Ccircle cx='27' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='33' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='39' cy='27' r='3' fill='%232563eb'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/assets/app.css?v=20260529-scroll" />
+  <link rel="manifest" href="/manifest.json" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
 </head>
 <body>
   <div id="loginContainer" class="login-container">
@@ -263,6 +265,8 @@
           <button class="emoji-btn" id="emojiToggleBtn" onclick="alternarEmojis(event)" title="Emojis" aria-label="Abrir seletor de emojis" aria-expanded="false">&#128522;</button>
           <div class="emoji-picker hidden" id="emojiPicker"></div>
           <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Anexar" aria-label="Anexar arquivo">&#128206;</button>
+          <button class="attach-btn" id="templateToggleBtn" onclick="alternarTemplates(event)" title="Templates de resposta" aria-label="Templates de resposta">&#9741;</button>
+          <div class="template-picker hidden" id="templatePicker"></div>
           <textarea
             id="messageInput"
             placeholder="Digite uma mensagem..."
@@ -288,6 +292,9 @@
         <button class="modal-tab-btn" type="button" data-admin-tab="avisos" onclick="setAdminTab('avisos')">Avisos</button>
         <button class="modal-tab-btn" type="button" data-admin-tab="apagadas" onclick="setAdminTab('apagadas')">Apagadas</button>
         <button class="modal-tab-btn" type="button" data-admin-tab="backups" onclick="setAdminTab('backups')">Backups</button>
+        <button class="modal-tab-btn" type="button" data-admin-tab="templates" onclick="setAdminTab('templates')">Templates</button>
+        <button class="modal-tab-btn" type="button" data-admin-tab="auditoria" onclick="setAdminTab('auditoria')">Auditoria</button>
+        <button class="modal-tab-btn" type="button" data-admin-tab="metricas" onclick="setAdminTab('metricas')">Metricas</button>
       </div>
 
       <div class="modal-grid">
@@ -413,6 +420,43 @@
 
             <div id="adminBackupList" class="backup-list">Nenhum backup encontrado.</div>
           </div>
+        </section>
+
+        <!-- TAB: TEMPLATES -->
+        <section data-admin-tab-content="templates" class="hidden">
+          <h4 style="margin-bottom:14px;">Templates de Resposta Rápida</h4>
+          <p style="font-size:13px;color:#64748b;margin-bottom:14px;">Templates ficam disponíveis para todos os usuários no campo de mensagem.</p>
+          <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <input class="field" id="templateNomeInput" placeholder="Nome do template (ex: Bom dia)" style="flex:1;" />
+            <button class="btn btn-primary" style="width:auto;" onclick="criarTemplateAdmin()">Adicionar</button>
+          </div>
+          <textarea class="field" id="templateTextoInput" placeholder="Texto do template..." rows="3" style="margin-bottom:14px;"></textarea>
+          <div id="adminTemplateList" style="display:flex;flex-direction:column;gap:8px;">Carregando...</div>
+        </section>
+
+        <!-- TAB: AUDITORIA -->
+        <section data-admin-tab-content="auditoria" class="hidden">
+          <h4 style="margin-bottom:14px;">Auditoria de Mensagens</h4>
+          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+            <select class="field" id="auditoriaFiltroAcao" style="width:auto;" onchange="carregarAuditoriaAdmin()">
+              <option value="">Todas as ações</option>
+              <option value="enviada">Enviada</option>
+              <option value="apagada">Apagada</option>
+              <option value="encaminhada">Encaminhada</option>
+              <option value="editada">Editada</option>
+            </select>
+            <button class="btn btn-secondary" onclick="carregarAuditoriaAdmin()">Atualizar</button>
+          </div>
+          <div id="adminAuditoriaList" style="font-size:12px;max-height:340px;overflow-y:auto;">Clique em Atualizar para carregar.</div>
+        </section>
+
+        <!-- TAB: MÉTRICAS -->
+        <section data-admin-tab-content="metricas" class="hidden">
+          <h4 style="margin-bottom:14px;">Análise de Uso</h4>
+          <button class="btn btn-secondary" style="margin-bottom:14px;" onclick="carregarMetricasAdmin()">Atualizar métricas</button>
+          <div id="adminMetricasSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px;"></div>
+          <canvas id="metricasChartDia" style="max-height:200px;margin-bottom:18px;"></canvas>
+          <canvas id="metricasChartUsuario" style="max-height:200px;"></canvas>
         </section>
 
         <div style="display:flex; justify-content:flex-end; gap:10px;">

@@ -30,7 +30,7 @@ const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.avi']);
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
-const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json'];
+const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'auditoria.json', 'push-subscriptions.json'];
 
 function getDefaultBackupSchedule() {
   return {
@@ -80,6 +80,9 @@ class SimpleDB {
     this.status_atendimento = this.loadFile('status-atendimento.json', {});
     this.mensagens_prioritarias = this.loadFile('mensagens-prioritarias.json', []);
     this.mensagens_fixadas = this.loadFile('mensagens-fixadas.json', []);
+    this.templates = this.loadFile('templates.json', []);
+    this.auditoria = this.loadFile('auditoria.json', []);
+    this.push_subscriptions = this.loadFile('push-subscriptions.json', []);
     this.painel_senhas = this.loadFile('painel-senhas.json', {
       senhaAtual: '',
       observacao: '',
@@ -124,6 +127,9 @@ class SimpleDB {
     this.saveFile('mensagens-fixadas.json', this.mensagens_fixadas);
     this.saveFile('painel-senhas.json', this.painel_senhas);
     this.saveFile('backup-agendamento.json', this.backup_agendamento);
+    this.saveFile('templates.json', this.templates);
+    this.saveFile('push-subscriptions.json', this.push_subscriptions);
+    // auditoria is saved immediately on each append for safety
   }
 }
 
@@ -1654,6 +1660,7 @@ app.delete('/api/mensagens/:id', verificarToken, (req, res) => {
     });
     db.mensagens.splice(index, 1);
     db.save();
+    registrarAuditoria({ acao: 'apagada', usuarioId: req.userId, mensagemId: messageId, req });
     if (mensagem.tipo === 'arquivo') {
       removeFileIfExists(mensagem.arquivo_nome_salvo);
     }
@@ -1955,11 +1962,17 @@ io.on('connection', (socket) => {
     db.mensagens.push(msg);
     db.save();
 
-    io.to(`grupo-${data.grupoId}`).emit('nova-mensagem-grupo', {
-      ...enrichMessage(msg),
-      usuarioNome: data.usuarioNome,
-      usuarioId: Number(data.usuarioId),
-      grupoId: Number(data.grupoId)
+    registrarAuditoria({ acao: 'enviada', usuarioId: data.usuarioId, usuarioNome: data.usuarioNome, mensagemId: msg.id, detalhe: `grupo:${data.grupoId}` });
+
+    const msgEnriquecida = { ...enrichMessage(msg), usuarioNome: data.usuarioNome, usuarioId: Number(data.usuarioId), grupoId: Number(data.grupoId) };
+    io.to(`grupo-${data.grupoId}`).emit('nova-mensagem-grupo', msgEnriquecida);
+
+    // Push para membros do grupo que estão offline
+    const membrosGrupo = (db.membros_grupo || []).filter((m) => Number(m.grupo_id) === Number(data.grupoId) && Number(m.usuario_id) !== Number(data.usuarioId));
+    membrosGrupo.forEach((m) => {
+      if (!isUsuarioOnline(m.usuario_id)) {
+        enviarPushParaUsuario(m.usuario_id, { title: data.usuarioNome || 'Nova mensagem', body: String(data.conteudo || '').slice(0, 80), tag: `grupo-${data.grupoId}` });
+      }
     });
   });
 
@@ -1984,6 +1997,8 @@ io.on('connection', (socket) => {
     db.mensagens.push(msg);
     db.save();
 
+    registrarAuditoria({ acao: 'enviada', usuarioId: data.remetente_id, usuarioNome: data.remetenteNome, mensagemId: msg.id, detalhe: `privado:${data.destinatario_id}` });
+
     const payload = {
       ...enrichMessage(msg),
       remetenteNome: data.remetenteNome,
@@ -1998,6 +2013,11 @@ io.on('connection', (socket) => {
       destinatario_id: Number(data.destinatario_id),
       status: 'enviada'
     });
+
+    // Push se destinatário offline
+    if (!isUsuarioOnline(data.destinatario_id)) {
+      enviarPushParaUsuario(data.destinatario_id, { title: data.remetenteNome || 'Nova mensagem', body: String(data.conteudo || '').slice(0, 80), tag: `privado-${data.remetente_id}` });
+    }
   });
 
   socket.on('marcar-lidas', (data) => {
@@ -2033,6 +2053,179 @@ io.on('connection', (socket) => {
     emitPresence();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUDITORIA — helper
+// ─────────────────────────────────────────────────────────────────────────────
+function registrarAuditoria({ acao, usuarioId, usuarioNome, mensagemId, detalhe, req }) {
+  try {
+    const entry = {
+      id: Date.now() + Math.random(),
+      acao,
+      usuario_id: usuarioId || null,
+      usuario_nome: usuarioNome || null,
+      mensagem_id: mensagemId || null,
+      detalhe: detalhe || null,
+      ip: req?.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req?.socket?.remoteAddress || null,
+      em: new Date().toISOString()
+    };
+    db.auditoria.push(entry);
+    // Limitar a 5000 registros para não crescer indefinidamente
+    if (db.auditoria.length > 5000) db.auditoria = db.auditoria.slice(-5000);
+    db.saveFile('auditoria.json', db.auditoria);
+  } catch (_e) { /* nunca quebrar o fluxo */ }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATES — CRUD
+// ─────────────────────────────────────────────────────────────────────────────
+app.get('/api/templates', verificarToken, (_req, res) => {
+  res.json(db.templates || []);
+});
+
+app.post('/api/templates', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const { nome, texto } = req.body || {};
+  if (!nome || !texto) return res.status(400).json({ erro: 'Nome e texto são obrigatórios' });
+  const template = { id: Date.now(), nome: String(nome).trim(), texto: String(texto).trim(), criado_em: new Date().toISOString(), criado_por: req.userId };
+  db.templates.push(template);
+  db.saveFile('templates.json', db.templates);
+  res.json(template);
+});
+
+app.delete('/api/templates/:id', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const id = Number(req.params.id);
+  db.templates = db.templates.filter((t) => t.id !== id);
+  db.saveFile('templates.json', db.templates);
+  res.json({ ok: true });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUDITORIA — endpoint admin
+// ─────────────────────────────────────────────────────────────────────────────
+app.get('/api/admin/auditoria', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const { acao, limite = 200 } = req.query;
+  let registros = [...(db.auditoria || [])].reverse();
+  if (acao) registros = registros.filter((r) => r.acao === acao);
+  res.json(registros.slice(0, Number(limite)));
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MÉTRICAS — endpoint admin
+// ─────────────────────────────────────────────────────────────────────────────
+app.get('/api/admin/metricas', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+
+  const msgs = db.mensagens || [];
+  const usuarios = db.usuarios || [];
+
+  // Mensagens por dia (últimos 14 dias)
+  const hoje = new Date();
+  const porDia = {};
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(hoje);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    porDia[key] = 0;
+  }
+  msgs.forEach((m) => {
+    const key = (m.criado_em || '').slice(0, 10);
+    if (porDia[key] !== undefined) porDia[key]++;
+  });
+
+  // Mensagens por usuário (top 10)
+  const porUsuario = {};
+  msgs.forEach((m) => {
+    const uid = m.usuario_id;
+    if (!uid) return;
+    const u = usuarios.find((u) => u.id === Number(uid));
+    const nome = u?.nome || `#${uid}`;
+    porUsuario[nome] = (porUsuario[nome] || 0) + 1;
+  });
+  const topUsuarios = Object.entries(porUsuario)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([nome, total]) => ({ nome, total }));
+
+  // Horários de pico (por hora do dia)
+  const porHora = Array(24).fill(0);
+  msgs.forEach((m) => {
+    if (m.criado_em) {
+      const h = new Date(m.criado_em).getHours();
+      porHora[h]++;
+    }
+  });
+
+  // Totais
+  const totalMsgs = msgs.length;
+  const totalUrgentes = msgs.filter((m) => m.prioridade === 'urgente').length;
+  const totalGrupo = msgs.filter((m) => m.tipo === 'grupo').length;
+  const totalPrivado = msgs.filter((m) => m.tipo === 'privado').length;
+  const totalApagadas = (db.mensagens_apagadas || []).length;
+
+  res.json({ porDia, topUsuarios, porHora, totalMsgs, totalUrgentes, totalGrupo, totalPrivado, totalApagadas });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEB PUSH — subscribe / unsubscribe
+// ─────────────────────────────────────────────────────────────────────────────
+let webpush = null;
+try {
+  webpush = require('web-push');
+  const VAPID_PUBLIC  = process.env.VAPID_PUBLIC_KEY  || '';
+  const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || '';
+  const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@chatinterno.app';
+  if (VAPID_PUBLIC && VAPID_PRIVATE) {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
+    console.log('Web Push VAPID configurado.');
+  } else {
+    console.warn('Web Push: VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY não definidas. Push desativado.');
+    webpush = null;
+  }
+} catch (_e) {
+  console.warn('web-push não instalado — push notifications desativadas. Execute: npm install web-push');
+  webpush = null;
+}
+
+app.get('/api/push/vapid-public-key', (_req, res) => {
+  const key = process.env.VAPID_PUBLIC_KEY || '';
+  res.json({ key });
+});
+
+app.post('/api/push/subscribe', verificarToken, (req, res) => {
+  const { subscription } = req.body || {};
+  if (!subscription?.endpoint) return res.status(400).json({ erro: 'Subscription inválida' });
+  // Remover registros antigos do mesmo endpoint
+  db.push_subscriptions = db.push_subscriptions.filter((s) => s.endpoint !== subscription.endpoint);
+  db.push_subscriptions.push({ usuario_id: req.userId, endpoint: subscription.endpoint, keys: subscription.keys, criado_em: new Date().toISOString() });
+  db.saveFile('push-subscriptions.json', db.push_subscriptions);
+  res.json({ ok: true });
+});
+
+app.delete('/api/push/subscribe', verificarToken, (req, res) => {
+  const { endpoint } = req.body || {};
+  db.push_subscriptions = db.push_subscriptions.filter((s) => s.endpoint !== endpoint);
+  db.saveFile('push-subscriptions.json', db.push_subscriptions);
+  res.json({ ok: true });
+});
+
+async function enviarPushParaUsuario(usuarioId, payload) {
+  if (!webpush) return;
+  const subs = db.push_subscriptions.filter((s) => Number(s.usuario_id) === Number(usuarioId));
+  for (const sub of subs) {
+    try {
+      await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, JSON.stringify(payload));
+    } catch (err) {
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        // Subscription expirada — remover
+        db.push_subscriptions = db.push_subscriptions.filter((s) => s.endpoint !== sub.endpoint);
+        db.saveFile('push-subscriptions.json', db.push_subscriptions);
+      }
+    }
+  }
+}
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {

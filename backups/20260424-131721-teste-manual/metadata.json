@@ -1,0 +1,12 @@
+{
+  "id": "20260424-131721-teste-manual",
+  "nome": "teste-manual",
+  "criado_em": "2026-04-24T16:17:21.278Z",
+  "criado_por": "Régis Perin",
+  "arquivos": [
+    "usuarios.json",
+    "grupos.json",
+    "membros.json",
+    "mensagens.json"
+  ]
+}

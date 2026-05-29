@@ -2473,9 +2473,12 @@ function renderMessageRow(message) {
   const statusTitle = tipoChat === 'grupo'
     ? (resumoLeituraGrupo?.tooltip || '')
     : (message.lido ? 'Mensagem lida' : 'Mensagem enviada');
+  // Checkmarks visuais: ✓ enviada, ✓✓(azul) lida
+  const SVG_CHECK_SINGLE = `<svg class="check-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="3,9 7,13 13,5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const SVG_CHECK_DOUBLE = `<svg class="check-icon check-double" viewBox="0 0 20 16" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="1,9 5,13 11,5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="6,9 10,13 16,5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   const statusText = tipoChat === 'grupo'
-    ? (getLeiturasGrupo(message).length ? 'Lida' : 'Enviada')
-    : (message.lido ? 'Lida' : 'Enviada');
+    ? (getLeiturasGrupo(message).length ? SVG_CHECK_DOUBLE : SVG_CHECK_SINGLE)
+    : (message.lido ? SVG_CHECK_DOUBLE : SVG_CHECK_SINGLE);
   const resumoHtml = tipoChat === 'grupo'
     ? `<div class="message-read-summary ${resumoLeituraGrupo?.total ? 'has-readers' : ''}" title="${escapeHtml(resumoLeituraGrupo?.tooltip || '')}"><strong>Leitura:</strong> ${escapeHtml(resumoLeituraGrupo?.detalhe || 'Ninguem do grupo leu ainda')}</div>`
     : '';
@@ -3271,6 +3274,7 @@ function abrirPainelAdmin() {
   carregarBackupsAdmin();
   carregarAgendamentoBackupAdmin();
   carregarMensagensApagadasAdmin();
+  carregarTemplatesAdmin();
   document.getElementById('adminModal').classList.add('active');
 }
 
@@ -3566,3 +3570,239 @@ aplicarTema();
 aplicarEstadoSidebar();
 aplicarDensidadeMensagens();
 restaurarSessao();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BLOCO 2 — TEMPLATES DE RESPOSTA RÁPIDA
+// ═══════════════════════════════════════════════════════════════════════════
+let templatesCache = [];
+
+async function carregarTemplates() {
+  try {
+    const r = await fetch('/api/templates', { headers: authHeaders() });
+    if (r.ok) templatesCache = await r.json();
+  } catch (_e) { /* silencioso */ }
+}
+
+async function carregarTemplatesAdmin() {
+  await carregarTemplates();
+  renderTemplatesAdmin();
+}
+
+function renderTemplatesAdmin() {
+  const el = document.getElementById('adminTemplateList');
+  if (!el) return;
+  if (!templatesCache.length) { el.innerHTML = '<p style="color:#64748b;font-size:13px;">Nenhum template cadastrado.</p>'; return; }
+  el.innerHTML = templatesCache.map((t) => `
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:rgba(148,163,184,.08);border-radius:8px;">
+      <div style="flex:1;">
+        <strong style="font-size:13px;">${escapeHtml(t.nome)}</strong>
+        <div style="font-size:12px;color:#64748b;margin-top:3px;">${escapeHtml(t.texto)}</div>
+      </div>
+      <button onclick="excluirTemplateAdmin(${t.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:15px;" title="Excluir">&#10005;</button>
+    </div>`).join('');
+}
+
+async function criarTemplateAdmin() {
+  const nome = document.getElementById('templateNomeInput').value.trim();
+  const texto = document.getElementById('templateTextoInput').value.trim();
+  if (!nome || !texto) { mostrarNotificacaoToast('Preencha nome e texto.', 'erro'); return; }
+  try {
+    const r = await fetch('/api/templates', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ nome, texto }) });
+    if (!r.ok) throw new Error();
+    document.getElementById('templateNomeInput').value = '';
+    document.getElementById('templateTextoInput').value = '';
+    await carregarTemplatesAdmin();
+    mostrarNotificacaoToast('Template criado!', 'sucesso');
+  } catch (_e) { mostrarNotificacaoToast('Erro ao criar template.', 'erro'); }
+}
+
+async function excluirTemplateAdmin(id) {
+  if (!confirm('Excluir este template?')) return;
+  try {
+    await fetch(`/api/templates/${id}`, { method: 'DELETE', headers: authHeaders() });
+    await carregarTemplatesAdmin();
+  } catch (_e) { mostrarNotificacaoToast('Erro ao excluir.', 'erro'); }
+}
+
+// Template picker no campo de mensagem
+function alternarTemplates(event) {
+  event.stopPropagation();
+  const picker = document.getElementById('templatePicker');
+  if (picker.classList.contains('hidden')) {
+    renderTemplatePicker();
+    picker.classList.remove('hidden');
+    document.getElementById('emojiPicker').classList.add('hidden');
+  } else {
+    picker.classList.add('hidden');
+  }
+}
+
+function renderTemplatePicker() {
+  const picker = document.getElementById('templatePicker');
+  if (!templatesCache.length) {
+    picker.innerHTML = '<div style="padding:12px;font-size:13px;color:#64748b;">Nenhum template. Adicione no Painel Admin → Templates.</div>';
+    return;
+  }
+  picker.innerHTML = templatesCache.map((t) => `
+    <div class="template-item" onclick="aplicarTemplate(${t.id})">
+      <strong>${escapeHtml(t.nome)}</strong>
+      <span>${escapeHtml(t.texto.slice(0, 50))}${t.texto.length > 50 ? '…' : ''}</span>
+    </div>`).join('');
+}
+
+function aplicarTemplate(id) {
+  const t = templatesCache.find((x) => x.id === id);
+  if (!t) return;
+  const input = document.getElementById('messageInput');
+  input.value = t.texto;
+  input.focus();
+  autoResizeComposer && autoResizeComposer();
+  document.getElementById('templatePicker').classList.add('hidden');
+}
+
+// fechar template picker ao clicar fora
+document.addEventListener('click', (e) => {
+  const picker = document.getElementById('templatePicker');
+  if (picker && !picker.classList.contains('hidden') && !e.target.closest('.composer')) {
+    picker.classList.add('hidden');
+  }
+});
+
+// Carregar templates após login
+const _origAplicarSessao = typeof aplicarSessaoUsuario === 'function' ? aplicarSessaoUsuario : null;
+// Carrega na inicialização quando token disponível
+setTimeout(() => { if (token) carregarTemplates(); }, 2000);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BLOCO 4 — AUDITORIA DE MENSAGENS
+// ═══════════════════════════════════════════════════════════════════════════
+async function carregarAuditoriaAdmin() {
+  const el = document.getElementById('adminAuditoriaList');
+  if (!el) return;
+  const acao = document.getElementById('auditoriaFiltroAcao')?.value || '';
+  el.innerHTML = 'Carregando...';
+  try {
+    const url = `/api/admin/auditoria?limite=300${acao ? `&acao=${acao}` : ''}`;
+    const r = await fetch(url, { headers: authHeaders() });
+    if (!r.ok) throw new Error();
+    const registros = await r.json();
+    if (!registros.length) { el.innerHTML = '<p style="color:#64748b;">Nenhum registro encontrado.</p>'; return; }
+    const ACAO_CORES = { enviada: '#22c55e', apagada: '#ef4444', encaminhada: '#3b82f6', editada: '#f59e0b' };
+    el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:11.5px;">
+      <thead><tr style="border-bottom:1px solid rgba(148,163,184,.2);">
+        <th style="text-align:left;padding:6px 8px;">Ação</th>
+        <th style="text-align:left;padding:6px 8px;">Usuário</th>
+        <th style="text-align:left;padding:6px 8px;">Detalhe</th>
+        <th style="text-align:left;padding:6px 8px;">IP</th>
+        <th style="text-align:left;padding:6px 8px;">Data/Hora</th>
+      </tr></thead>
+      <tbody>${registros.map((r) => `
+        <tr style="border-bottom:1px solid rgba(148,163,184,.08);">
+          <td style="padding:5px 8px;"><span style="color:${ACAO_CORES[r.acao]||'#94a3b8'};font-weight:700;">${escapeHtml(r.acao||'')}</span></td>
+          <td style="padding:5px 8px;">${escapeHtml(r.usuario_nome||String(r.usuario_id||''))}</td>
+          <td style="padding:5px 8px;color:#94a3b8;">${escapeHtml(r.detalhe||'')}</td>
+          <td style="padding:5px 8px;color:#64748b;">${escapeHtml(r.ip||'')}</td>
+          <td style="padding:5px 8px;color:#64748b;">${r.em ? new Date(r.em).toLocaleString('pt-BR') : ''}</td>
+        </tr>`).join('')}
+      </tbody></table>`;
+  } catch (_e) { el.innerHTML = '<p style="color:#ef4444;">Erro ao carregar auditoria.</p>'; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BLOCO 5 — MÉTRICAS E ANÁLISE DE USO
+// ═══════════════════════════════════════════════════════════════════════════
+let _chartDia = null;
+let _chartUsuario = null;
+
+async function carregarMetricasAdmin() {
+  const summaryEl = document.getElementById('adminMetricasSummary');
+  if (!summaryEl) return;
+  summaryEl.innerHTML = 'Carregando...';
+  try {
+    const r = await fetch('/api/admin/metricas', { headers: authHeaders() });
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+
+    // Cards de resumo
+    const cards = [
+      { label: 'Total de mensagens', val: d.totalMsgs, cor: '#3b82f6' },
+      { label: 'Urgentes',           val: d.totalUrgentes, cor: '#ef4444' },
+      { label: 'Em grupos',          val: d.totalGrupo, cor: '#8b5cf6' },
+      { label: 'Privadas',           val: d.totalPrivado, cor: '#06b6d4' },
+      { label: 'Apagadas',           val: d.totalApagadas, cor: '#f59e0b' },
+    ];
+    summaryEl.innerHTML = cards.map((c) => `
+      <div style="background:rgba(148,163,184,.08);border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:${c.cor};">${c.val}</div>
+        <div style="font-size:11px;color:#64748b;margin-top:4px;">${c.label}</div>
+      </div>`).join('');
+
+    // Gráfico por dia
+    const ctxDia = document.getElementById('metricasChartDia');
+    if (ctxDia) {
+      if (_chartDia) _chartDia.destroy();
+      _chartDia = new Chart(ctxDia, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(d.porDia).map((k) => k.slice(5)), // MM-DD
+          datasets: [{ label: 'Mensagens por dia', data: Object.values(d.porDia), backgroundColor: 'rgba(59,130,246,.7)', borderRadius: 4 }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+      });
+    }
+
+    // Gráfico por usuário
+    const ctxUsr = document.getElementById('metricasChartUsuario');
+    if (ctxUsr && d.topUsuarios.length) {
+      if (_chartUsuario) _chartUsuario.destroy();
+      _chartUsuario = new Chart(ctxUsr, {
+        type: 'bar',
+        data: {
+          labels: d.topUsuarios.map((u) => u.nome),
+          datasets: [{ label: 'Mensagens por usuário', data: d.topUsuarios.map((u) => u.total), backgroundColor: 'rgba(139,92,246,.7)', borderRadius: 4 }]
+        },
+        options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
+      });
+    }
+  } catch (_e) { summaryEl.innerHTML = '<p style="color:#ef4444;">Erro ao carregar métricas.</p>'; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BLOCO 3 — WEB PUSH NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+async function inicializarWebPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  try {
+    const kr = await fetch('/api/push/vapid-public-key');
+    const { key } = await kr.json();
+    if (!key) return; // VAPID não configurado no servidor
+
+    const reg = await navigator.serviceWorker.ready;
+    const existente = await reg.pushManager.getSubscription();
+    if (existente) return; // já inscrito
+
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(key)
+    });
+    await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ subscription: sub.toJSON() })
+    });
+    console.log('Web Push inscrito.');
+  } catch (e) {
+    console.warn('Web Push subscribe falhou:', e);
+  }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+}
+
+// Chamar após login bem-sucedido
+setTimeout(() => { if (token) inicializarWebPush(); }, 3000);
