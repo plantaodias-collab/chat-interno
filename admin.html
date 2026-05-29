@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Chat Interno</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0b1220;
+      --surface:   #111827;
+      --surface2:  #1e2a3a;
+      --border:    rgba(148,163,184,.14);
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --accent:    #2563eb;
+      --amber:     #f59e0b;
+      --danger:    #ef4444;
+      --success:   #22c55e;
+      --radius:    12px;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; font-size: 14px; min-height: 100vh; }
+
+    /* ── Login ── */
+    #loginScreen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; background: var(--bg);
+    }
+    .login-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+      padding: 40px 36px; width: 340px;
+    }
+    .login-card h1 { font-size: 20px; margin-bottom: 6px; }
+    .login-card p  { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+
+    /* ── Layout ── */
+    #appScreen { display: none; flex-direction: column; min-height: 100vh; }
+    .topbar {
+      display: flex; align-items: center; gap: 14px;
+      padding: 0 24px; height: 56px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .topbar-brand { font-weight: 800; font-size: 15px; letter-spacing: .02em; }
+    .topbar-brand span { color: var(--accent); }
+    .topbar-spacer { flex: 1; }
+    .topbar-user { font-size: 12px; color: var(--muted); }
+    .btn-logout {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      border-radius: 8px; padding: 5px 12px; cursor: pointer; font-size: 12px;
+      transition: all .15s;
+    }
+    .btn-logout:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+    .btn-back {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      border-radius: 8px; padding: 5px 12px; cursor: pointer; font-size: 12px;
+      text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn-back:hover { background: var(--surface2); color: var(--text); }
+
+    .main { display: flex; flex: 1; min-height: 0; }
+
+    /* ── Sidebar tabs ── */
+    .sidebar {
+      width: 200px; min-width: 160px; flex-shrink: 0;
+      background: var(--surface); border-right: 1px solid var(--border);
+      padding: 16px 10px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .sidebar-section { font-size: 10px; font-weight: 700; color: var(--muted); padding: 10px 8px 4px; text-transform: uppercase; letter-spacing: .06em; }
+    .tab-btn {
+      display: flex; align-items: center; gap: 9px;
+      padding: 9px 12px; border-radius: 9px; border: none; background: none;
+      color: var(--muted); font-size: 13px; cursor: pointer; width: 100%; text-align: left;
+      transition: all .12s;
+    }
+    .tab-btn:hover  { background: var(--surface2); color: var(--text); }
+    .tab-btn.active { background: rgba(37,99,235,.18); color: #60a5fa; font-weight: 700; }
+    .tab-btn .icon  { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+
+    /* ── Content ── */
+    .content { flex: 1; padding: 28px 32px; overflow-y: auto; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .panel-title { font-size: 20px; font-weight: 800; margin-bottom: 20px; }
+
+    /* ── Form elements ── */
+    .field {
+      width: 100%; padding: 9px 13px; border-radius: 9px;
+      border: 1px solid var(--border); background: var(--surface2);
+      color: var(--text); font-size: 13px; outline: none;
+    }
+    .field:focus { border-color: var(--accent); }
+    .btn {
+      padding: 8px 18px; border-radius: 9px; border: none;
+      font-size: 13px; font-weight: 700; cursor: pointer; transition: all .12s;
+    }
+    .btn-primary   { background: var(--accent); color: #fff; }
+    .btn-primary:hover   { background: #1d4ed8; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: #2d3748; }
+    .btn-danger    { background: var(--danger); color: #fff; }
+    .btn-danger:hover    { background: #dc2626; }
+    .btn-sm { padding: 5px 11px; font-size: 12px; }
+
+    /* ── Cards de KPI ── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 16px; }
+    .kpi-val  { font-size: 28px; font-weight: 800; }
+    .kpi-lbl  { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* ── Table ── */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th { text-align: left; padding: 9px 12px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; }
+    .data-table td { padding: 9px 12px; border-bottom: 1px solid rgba(148,163,184,.07); }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: var(--surface2); }
+
+    /* ── Badges ── */
+    .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+    .badge-blue   { background: rgba(59,130,246,.18); color: #60a5fa; }
+    .badge-purple { background: rgba(139,92,246,.18); color: #a78bfa; }
+    .badge-green  { background: rgba(34,197,94,.18);  color: #4ade80; }
+    .badge-red    { background: rgba(239,68,68,.18);  color: #f87171; }
+    .badge-amber  { background: rgba(245,158,11,.18); color: #fbbf24; }
+    .badge-grey   { background: rgba(148,163,184,.14); color: #94a3b8; }
+
+    /* ── Conversas viewer ── */
+    .conv-layout { display: grid; grid-template-columns: 240px 1fr; height: calc(100vh - 180px); min-height: 400px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .conv-list-col { display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--surface); }
+    .conv-list-items { flex: 1; overflow-y: auto; }
+    .conv-item { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid rgba(148,163,184,.07); transition: background .1s; }
+    .conv-item:hover  { background: var(--surface2); }
+    .conv-item.active { background: rgba(37,99,235,.18); }
+    .conv-item-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .conv-item-meta  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .conv-msgs-col { display: flex; flex-direction: column; background: rgba(9,17,28,.5); }
+    .conv-msgs-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .conv-msgs-toolbar { padding: 8px 12px; border-bottom: 1px solid rgba(148,163,184,.07); display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    .conv-msgs-body { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .conv-msgs-footer { padding: 8px 12px; border-top: 1px solid var(--border); display: flex; justify-content: center; gap: 8px; flex-shrink: 0; }
+    .msg-bubble { display: flex; gap: 8px; max-width: 75%; }
+    .msg-bubble.own { align-self: flex-end; flex-direction: row-reverse; }
+    .msg-bubble.other { align-self: flex-start; }
+    .msg-av { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #fff; flex-shrink: 0; }
+    .msg-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .msg-name { font-size: 10.5px; color: var(--muted); font-weight: 700; }
+    .msg-bubble.own .msg-name { text-align: right; }
+    .msg-text { padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.45; word-break: break-word; white-space: pre-wrap; }
+    .msg-bubble.own   .msg-text { background: rgba(37,99,235,.35); color: #dbeafe; border-bottom-right-radius: 3px; }
+    .msg-bubble.other .msg-text { background: var(--surface2); color: var(--text); border-bottom-left-radius: 3px; }
+    .msg-time { font-size: 10px; color: #475569; }
+    .msg-bubble.own .msg-time { text-align: right; }
+    .pag-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 4px 12px; font-size: 12px; cursor: pointer; transition: background .1s; }
+    .pag-btn:hover { background: #2d3748; }
+    .pag-btn:disabled { opacity: .35; cursor: default; }
+
+    /* ── Auditoria ── */
+    .audit-row td { font-size: 12px; }
+
+    /* ── Toast ── */
+    #toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 18px; font-size: 13px; z-index: 9999; display: none; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <h1>⚙ Painel Admin</h1>
+    <p>Chat Interno — Cartório Dias de Castro</p>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <input class="field" id="loginEmail" type="email" placeholder="E-mail" />
+      <input class="field" id="loginSenha" type="password" placeholder="Senha" onkeydown="if(event.key==='Enter')fazerLogin()" />
+      <button class="btn btn-primary" onclick="fazerLogin()">Entrar</button>
+      <div id="loginErro" style="color:#f87171;font-size:12px;display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appScreen">
+  <div class="topbar">
+    <div class="topbar-brand">Chat <span>Admin</span></div>
+    <a href="/" class="btn-back">← Voltar ao Chat</a>
+    <div class="topbar-spacer"></div>
+    <span class="topbar-user" id="topbarUser"></span>
+    <button class="btn-logout" onclick="sair()">Sair</button>
+  </div>
+
+  <div class="main">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-section">Gestão</div>
+      <button class="tab-btn active" onclick="abrirPanel('usuarios')" id="tab-usuarios"><span class="icon">👥</span> Usuários</button>
+      <button class="tab-btn" onclick="abrirPanel('conversas')" id="tab-conversas"><span class="icon">💬</span> Conversas</button>
+      <button class="tab-btn" onclick="abrirPanel('grupos')" id="tab-grupos"><span class="icon">#</span> Grupos</button>
+      <button class="tab-btn" onclick="abrirPanel('avisos')" id="tab-avisos"><span class="icon">📌</span> Avisos</button>
+      <div class="sidebar-section">Conteúdo</div>
+      <button class="tab-btn" onclick="abrirPanel('templates')" id="tab-templates"><span class="icon">⚡</span> Templates</button>
+      <button class="tab-btn" onclick="abrirPanel('apagadas')" id="tab-apagadas"><span class="icon">🗑</span> Apagadas</button>
+      <div class="sidebar-section">Sistema</div>
+      <button class="tab-btn" onclick="abrirPanel('metricas')" id="tab-metricas"><span class="icon">📊</span> Métricas</button>
+      <button class="tab-btn" onclick="abrirPanel('auditoria')" id="tab-auditoria"><span class="icon">🔍</span> Auditoria</button>
+      <button class="tab-btn" onclick="abrirPanel('backups')" id="tab-backups"><span class="icon">💾</span> Backups</button>
+    </nav>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- USUÁRIOS -->
+      <div class="panel active" id="panel-usuarios">
+        <div class="panel-title">Usuários</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:520px;margin-bottom:10px;">
+          <input class="field" id="novoNome" placeholder="Nome" />
+          <input class="field" id="novoEmail" placeholder="E-mail" />
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="cadastrarUsuario()" style="margin-bottom:22px;">Cadastrar usuário</button>
+        <div id="listaUsuarios"><p style="color:var(--muted);">Carregando...</p></div>
+      </div>
+
+      <!-- CONVERSAS -->
+      <div class="panel" id="panel-conversas">
+        <div class="panel-title">Conversas</div>
+        <div class="conv-layout">
+          <div class="conv-list-col">
+            <div style="padding:10px 12px;border-bottom:1px solid var(--border);">
+              <input class="field" id="convFiltro" placeholder="Filtrar..." oninput="filtrarConversas()" style="font-size:12px;padding:7px 10px;" />
+            </div>
+            <div class="conv-list-items" id="convLista"><p style="padding:14px;font-size:13px;color:var(--muted);">Carregando...</p></div>
+          </div>
+          <div class="conv-msgs-col">
+            <div class="conv-msgs-header" id="convHeader"><span style="color:var(--muted);">Selecione uma conversa</span></div>
+            <div class="conv-msgs-toolbar">
+              <input class="field" id="convBusca" placeholder="Buscar nas mensagens..." oninput="debounceBuscaConv()" style="font-size:12px;padding:7px 10px;flex:1;" />
+              <span id="convTotal" style="font-size:11px;color:var(--muted);white-space:nowrap;"></span>
+            </div>
+            <div class="conv-msgs-body" id="convMsgs"><p style="color:var(--muted);">Nenhuma conversa selecionada.</p></div>
+            <div class="conv-msgs-footer" id="convPag"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GRUPOS -->
+      <div class="panel" id="panel-grupos">
+        <div class="panel-title">Grupos</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:520px;margin-bottom:10px;">
+          <input class="field" id="grupoNome" placeholder="Nome do grupo" />
+          <input class="field" id="grupoDesc" placeholder="Descrição" />
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;">Membros</label>
+          <div id="grupoMembrosCheck" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="criarGrupo()" style="margin-bottom:22px;">Criar grupo</button>
+        <div id="listaGrupos"><p style="color:var(--muted);">Carregando...</p></div>
+      </div>
+
+      <!-- AVISOS -->
+      <div class="panel" id="panel-avisos">
+        <div class="panel-title">Avisos de Grupo</div>
+        <div style="max-width:520px;display:flex;flex-direction:column;gap:10px;">
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px;">Grupo</label>
+            <select class="field" id="avisoGrupoSel"></select>
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px;">Aviso</label>
+            <textarea class="field" id="avisoTexto" rows="3" placeholder="Texto do aviso fixado..."></textarea>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary btn-sm" onclick="salvarAviso()">Salvar aviso</button>
+            <button class="btn btn-secondary btn-sm" onclick="limparAviso()">Limpar aviso</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TEMPLATES -->
+      <div class="panel" id="panel-templates">
+        <div class="panel-title">Templates de Resposta</div>
+        <div style="max-width:520px;display:flex;flex-direction:column;gap:10px;margin-bottom:22px;">
+          <input class="field" id="tplNome" placeholder="Nome do template (ex: Bom dia)" />
+          <textarea class="field" id="tplTexto" rows="3" placeholder="Texto do template..."></textarea>
+          <button class="btn btn-primary btn-sm" onclick="criarTemplate()" style="align-self:flex-start;">Adicionar template</button>
+        </div>
+        <div id="listaTemplates"></div>
+      </div>
+
+      <!-- APAGADAS -->
+      <div class="panel" id="panel-apagadas">
+        <div class="panel-title">Mensagens Apagadas</div>
+        <button class="btn btn-secondary btn-sm" onclick="carregarApagadas()" style="margin-bottom:16px;">Atualizar</button>
+        <div id="listaApagadas"><p style="color:var(--muted);">Clique em Atualizar para carregar.</p></div>
+      </div>
+
+      <!-- MÉTRICAS -->
+      <div class="panel" id="panel-metricas">
+        <div class="panel-title">Métricas de Uso</div>
+        <button class="btn btn-secondary btn-sm" onclick="carregarMetricas()" style="margin-bottom:18px;">Atualizar métricas</button>
+        <div class="kpi-grid" id="metricasKPI"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:900px;">
+          <div><canvas id="chartDia" style="max-height:220px;"></canvas></div>
+          <div><canvas id="chartUsr" style="max-height:220px;"></canvas></div>
+        </div>
+      </div>
+
+      <!-- AUDITORIA -->
+      <div class="panel" id="panel-auditoria">
+        <div class="panel-title">Auditoria de Mensagens</div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;">
+          <select class="field" id="auditoriaFiltro" style="width:auto;">
+            <option value="">Todas as ações</option>
+            <option value="enviada">Enviada</option>
+            <option value="apagada">Apagada</option>
+            <option value="encaminhada">Encaminhada</option>
+            <option value="editada">Editada</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="carregarAuditoria()">Atualizar</button>
+        </div>
+        <div id="listaAuditoria" style="max-height:calc(100vh - 280px);overflow-y:auto;"></div>
+      </div>
+
+      <!-- BACKUPS -->
+      <div class="panel" id="panel-backups">
+        <div class="panel-title">Backups</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;max-width:760px;">
+          <div>
+            <h4 style="margin-bottom:14px;font-size:14px;">Backup manual</h4>
+            <input class="field" id="backupNome" placeholder="Nome do backup" style="margin-bottom:10px;" />
+            <button class="btn btn-primary btn-sm" onclick="gerarBackup()">Gerar backup agora</button>
+            <div id="listaBackups" style="margin-top:16px;display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+          <div>
+            <h4 style="margin-bottom:14px;font-size:14px;">Backup automático</h4>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+                <input type="checkbox" id="backupAuto" /> Ativar backup diário
+              </label>
+              <input class="field" id="backupHorario" type="time" value="18:00" />
+              <button class="btn btn-secondary btn-sm" onclick="salvarAgendamento()">Salvar agendamento</button>
+              <div id="backupAutoStatus" style="font-size:12px;color:var(--muted);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /appScreen -->
+
+<div id="toast"></div>
+
+<script>
+// ── Auth ───────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'chatinterno-session';
+let token = null, usuario = null;
+
+function getSession() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch { return null; }
+}
+
+async function fazerLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const senha = document.getElementById('loginSenha').value;
+  const erroEl = document.getElementById('loginErro');
+  erroEl.style.display = 'none';
+  try {
+    const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, senha }) });
+    const data = await r.json();
+    if (!r.ok) { erroEl.textContent = data.erro || 'Erro ao entrar'; erroEl.style.display = 'block'; return; }
+    if (!data.usuario?.admin) { erroEl.textContent = 'Acesso restrito a administradores.'; erroEl.style.display = 'block'; return; }
+    token = data.token; usuario = data.usuario;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, usuario }));
+    iniciarApp();
+  } catch { erroEl.textContent = 'Erro de conexão.'; erroEl.style.display = 'block'; }
+}
+
+function sair() { localStorage.removeItem(STORAGE_KEY); location.reload(); }
+
+function auth(extra = {}) { return { ...extra, Authorization: `Bearer ${token}` }; }
+
+async function apiFetch(url, opts = {}) {
+  const r = await fetch(url, { ...opts, headers: auth(opts.headers || {}) });
+  if (r.status === 401) { sair(); throw new Error('Não autorizado'); }
+  return r;
+}
+
+// ── Startup ────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const s = getSession();
+  if (s?.token && s?.usuario?.admin) {
+    token = s.token; usuario = s.usuario;
+    iniciarApp();
+  }
+});
+
+function iniciarApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'flex';
+  document.getElementById('topbarUser').textContent = usuario.nome || usuario.email;
+  carregarUsuarios();
+  carregarConversas();
+  carregarGruposAdmin();
+  carregarTemplates();
+  carregarBackups();
+  carregarAgendamentoBackup();
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function abrirPanel(name) {
+  document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+  document.getElementById('panel-' + name)?.classList.add('active');
+  document.getElementById('tab-' + name)?.classList.add('active');
+  if (name === 'metricas')  carregarMetricas();
+  if (name === 'auditoria') carregarAuditoria();
+  if (name === 'apagadas')  carregarApagadas();
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+let _toastTimer;
+function toast(msg, tipo = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderLeftColor = tipo === 'ok' ? '#22c55e' : tipo === 'erro' ? '#ef4444' : '#f59e0b';
+  el.style.borderLeftWidth = '4px';
+  el.style.display = 'block';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.style.display = 'none'; }, 2800);
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function initials(n) { return String(n||'?').trim().split(/\s+/).map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+function gradient(n) {
+  const GRADS = ['#f97316,#ef4444','#3b82f6,#8b5cf6','#10b981,#3b82f6','#f59e0b,#ef4444','#6366f1,#ec4899','#14b8a6,#3b82f6'];
+  let h = 0; for (const c of String(n)) h = (h * 31 + c.charCodeAt(0)) % GRADS.length;
+  return `linear-gradient(135deg, ${GRADS[h]})`;
+}
+function fmtDate(s) { return s ? new Date(s).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—'; }
+
+// ── USUÁRIOS ───────────────────────────────────────────────────────────────
+let _usuarios = [];
+async function carregarUsuarios() {
+  const el = document.getElementById('listaUsuarios');
+  try {
+    const r = await apiFetch('/api/admin/usuarios');
+    _usuarios = await r.json();
+    renderUsuarios();
+    // também preenche membros grupo
+    const mc = document.getElementById('grupoMembrosCheck');
+    if (mc) mc.innerHTML = _usuarios.filter(u=>u.ativo).map(u=>`<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" value="${u.id}" name="membro" /> ${esc(u.nome)}</label>`).join('');
+  } catch { el.innerHTML = '<p style="color:var(--danger);">Erro ao carregar.</p>'; }
+}
+function renderUsuarios() {
+  const el = document.getElementById('listaUsuarios');
+  if (!_usuarios.length) { el.innerHTML = '<p style="color:var(--muted);">Nenhum usuário.</p>'; return; }
+  el.innerHTML = `<table class="data-table">
+    <thead><tr><th>Nome</th><th>E-mail</th><th>Admin</th><th>Status</th><th>Ação</th></tr></thead>
+    <tbody>${_usuarios.map(u=>`<tr>
+      <td>${esc(u.nome)}</td>
+      <td style="color:var(--muted);">${esc(u.email)}</td>
+      <td>${u.admin ? '<span class="badge badge-amber">Sim</span>' : '<span class="badge badge-grey">Não</span>'}</td>
+      <td>${u.ativo ? '<span class="badge badge-green">Ativo</span>' : '<span class="badge badge-red">Inativo</span>'}</td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-secondary btn-sm" onclick="redefinirSenha(${u.id})">Senha</button>
+        ${u.admin ? '' : `<button class="btn ${u.ativo?'btn-danger':'btn-secondary'} btn-sm" onclick="toggleUsuario(${u.id},${u.ativo})">${u.ativo?'Desativar':'Ativar'}</button>`}
+      </td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+async function cadastrarUsuario() {
+  const nome = document.getElementById('novoNome').value.trim();
+  const email = document.getElementById('novoEmail').value.trim();
+  if (!nome || !email) { toast('Preencha nome e e-mail.', 'aviso'); return; }
+  const r = await apiFetch('/api/admin/criar-usuario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome, email }) });
+  const d = await r.json();
+  if (!r.ok) { toast(d.erro || 'Erro', 'erro'); return; }
+  toast(`Usuário criado. Senha: ${d.senha_temporaria}`);
+  document.getElementById('novoNome').value = ''; document.getElementById('novoEmail').value = '';
+  carregarUsuarios();
+}
+async function redefinirSenha(id) {
+  if (!confirm('Redefinir senha deste usuário?')) return;
+  const r = await apiFetch(`/api/admin/usuarios/${id}/redefinir-senha`, { method: 'POST' });
+  const d = await r.json();
+  if (r.ok) toast(`Nova senha: ${d.senha_temporaria}`);
+  else toast(d.erro || 'Erro', 'erro');
+}
+async function toggleUsuario(id, ativo) {
+  const r = await apiFetch(`/api/admin/usuarios/${id}/${ativo?'desativar':'ativar'}`, { method: 'POST' });
+  if (r.ok) { toast(ativo ? 'Usuário desativado.' : 'Usuário ativado.'); carregarUsuarios(); }
+  else toast('Erro', 'erro');
+}
+
+// ── CONVERSAS ──────────────────────────────────────────────────────────────
+const _conv = { lista: [], filtrada: [], sel: null, pagina: 1, porPag: 60, total: 0, busca: '' };
+
+async function carregarConversas() {
+  const el = document.getElementById('convLista');
+  try {
+    const r = await apiFetch('/api/admin/conversas');
+    if (!r.ok) throw new Error();
+    const { privados, grupos } = await r.json();
+    _conv.lista = [
+      ...privados.map(p => ({ ...p, _label: `${p.usuario1_nome} ↔ ${p.usuario2_nome}` })),
+      ...grupos.map(g => ({ ...g, _label: g.nome }))
+    ];
+    _conv.filtrada = _conv.lista;
+    renderConvLista();
+  } catch { el.innerHTML = '<p style="padding:14px;font-size:13px;color:var(--danger);">Erro ao carregar.</p>'; }
+}
+
+function filtrarConversas() {
+  const q = document.getElementById('convFiltro').value.toLowerCase();
+  _conv.filtrada = _conv.lista.filter(c => c._label.toLowerCase().includes(q));
+  renderConvLista();
+}
+
+function renderConvLista() {
+  const el = document.getElementById('convLista');
+  if (!_conv.filtrada.length) { el.innerHTML = '<p style="padding:14px;font-size:13px;color:var(--muted);">Nenhuma conversa.</p>'; return; }
+  el.innerHTML = _conv.filtrada.map((c, i) => {
+    const ativo = _conv.sel && (
+      (c.tipo==='privado' && _conv.sel.uid1===c.usuario1_id && _conv.sel.uid2===c.usuario2_id) ||
+      (c.tipo==='grupo' && _conv.sel.grupoId===c.grupo_id)
+    );
+    return `<div class="conv-item ${ativo?'active':''}" onclick="selecionarConv(${i})">
+      <div class="conv-item-title">${esc(c._label)}</div>
+      <div class="conv-item-meta"><span class="badge ${c.tipo==='privado'?'badge-blue':'badge-purple'}">${c.tipo}</span> ${c.total} msgs · ${c.ultima_em ? new Date(c.ultima_em).toLocaleDateString('pt-BR') : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+async function selecionarConv(i) {
+  const c = _conv.filtrada[i];
+  if (!c) return;
+  _conv.pagina = 1; _conv.busca = '';
+  document.getElementById('convBusca').value = '';
+  _conv.sel = c.tipo === 'privado'
+    ? { tipo: 'privado', uid1: c.usuario1_id, uid2: c.usuario2_id, titulo: c._label }
+    : { tipo: 'grupo', grupoId: c.grupo_id, titulo: c.nome };
+  renderConvLista();
+  await carregarMsgsConv();
+}
+
+async function carregarMsgsConv() {
+  const s = _conv.sel; if (!s) return;
+  document.getElementById('convMsgs').innerHTML = '<p style="color:var(--muted);">Carregando...</p>';
+  const busca = encodeURIComponent(_conv.busca);
+  const url = s.tipo === 'privado'
+    ? `/api/admin/conversas/privadas/${s.uid1}/${s.uid2}?pagina=${_conv.pagina}&por_pagina=${_conv.porPag}&busca=${busca}`
+    : `/api/admin/conversas/grupo/${s.grupoId}?pagina=${_conv.pagina}&por_pagina=${_conv.porPag}&busca=${busca}`;
+  try {
+    const r = await apiFetch(url);
+    const { mensagens, total } = await r.json();
+    _conv.total = total;
+    document.getElementById('convHeader').innerHTML = `<span class="badge ${s.tipo==='privado'?'badge-blue':'badge-purple'}">${s.tipo}</span> ${esc(s.titulo)}`;
+    document.getElementById('convTotal').textContent = `${total} mensagem${total!==1?'s':''}`;
+    const body = document.getElementById('convMsgs');
+    body.innerHTML = mensagens.length
+      ? mensagens.map(m => renderMsgBubble(m, s.tipo==='privado' ? s.uid1 : null)).join('')
+      : '<p style="color:var(--muted);">Nenhuma mensagem.</p>';
+    renderPagConv();
+  } catch { document.getElementById('convMsgs').innerHTML = '<p style="color:var(--danger);">Erro.</p>'; }
+}
+
+function renderMsgBubble(m, refUid) {
+  const isOwn = refUid ? m.usuario_id === refUid : false;
+  const nome = m.usuario_nome || 'Desconhecido';
+  const hora = fmtDate(m.criado_em);
+  let txt = '';
+  if (m.tipo === 'arquivo') {
+    txt = `📎 <a href="/uploads/${esc(m.arquivo_nome_salvo)}" target="_blank" style="color:#60a5fa;">${esc(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo')}</a>`;
+  } else {
+    txt = esc(String(m.conteudo || ''));
+    if (_conv.busca) {
+      const re = new RegExp(`(${_conv.busca.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+      txt = txt.replace(re, '<mark style="background:#fbbf24;color:#1e293b;border-radius:3px;padding:0 2px;">$1</mark>');
+    }
+  }
+  return `<div class="msg-bubble ${isOwn?'own':'other'}">
+    <div class="msg-av" style="background:${gradient(nome)}">${initials(nome)}</div>
+    <div class="msg-body">
+      <div class="msg-name">${esc(nome)}</div>
+      <div class="msg-text">${txt}</div>
+      <div class="msg-time">${hora}</div>
+    </div>
+  </div>`;
+}
+
+function renderPagConv() {
+  const el = document.getElementById('convPag');
+  const tot = Math.ceil(_conv.total / _conv.porPag);
+  if (tot <= 1) { el.innerHTML = ''; return; }
+  const p = _conv.pagina;
+  el.innerHTML = `<button class="pag-btn" onclick="irPagConv(1)" ${p===1?'disabled':''}>«</button>
+    <button class="pag-btn" onclick="irPagConv(${p-1})" ${p===1?'disabled':''}>‹</button>
+    <span style="font-size:12px;color:var(--muted);padding:0 8px;">${p} / ${tot}</span>
+    <button class="pag-btn" onclick="irPagConv(${p+1})" ${p===tot?'disabled':''}>›</button>
+    <button class="pag-btn" onclick="irPagConv(${tot})" ${p===tot?'disabled':''}>»</button>`;
+}
+
+async function irPagConv(p) { _conv.pagina = p; await carregarMsgsConv(); document.getElementById('convMsgs').scrollTo({ top: 0 }); }
+
+let _convBuscaTimer;
+function debounceBuscaConv() {
+  clearTimeout(_convBuscaTimer);
+  _convBuscaTimer = setTimeout(() => { _conv.busca = document.getElementById('convBusca').value; _conv.pagina = 1; carregarMsgsConv(); }, 350);
+}
+
+// ── GRUPOS ─────────────────────────────────────────────────────────────────
+let _grupos = [];
+async function carregarGruposAdmin() {
+  const r = await apiFetch('/api/grupos');
+  if (!r.ok) return;
+  _grupos = await r.json();
+  renderGrupos();
+  // preencher select de avisos
+  const sel = document.getElementById('avisoGrupoSel');
+  sel.innerHTML = _grupos.map(g => `<option value="${g.id}">${esc(g.nome)}</option>`).join('');
+}
+function renderGrupos() {
+  const el = document.getElementById('listaGrupos');
+  if (!_grupos.length) { el.innerHTML = '<p style="color:var(--muted);">Nenhum grupo.</p>'; return; }
+  el.innerHTML = `<table class="data-table">
+    <thead><tr><th>Nome</th><th>Descrição</th><th>Membros</th></tr></thead>
+    <tbody>${_grupos.map(g => `<tr><td>${esc(g.nome)}</td><td style="color:var(--muted);">${esc(g.descricao||'')}</td><td>${g.membros?.length||0}</td></tr>`).join('')}</tbody>
+  </table>`;
+}
+async function criarGrupo() {
+  const nome = document.getElementById('grupoNome').value.trim();
+  const descricao = document.getElementById('grupoDesc').value.trim();
+  const membros = [...document.querySelectorAll('input[name="membro"]:checked')].map(el => Number(el.value));
+  if (!nome) { toast('Nome obrigatório.', 'aviso'); return; }
+  const r = await apiFetch('/api/admin/criar-grupo', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ nome, descricao, membros }) });
+  if (r.ok) { toast('Grupo criado!'); document.getElementById('grupoNome').value = ''; document.getElementById('grupoDesc').value = ''; document.querySelectorAll('input[name="membro"]').forEach(el => el.checked = false); carregarGruposAdmin(); }
+  else { const d = await r.json(); toast(d.erro || 'Erro', 'erro'); }
+}
+
+// ── AVISOS ─────────────────────────────────────────────────────────────────
+async function salvarAviso() {
+  const grupoId = document.getElementById('avisoGrupoSel').value;
+  const aviso = document.getElementById('avisoTexto').value.trim();
+  const r = await apiFetch('/api/admin/grupos/aviso', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ grupoId, aviso }) });
+  toast(r.ok ? 'Aviso salvo!' : 'Erro ao salvar.', r.ok ? 'ok' : 'erro');
+}
+async function limparAviso() {
+  const grupoId = document.getElementById('avisoGrupoSel').value;
+  await apiFetch('/api/admin/grupos/aviso', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ grupoId, aviso: '' }) });
+  document.getElementById('avisoTexto').value = ''; toast('Aviso limpo.');
+}
+
+// ── TEMPLATES ──────────────────────────────────────────────────────────────
+let _templates = [];
+async function carregarTemplates() {
+  const r = await apiFetch('/api/templates');
+  if (!r.ok) return;
+  _templates = await r.json();
+  renderTemplates();
+}
+function renderTemplates() {
+  const el = document.getElementById('listaTemplates');
+  if (!_templates.length) { el.innerHTML = '<p style="color:var(--muted);">Nenhum template.</p>'; return; }
+  el.innerHTML = `<table class="data-table">
+    <thead><tr><th>Nome</th><th>Texto</th><th>Ação</th></tr></thead>
+    <tbody>${_templates.map(t => `<tr>
+      <td style="font-weight:700;">${esc(t.nome)}</td>
+      <td style="color:var(--muted);max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.texto)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="excluirTemplate(${t.id})">Excluir</button></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+async function criarTemplate() {
+  const nome = document.getElementById('tplNome').value.trim();
+  const texto = document.getElementById('tplTexto').value.trim();
+  if (!nome || !texto) { toast('Preencha nome e texto.', 'aviso'); return; }
+  const r = await apiFetch('/api/templates', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ nome, texto }) });
+  if (r.ok) { toast('Template criado!'); document.getElementById('tplNome').value = ''; document.getElementById('tplTexto').value = ''; carregarTemplates(); }
+  else toast('Erro', 'erro');
+}
+async function excluirTemplate(id) {
+  if (!confirm('Excluir este template?')) return;
+  await apiFetch(`/api/templates/${id}`, { method: 'DELETE' });
+  carregarTemplates();
+}
+
+// ── APAGADAS ───────────────────────────────────────────────────────────────
+async function carregarApagadas() {
+  const el = document.getElementById('listaApagadas');
+  el.innerHTML = 'Carregando...';
+  const r = await apiFetch('/api/admin/mensagens-apagadas');
+  if (!r.ok) { el.innerHTML = '<p style="color:var(--danger);">Erro.</p>'; return; }
+  const msgs = await r.json();
+  if (!msgs.length) { el.innerHTML = '<p style="color:var(--muted);">Nenhuma mensagem apagada.</p>'; return; }
+  el.innerHTML = `<table class="data-table">
+    <thead><tr><th>Autor</th><th>Conteúdo</th><th>Apagada por</th><th>Data</th></tr></thead>
+    <tbody>${msgs.slice().reverse().map(m => {
+      const autor = _usuarios.find(u=>u.id===m.usuario_id)?.nome || `#${m.usuario_id}`;
+      const apagadaPor = _usuarios.find(u=>u.id===m.apagada_por)?.nome || `#${m.apagada_por}`;
+      return `<tr class="audit-row"><td>${esc(autor)}</td><td style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(m.conteudo||'[arquivo]')}</td><td>${esc(apagadaPor)}</td><td style="color:var(--muted);">${fmtDate(m.apagada_em)}</td></tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+// ── MÉTRICAS ───────────────────────────────────────────────────────────────
+let _chartDia, _chartUsr;
+async function carregarMetricas() {
+  const el = document.getElementById('metricasKPI');
+  el.innerHTML = 'Carregando...';
+  const r = await apiFetch('/api/admin/metricas');
+  if (!r.ok) { el.innerHTML = '<p style="color:var(--danger);">Erro.</p>'; return; }
+  const d = await r.json();
+  const cards = [
+    { lbl: 'Total mensagens', val: d.totalMsgs, cor: '#3b82f6' },
+    { lbl: 'Urgentes', val: d.totalUrgentes, cor: '#ef4444' },
+    { lbl: 'Em grupos', val: d.totalGrupo, cor: '#8b5cf6' },
+    { lbl: 'Privadas', val: d.totalPrivado, cor: '#06b6d4' },
+    { lbl: 'Apagadas', val: d.totalApagadas, cor: '#f59e0b' },
+  ];
+  el.innerHTML = cards.map(c => `<div class="kpi-card"><div class="kpi-val" style="color:${c.cor};">${c.val}</div><div class="kpi-lbl">${c.lbl}</div></div>`).join('');
+  const ctxD = document.getElementById('chartDia');
+  const ctxU = document.getElementById('chartUsr');
+  if (_chartDia) _chartDia.destroy();
+  if (_chartUsr) _chartUsr.destroy();
+  _chartDia = new Chart(ctxD, { type: 'bar', data: { labels: Object.keys(d.porDia).map(k=>k.slice(5)), datasets: [{ label: 'Msgs/dia', data: Object.values(d.porDia), backgroundColor: 'rgba(59,130,246,.7)', borderRadius: 4 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } });
+  if (d.topUsuarios.length)
+    _chartUsr = new Chart(ctxU, { type: 'bar', data: { labels: d.topUsuarios.map(u=>u.nome), datasets: [{ label: 'Msgs/usuário', data: d.topUsuarios.map(u=>u.total), backgroundColor: 'rgba(139,92,246,.7)', borderRadius: 4 }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } } });
+}
+
+// ── AUDITORIA ──────────────────────────────────────────────────────────────
+async function carregarAuditoria() {
+  const el = document.getElementById('listaAuditoria');
+  el.innerHTML = 'Carregando...';
+  const acao = document.getElementById('auditoriaFiltro').value;
+  const r = await apiFetch(`/api/admin/auditoria?limite=500${acao?'&acao='+acao:''}`);
+  if (!r.ok) { el.innerHTML = '<p style="color:var(--danger);">Erro.</p>'; return; }
+  const rows = await r.json();
+  const COR = { enviada:'#22c55e', apagada:'#ef4444', encaminhada:'#3b82f6', editada:'#f59e0b' };
+  el.innerHTML = rows.length ? `<table class="data-table">
+    <thead><tr><th>Ação</th><th>Usuário</th><th>Detalhe</th><th>IP</th><th>Data/Hora</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr class="audit-row">
+      <td><span style="color:${COR[r.acao]||'#94a3b8'};font-weight:700;">${esc(r.acao)}</span></td>
+      <td>${esc(r.usuario_nome||String(r.usuario_id||''))}</td>
+      <td style="color:var(--muted);">${esc(r.detalhe||'')}</td>
+      <td style="color:var(--muted);">${esc(r.ip||'')}</td>
+      <td style="color:var(--muted);">${fmtDate(r.em)}</td>
+    </tr>`).join('')}</tbody></table>` : '<p style="color:var(--muted);">Nenhum registro.</p>';
+}
+
+// ── BACKUPS ────────────────────────────────────────────────────────────────
+async function carregarBackups() {
+  const r = await apiFetch('/api/admin/backups');
+  if (!r.ok) return;
+  const lista = await r.json();
+  const el = document.getElementById('listaBackups');
+  el.innerHTML = lista.length ? lista.reverse().map(b => `<div style="background:var(--surface2);border-radius:8px;padding:8px 12px;font-size:12px;display:flex;justify-content:space-between;align-items:center;">
+    <div><div style="font-weight:700;">${esc(b.nome||b.id)}</div><div style="color:var(--muted);">${fmtDate(b.criado_em)}</div></div>
+  </div>`).join('') : '<p style="color:var(--muted);font-size:13px;">Nenhum backup encontrado.</p>';
+}
+async function gerarBackup() {
+  const nome = document.getElementById('backupNome').value.trim() || 'backup-admin';
+  const r = await apiFetch('/api/admin/backups', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ nome }) });
+  if (r.ok) { toast('Backup criado!'); document.getElementById('backupNome').value = ''; carregarBackups(); }
+  else toast('Erro ao criar backup.', 'erro');
+}
+async function carregarAgendamentoBackup() {
+  const r = await apiFetch('/api/admin/backups/agendamento');
+  if (!r.ok) return;
+  const d = await r.json();
+  document.getElementById('backupAuto').checked = d.ativo;
+  document.getElementById('backupHorario').value = d.horario || '18:00';
+  document.getElementById('backupAutoStatus').textContent = d.descricao || '';
+}
+async function salvarAgendamento() {
+  const ativo = document.getElementById('backupAuto').checked;
+  const horario = document.getElementById('backupHorario').value;
+  const r = await apiFetch('/api/admin/backups/agendamento', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ativo, horario }) });
+  if (r.ok) { toast('Agendamento salvo!'); carregarAgendamentoBackup(); }
+  else toast('Erro.', 'erro');
+}
+</script>
+</body>
+</html>
