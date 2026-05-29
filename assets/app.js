@@ -1672,9 +1672,10 @@ function getWelcomeStateHtml() {
   const totalUrgentes = Object.values(attendanceStatusState).filter((status) => status === 'urgente').length;
   const nomeUsuario = String(usuarioAtual?.nome || '').trim();
   const emailUsuario = String(usuarioAtual?.email || '').trim();
-  const firstName = /^\(?usu[aá]rio/i.test(nomeUsuario)
+  const firstNameRaw = /^\(?usu[aá]rio/i.test(nomeUsuario)
     ? (emailUsuario.split('@')[0] || 'Admin')
     : (nomeUsuario.split(/\s+/)[0] || emailUsuario.split('@')[0] || 'equipe');
+  const firstName = firstNameRaw.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, '') || 'equipe';
   const urgentItems = getDashboardChatItems('urgent', 4);
   const unreadItems = getDashboardChatItems('unread', 4);
   return `
