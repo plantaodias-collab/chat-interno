@@ -21,6 +21,7 @@ let currentMessagesCache = [];
 let currentMessagesHasMore = false;
 let currentMessagesNextBefore = null;
 let currentMessagesLoadingOlder = false;
+let initialScrollLockTimers = [];
 let activeReplyMessageId = null;
 let editingMessageId = null;
 let currentMessageSearch = '';
@@ -2333,7 +2334,9 @@ async function carregarChat(tipo, id, nome) {
   renderPinnedNotice();
   renderPinnedMessageBar();
   atualizarBotaoFavorito();
-  document.getElementById('messagesContainer').innerHTML = '';
+  const messagesContainer = document.getElementById('messagesContainer');
+  messagesContainer.classList.add('preparing-scroll');
+  messagesContainer.innerHTML = '';
 
   try {
     const endpoint = tipo === 'grupo'
@@ -2355,7 +2358,7 @@ async function carregarChat(tipo, id, nome) {
           showReactionPicker: false
         }))
       : [];
-    renderMessages();
+    renderMessages({ stabilizeBottom: true });
 
     if (tipo === 'grupo') {
       socket.emit('entrar-grupo', { grupoId: id, usuarioId: usuarioAtual.id });
@@ -2365,6 +2368,7 @@ async function carregarChat(tipo, id, nome) {
     }
   } catch (err) {
     console.error(err);
+    messagesContainer.classList.remove('preparing-scroll');
     mostrarNotificacao('Erro ao carregar conversa', 'error');
   }
 }
@@ -2491,7 +2495,35 @@ function renderMessageRow(message) {
   `;
 }
 
-function renderMessages() {
+function scrollMessagesToBottom({ stabilize = false } = {}) {
+  const container = document.getElementById('messagesContainer');
+  if (!container) return;
+
+  const applyScroll = () => {
+    container.scrollTop = container.scrollHeight;
+    container.classList.remove('preparing-scroll');
+  };
+
+  applyScroll();
+  requestAnimationFrame(() => {
+    applyScroll();
+    requestAnimationFrame(applyScroll);
+  });
+
+  if (!stabilize) return;
+
+  initialScrollLockTimers.forEach(clearTimeout);
+  initialScrollLockTimers = [80, 180, 420, 900].map((delay) => setTimeout(applyScroll, delay));
+
+  container.querySelectorAll('img, video').forEach((media) => {
+    if (media.complete || media.readyState >= 1) return;
+    media.addEventListener('load', applyScroll, { once: true });
+    media.addEventListener('loadedmetadata', applyScroll, { once: true });
+  });
+}
+
+function renderMessages(options = {}) {
+  const { scrollToBottom = true, stabilizeBottom = false } = options;
   const container = document.getElementById('messagesContainer');
   const allFiltered = currentMessagesCache.filter((message) => isMessageMatch(message, currentMessageSearch));
   const hasRenderLimit = !currentMessageSearch && allFiltered.length > MESSAGE_RENDER_LIMIT;
@@ -2513,6 +2545,7 @@ function renderMessages() {
           <div>Envie a primeira mensagem desta conversa.</div>
         </div>
       `;
+    container.classList.remove('preparing-scroll');
     return;
   }
 
@@ -2539,7 +2572,8 @@ function renderMessages() {
     const priorityClass = isMensagemPrioritaria(message.id) ? 'message-priority-row' : '';
     return `${dividerHtml}<div class="message-row ${ehOutro ? '' : 'own'} ${compact ? 'compact' : ''} ${priorityClass}" data-message-id="${Number(message.id)}" data-usuario-id="${Number(message.usuarioId || 0)}">${renderMessageRow(message)}</div>`;
   }).join('');
-  container.scrollTop = container.scrollHeight;
+  if (scrollToBottom) scrollMessagesToBottom({ stabilize: stabilizeBottom });
+  else container.classList.remove('preparing-scroll');
 }
 
 async function carregarMensagensAnteriores() {
@@ -2547,7 +2581,7 @@ async function carregarMensagensAnteriores() {
   const container = document.getElementById('messagesContainer');
   const previousHeight = container.scrollHeight;
   currentMessagesLoadingOlder = true;
-  renderMessages();
+  renderMessages({ scrollToBottom: false });
 
   try {
     const endpoint = tipoChat === 'grupo'
@@ -2577,7 +2611,7 @@ async function carregarMensagensAnteriores() {
     mostrarNotificacao('Erro ao carregar historico: ' + err.message, 'error');
   } finally {
     currentMessagesLoadingOlder = false;
-    renderMessages();
+    renderMessages({ scrollToBottom: false });
     container.scrollTop = Math.max(0, container.scrollHeight - previousHeight);
   }
 }

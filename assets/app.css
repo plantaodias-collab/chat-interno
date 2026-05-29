@@ -846,6 +846,10 @@ button, input { font: inherit; }
     linear-gradient(180deg, rgba(255,255,255,.01), rgba(255,255,255,.02));
 }
 
+.messages-container.preparing-scroll {
+  visibility: hidden;
+}
+
 .load-older-wrap {
   display: flex;
   justify-content: center;
