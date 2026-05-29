@@ -368,7 +368,7 @@ async function fazerLogin() {
   const erroEl = document.getElementById('loginErro');
   erroEl.style.display = 'none';
   try {
-    const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, senha }) });
+    const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, senha }) });
     const data = await r.json();
     if (!r.ok) { erroEl.textContent = data.erro || 'Erro ao entrar'; erroEl.style.display = 'block'; return; }
     if (!data.usuario?.admin) { erroEl.textContent = 'Acesso restrito a administradores.'; erroEl.style.display = 'block'; return; }

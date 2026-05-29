@@ -735,6 +735,10 @@ function sanitizeText(value) {
   return String(value || '').trim();
 }
 
+function gerarSenhaTemporaria() {
+  return `Senha${Math.floor(100000 + Math.random() * 900000)}!`;
+}
+
 function clampNumber(value, min, max, fallback) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
@@ -1027,7 +1031,7 @@ app.post('/api/admin/criar-usuario', verificarToken, async (req, res) => {
 
     const email = normalizeEmail(req.body?.email);
     const nome = sanitizeText(req.body?.nome);
-    const senha = String(req.body?.senha || 'Senha123!').trim() || 'Senha123!';
+    const senha = String(req.body?.senha || gerarSenhaTemporaria()).trim() || gerarSenhaTemporaria();
     if (!nome || !email) {
       return res.status(400).json({ erro: 'Nome e email são obrigatórios' });
     }
@@ -1053,8 +1057,7 @@ app.post('/api/admin/criar-usuario', verificarToken, async (req, res) => {
 
     db.usuarios.push(novoUsuario);
     db.save();
-
-    res.json({ mensagem: 'Usu�rio criado com sucesso' });
+    return res.json({ mensagem: 'Usuario criado com sucesso', senha_temporaria: senha });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -1135,6 +1138,57 @@ app.put('/api/admin/usuarios/:id/senha', verificarToken, async (req, res) => {
     db.save();
 
     res.json({ mensagem: 'Senha redefinida com sucesso' });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.post('/api/admin/usuarios/:id/redefinir-senha', verificarToken, async (req, res) => {
+  try {
+    const usuarioAdmin = db.usuarios.find((u) => u.id === req.userId);
+    if (!usuarioAdmin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
+
+    const usuario = db.usuarios.find((u) => u.id === parseInt(req.params.id, 10) && u.ativo);
+    if (!usuario) return res.status(404).json({ erro: 'Usuario nao encontrado' });
+
+    const senhaTemporaria = gerarSenhaTemporaria();
+    usuario.senha = await bcrypt.hash(senhaTemporaria, 10);
+    db.save();
+
+    res.json({ mensagem: 'Senha redefinida com sucesso', senha_temporaria: senhaTemporaria });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.post('/api/admin/usuarios/:id/desativar', verificarToken, (req, res) => {
+  try {
+    const usuarioAdmin = db.usuarios.find((u) => u.id === req.userId);
+    if (!usuarioAdmin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
+
+    const usuario = db.usuarios.find((u) => u.id === parseInt(req.params.id, 10));
+    if (!usuario) return res.status(404).json({ erro: 'Usuario nao encontrado' });
+    if (usuario.admin) return res.status(400).json({ erro: 'Nao e possivel desativar administrador' });
+
+    usuario.ativo = 0;
+    db.save();
+    res.json({ mensagem: 'Usuario desativado' });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.post('/api/admin/usuarios/:id/ativar', verificarToken, (req, res) => {
+  try {
+    const usuarioAdmin = db.usuarios.find((u) => u.id === req.userId);
+    if (!usuarioAdmin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
+
+    const usuario = db.usuarios.find((u) => u.id === parseInt(req.params.id, 10));
+    if (!usuario) return res.status(404).json({ erro: 'Usuario nao encontrado' });
+
+    usuario.ativo = 1;
+    db.save();
+    res.json({ mensagem: 'Usuario ativado' });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -2327,8 +2381,3 @@ setInterval(() => {
 }, 30000);
 
 pruneAutomaticBackups(AUTOMATIC_BACKUP_RETENTION);
-
-
-
-
-
