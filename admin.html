@@ -23,7 +23,7 @@
     }
 
     html, body { height: 100%; }
-    body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; font-size: 14px; min-height: 100vh; overflow-y: auto; overflow-x: hidden; }
+    body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; font-size: 14px; min-height: 100vh; overflow: hidden; }
 
     /* ── Login ── */
     #loginScreen {
@@ -38,7 +38,7 @@
     .login-card p  { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
 
     /* ── Layout ── */
-    #appScreen { display: none; flex-direction: column; min-height: 100vh; }
+    #appScreen { display: none; flex-direction: column; height: 100vh; min-height: 0; overflow: hidden; }
     .topbar {
       display: flex; align-items: center; gap: 14px;
       padding: 0 24px; height: 56px;
@@ -62,7 +62,7 @@
     }
     .btn-back:hover { background: var(--surface2); color: var(--text); }
 
-    .main { display: flex; flex: 1; min-height: 0; overflow: visible; }
+    .main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 
     /* ── Sidebar tabs ── */
     .sidebar {
@@ -84,7 +84,7 @@
     .tab-btn .icon  { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
 
     /* ── Content ── */
-    .content { flex: 1; min-width: 0; min-height: 0; padding: 28px 32px; overflow: visible; }
+    .content { flex: 1; min-width: 0; height: calc(100vh - 56px); min-height: 0; padding: 28px 32px; overflow-y: auto; }
     .panel { display: none; }
     .panel.active { display: block; }
     .panel-title { font-size: 20px; font-weight: 800; margin-bottom: 20px; }
@@ -131,20 +131,22 @@
     .badge-grey   { background: rgba(148,163,184,.14); color: #94a3b8; }
 
     /* ── Conversas viewer ── */
-    #panel-conversas.active { min-height: calc(100vh - 112px); display: flex; flex-direction: column; }
+    #panel-conversas.active { height: 100%; min-height: 0; display: flex; flex-direction: column; }
     #panel-conversas .panel-title { flex-shrink: 0; }
-    .conv-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); flex: 1; min-height: calc(100vh - 180px); border: 1px solid var(--border); border-radius: var(--radius); overflow: visible; }
-    .conv-list-col { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--border); background: var(--surface); }
-    .conv-list-items { flex: 1; min-height: 0; overflow: visible; }
+    .conv-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); flex: 1; height: 0; min-height: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .conv-list-col { display: flex; flex-direction: column; height: 100%; min-height: 0; border-right: 1px solid var(--border); background: var(--surface); overflow: hidden; }
+    .conv-list-items { flex: 1; height: 0; min-height: 0; overflow-y: scroll; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #334155 transparent; }
     .conv-item { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid rgba(148,163,184,.07); transition: background .1s; }
     .conv-item:hover  { background: var(--surface2); }
     .conv-item.active { background: rgba(37,99,235,.18); }
     .conv-item-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .conv-item-meta  { font-size: 11px; color: var(--muted); margin-top: 2px; }
-    .conv-msgs-col { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: rgba(9,17,28,.5); }
+    .conv-msgs-col { display: flex; flex-direction: column; min-width: 0; height: 100%; min-height: 0; background: rgba(9,17,28,.5); overflow: hidden; }
     .conv-msgs-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
     .conv-msgs-toolbar { padding: 8px 12px; border-bottom: 1px solid rgba(148,163,184,.07); display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-    .conv-msgs-body { flex: 1; min-height: 0; overflow: visible; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .conv-msgs-body { flex: 1; height: 0; min-height: 0; overflow-y: scroll; overflow-x: hidden; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #334155 transparent; }
+    .conv-list-items::-webkit-scrollbar, .conv-msgs-body::-webkit-scrollbar { width: 10px; }
+    .conv-list-items::-webkit-scrollbar-thumb, .conv-msgs-body::-webkit-scrollbar-thumb { background: #334155; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
     .conv-msgs-footer { padding: 8px 12px; border-top: 1px solid var(--border); display: flex; justify-content: center; gap: 8px; flex-shrink: 0; }
     .msg-bubble { display: flex; gap: 8px; max-width: 75%; }
     .msg-bubble.own { align-self: flex-end; flex-direction: row-reverse; }
@@ -411,6 +413,22 @@ function sair() { localStorage.removeItem(STORAGE_KEY); location.reload(); }
 
 function auth(extra = {}) { return { ...extra, Authorization: `Bearer ${token}` }; }
 
+function handleConversationWheel(event) {
+  const panel = document.getElementById('panel-conversas');
+  if (!panel?.classList.contains('active')) return;
+
+  const target = event.target;
+  const listCol = target.closest?.('.conv-list-col');
+  const msgsCol = target.closest?.('.conv-msgs-col');
+  const scroller = listCol
+    ? document.getElementById('convLista')
+    : (msgsCol ? document.getElementById('convMsgs') : null);
+
+  if (!scroller || scroller.scrollHeight <= scroller.clientHeight) return;
+  scroller.scrollTop += event.deltaY;
+  event.preventDefault();
+}
+
 async function apiFetch(url, opts = {}) {
   const r = await fetch(url, { ...opts, headers: auth(opts.headers || {}) });
   if (r.status === 401) { sair(); throw new Error('Não autorizado'); }
@@ -424,6 +442,7 @@ window.addEventListener('DOMContentLoaded', () => {
     token = s.token; usuario = s.usuario;
     iniciarApp();
   }
+  document.addEventListener('wheel', handleConversationWheel, { passive: false });
 });
 
 function iniciarApp() {
