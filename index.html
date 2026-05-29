@@ -288,6 +288,7 @@
 
       <div class="modal-tabs">
         <button class="modal-tab-btn active" type="button" data-admin-tab="usuarios" onclick="setAdminTab('usuarios')">Usuarios</button>
+        <button class="modal-tab-btn" type="button" data-admin-tab="conversas" onclick="setAdminTab('conversas')">Conversas</button>
         <button class="modal-tab-btn" type="button" data-admin-tab="grupos" onclick="setAdminTab('grupos')">Grupos</button>
         <button class="modal-tab-btn" type="button" data-admin-tab="avisos" onclick="setAdminTab('avisos')">Avisos</button>
         <button class="modal-tab-btn" type="button" data-admin-tab="apagadas" onclick="setAdminTab('apagadas')">Apagadas</button>
@@ -419,6 +420,39 @@
             </div>
 
             <div id="adminBackupList" class="backup-list">Nenhum backup encontrado.</div>
+          </div>
+        </section>
+
+        <!-- TAB: CONVERSAS -->
+        <section data-admin-tab-content="conversas" class="hidden">
+          <div class="admin-conv-layout">
+            <!-- Lista de conversas -->
+            <div class="admin-conv-sidebar">
+              <div style="padding:10px 12px 8px;">
+                <input class="field" id="adminConvBuscaLista" placeholder="Filtrar conversas..." oninput="filtrarListaConversasAdmin()" style="font-size:12px;padding:7px 10px;" />
+              </div>
+              <div id="adminConvLista" style="overflow-y:auto;flex:1;">
+                <p style="padding:12px;font-size:13px;color:#64748b;">Clique em "Carregar" para ver as conversas.</p>
+              </div>
+              <div style="padding:10px 12px;border-top:1px solid rgba(148,163,184,.12);">
+                <button class="btn btn-secondary" style="width:100%;" onclick="carregarListaConversasAdmin()">Carregar conversas</button>
+              </div>
+            </div>
+
+            <!-- Painel de mensagens -->
+            <div class="admin-conv-msgs">
+              <div class="admin-conv-header" id="adminConvHeader">
+                <span style="color:#64748b;font-size:13px;">Selecione uma conversa</span>
+              </div>
+              <div style="padding:8px 12px;border-bottom:1px solid rgba(148,163,184,.08);display:flex;gap:8px;align-items:center;">
+                <input class="field" id="adminConvBuscaMsgs" placeholder="Buscar nas mensagens..." oninput="buscarMensagensAdmin()" style="font-size:12px;padding:7px 10px;flex:1;" />
+                <span id="adminConvTotal" style="font-size:11px;color:#64748b;white-space:nowrap;"></span>
+              </div>
+              <div id="adminConvMensagens" style="overflow-y:auto;flex:1;padding:12px;display:flex;flex-direction:column;gap:6px;">
+                <p style="color:#64748b;font-size:13px;">Nenhuma conversa selecionada.</p>
+              </div>
+              <div id="adminConvPaginacao" style="padding:8px 12px;border-top:1px solid rgba(148,163,184,.08);display:flex;justify-content:center;gap:8px;"></div>
+            </div>
           </div>
         </section>
 

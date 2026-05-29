@@ -3568,6 +3568,178 @@ carregarMensagensPrioritarias();
 carregarStatusAtendimento();
 aplicarTema();
 aplicarEstadoSidebar();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ADMIN — VISUALIZADOR DE CONVERSAS
+// ═══════════════════════════════════════════════════════════════════════════
+const _adminConv = {
+  lista: [],          // lista completa de conversas carregadas
+  listaFiltrada: [],  // lista após filtro de busca
+  selecionada: null,  // { tipo, uid1, uid2 } | { tipo, grupoId, nome }
+  pagina: 1,
+  porPagina: 60,
+  totalMsgs: 0,
+  busca: ''
+};
+
+async function carregarListaConversasAdmin() {
+  const el = document.getElementById('adminConvLista');
+  el.innerHTML = '<p style="padding:12px;font-size:13px;color:#64748b;">Carregando...</p>';
+  try {
+    const r = await fetch('/api/admin/conversas', { headers: authHeaders() });
+    if (!r.ok) throw new Error();
+    const { privados, grupos } = await r.json();
+    _adminConv.lista = [
+      ...privados.map((p) => ({ ...p, _label: `${p.usuario1_nome} ↔ ${p.usuario2_nome}` })),
+      ...grupos.map((g) => ({ ...g, _label: g.nome }))
+    ];
+    _adminConv.listaFiltrada = _adminConv.lista;
+    renderListaConversasAdmin();
+  } catch (_e) {
+    el.innerHTML = '<p style="padding:12px;font-size:13px;color:#ef4444;">Erro ao carregar.</p>';
+  }
+}
+
+function filtrarListaConversasAdmin() {
+  const q = (document.getElementById('adminConvBuscaLista')?.value || '').toLowerCase();
+  _adminConv.listaFiltrada = _adminConv.lista.filter((c) => c._label.toLowerCase().includes(q));
+  renderListaConversasAdmin();
+}
+
+function renderListaConversasAdmin() {
+  const el = document.getElementById('adminConvLista');
+  if (!_adminConv.listaFiltrada.length) {
+    el.innerHTML = '<p style="padding:12px;font-size:13px;color:#64748b;">Nenhuma conversa encontrada.</p>';
+    return;
+  }
+  el.innerHTML = _adminConv.listaFiltrada.map((c, i) => {
+    const label  = c._label;
+    const tipo   = c.tipo;
+    const ultima = c.ultima_em ? new Date(c.ultima_em).toLocaleDateString('pt-BR') : '';
+    const sel    = _adminConv.selecionada;
+    const ativo  = sel && (
+      (tipo === 'privado' && sel.uid1 === c.usuario1_id && sel.uid2 === c.usuario2_id) ||
+      (tipo === 'grupo'   && sel.grupoId === c.grupo_id)
+    );
+    return `<div class="admin-conv-item ${ativo ? 'active' : ''}" onclick="selecionarConversaAdmin(${i})">
+      <div class="conv-title">${escapeHtml(label)}</div>
+      <div class="conv-meta"><span class="conv-badge tipo-${tipo}">${tipo}</span>${c.total} msg${c.total !== 1 ? 's' : ''} ${ultima ? '· ' + ultima : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+async function selecionarConversaAdmin(idx) {
+  const conv = _adminConv.listaFiltrada[idx];
+  if (!conv) return;
+  _adminConv.pagina = 1;
+  _adminConv.busca  = '';
+  if (document.getElementById('adminConvBuscaMsgs')) document.getElementById('adminConvBuscaMsgs').value = '';
+  if (conv.tipo === 'privado') {
+    _adminConv.selecionada = { tipo: 'privado', uid1: conv.usuario1_id, uid2: conv.usuario2_id, titulo: conv._label };
+  } else {
+    _adminConv.selecionada = { tipo: 'grupo', grupoId: conv.grupo_id, titulo: conv.nome };
+  }
+  renderListaConversasAdmin();
+  await carregarMensagensConversaAdmin();
+}
+
+async function carregarMensagensConversaAdmin() {
+  const sel = _adminConv.selecionada;
+  if (!sel) return;
+  const msgsEl = document.getElementById('adminConvMensagens');
+  msgsEl.innerHTML = '<p style="color:#64748b;font-size:13px;">Carregando...</p>';
+
+  const busca = encodeURIComponent(_adminConv.busca);
+  let url;
+  if (sel.tipo === 'privado') {
+    url = `/api/admin/conversas/privadas/${sel.uid1}/${sel.uid2}?pagina=${_adminConv.pagina}&por_pagina=${_adminConv.porPagina}&busca=${busca}`;
+  } else {
+    url = `/api/admin/conversas/grupo/${sel.grupoId}?pagina=${_adminConv.pagina}&por_pagina=${_adminConv.porPagina}&busca=${busca}`;
+  }
+
+  try {
+    const r = await fetch(url, { headers: authHeaders() });
+    if (!r.ok) throw new Error();
+    const { mensagens, total } = await r.json();
+    _adminConv.totalMsgs = total;
+
+    // Header
+    document.getElementById('adminConvHeader').innerHTML =
+      `<span class="conv-badge tipo-${sel.tipo}">${sel.tipo}</span> ${escapeHtml(sel.titulo)}`;
+    document.getElementById('adminConvTotal').textContent = `${total} mensagem${total !== 1 ? 's' : ''}`;
+
+    // Bolhas
+    if (!mensagens.length) {
+      msgsEl.innerHTML = '<p style="color:#64748b;font-size:13px;">Nenhuma mensagem encontrada.</p>';
+    } else {
+      const primeiroUid = sel.tipo === 'privado' ? sel.uid1 : null;
+      msgsEl.innerHTML = mensagens.map((m) => renderAdminMsgBubble(m, primeiroUid)).join('');
+    }
+
+    // Paginação
+    renderPaginacaoAdmin();
+  } catch (_e) {
+    msgsEl.innerHTML = '<p style="color:#ef4444;font-size:13px;">Erro ao carregar mensagens.</p>';
+  }
+}
+
+function renderAdminMsgBubble(m, refUid) {
+  // "own" = primeiro usuário da conversa privada OU remetente fixo de grupo (visual apenas)
+  const isOwn = refUid ? m.usuario_id === refUid : false;
+  const nome  = m.usuario_nome || 'Desconhecido';
+  const hora  = m.criado_em ? new Date(m.criado_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+
+  let conteudo = '';
+  if (m.tipo === 'arquivo') {
+    conteudo = `📎 <a href="/uploads/${escapeHtml(m.arquivo_nome_salvo)}" target="_blank" style="color:#60a5fa;">${escapeHtml(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo')}</a>`;
+  } else {
+    conteudo = escapeHtml(String(m.conteudo || ''));
+    // destaque da busca
+    if (_adminConv.busca) {
+      const re = new RegExp(`(${_adminConv.busca.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      conteudo = conteudo.replace(re, '<mark style="background:#fbbf24;color:#1e293b;border-radius:3px;padding:0 2px;">$1</mark>');
+    }
+  }
+
+  const grad = avatarGradient(nome);
+  return `<div class="admin-msg-bubble ${isOwn ? 'own' : 'other'}">
+    <div class="admin-msg-avatar" style="background:${grad};">${escapeHtml(initials(nome))}</div>
+    <div class="admin-msg-body">
+      <div class="admin-msg-name">${escapeHtml(nome)}</div>
+      <div class="admin-msg-text">${conteudo}</div>
+      <div class="admin-msg-time">${hora}</div>
+    </div>
+  </div>`;
+}
+
+function renderPaginacaoAdmin() {
+  const el = document.getElementById('adminConvPaginacao');
+  const totalPags = Math.ceil(_adminConv.totalMsgs / _adminConv.porPagina);
+  if (totalPags <= 1) { el.innerHTML = ''; return; }
+  const p = _adminConv.pagina;
+  el.innerHTML = `
+    <button class="admin-conv-pagbtn" onclick="irPaginaAdmin(1)"         ${p===1?'disabled':''}>«</button>
+    <button class="admin-conv-pagbtn" onclick="irPaginaAdmin(${p-1})"    ${p===1?'disabled':''}>‹</button>
+    <span style="font-size:12px;color:#94a3b8;padding:0 6px;">${p} / ${totalPags}</span>
+    <button class="admin-conv-pagbtn" onclick="irPaginaAdmin(${p+1})"    ${p===totalPags?'disabled':''}>›</button>
+    <button class="admin-conv-pagbtn" onclick="irPaginaAdmin(${totalPags})" ${p===totalPags?'disabled':''}>»</button>`;
+}
+
+async function irPaginaAdmin(pag) {
+  _adminConv.pagina = pag;
+  await carregarMensagensConversaAdmin();
+  document.getElementById('adminConvMensagens')?.scrollTo({ top: 0 });
+}
+
+let _adminConvBuscaTimer = null;
+function buscarMensagensAdmin() {
+  clearTimeout(_adminConvBuscaTimer);
+  _adminConvBuscaTimer = setTimeout(() => {
+    _adminConv.busca  = document.getElementById('adminConvBuscaMsgs')?.value || '';
+    _adminConv.pagina = 1;
+    carregarMensagensConversaAdmin();
+  }, 350);
+}
 aplicarDensidadeMensagens();
 restaurarSessao();
 
