@@ -369,13 +369,36 @@ async function fazerLogin() {
   erroEl.style.display = 'none';
   try {
     const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, senha }) });
-    const data = await r.json();
-    if (!r.ok) { erroEl.textContent = data.erro || 'Erro ao entrar'; erroEl.style.display = 'block'; return; }
+    const text = await r.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch { data = { erro: text }; }
+    if (!r.ok) { erroEl.textContent = data.erro || `Erro ao entrar (${r.status})`; erroEl.style.display = 'block'; return; }
     if (!data.usuario?.admin) { erroEl.textContent = 'Acesso restrito a administradores.'; erroEl.style.display = 'block'; return; }
     token = data.token; usuario = data.usuario;
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, usuario }));
     iniciarApp();
   } catch { erroEl.textContent = 'Erro de conexão.'; erroEl.style.display = 'block'; }
+}
+
+async function fazerLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const senha = document.getElementById('loginSenha').value;
+  const erroEl = document.getElementById('loginErro');
+  erroEl.style.display = 'none';
+  try {
+    const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, senha }) });
+    const text = await r.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch { data = { erro: text }; }
+    if (!r.ok) { erroEl.textContent = data.erro || `Erro ao entrar (${r.status})`; erroEl.style.display = 'block'; return; }
+    if (!data.usuario?.admin) { erroEl.textContent = 'Acesso restrito a administradores.'; erroEl.style.display = 'block'; return; }
+    token = data.token; usuario = data.usuario;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, usuario }));
+    iniciarApp();
+  } catch (err) {
+    erroEl.textContent = `Erro de conexao: ${err.message || err}`;
+    erroEl.style.display = 'block';
+  }
 }
 
 function sair() { localStorage.removeItem(STORAGE_KEY); location.reload(); }
