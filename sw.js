@@ -1,8 +1,8 @@
 // Service Worker — Chat Interno
 // Estratégia: Cache-first para assets, network-first para API, push real.
 
-const CACHE_NAME = 'chatinterno-v2';
-const STATIC_ASSETS = ['/', '/assets/app.css', '/assets/app.js', '/manifest.json'];
+const CACHE_NAME = 'chatinterno-v3';
+const STATIC_ASSETS = ['/manifest.json'];
 
 // ── Install ────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
@@ -42,7 +42,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Assets estáticos: cache-first
+  // Páginas HTML: network-first para evitar tela antiga após deploy.
+  if (request.mode === 'navigate' || request.destination === 'document') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || caches.match('/')))
+    );
+    return;
+  }
+
+  // Assets estáticos: cache-first. CSS/JS versionados atualizam pelo novo URL.
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
