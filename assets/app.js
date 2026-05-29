@@ -1670,7 +1670,11 @@ function getWelcomeStateHtml() {
   const totalNaoLidas = Object.values(unreadState).reduce((sum, value) => sum + (Number(value) || 0), 0);
   const totalPendentes = Object.values(attendanceStatusState).filter((status) => status === 'pendente').length;
   const totalUrgentes = Object.values(attendanceStatusState).filter((status) => status === 'urgente').length;
-  const firstName = String(usuarioAtual?.nome || '').trim().split(/\s+/)[0] || 'equipe';
+  const nomeUsuario = String(usuarioAtual?.nome || '').trim();
+  const emailUsuario = String(usuarioAtual?.email || '').trim();
+  const firstName = /^\(?usu[aá]rio/i.test(nomeUsuario)
+    ? (emailUsuario.split('@')[0] || 'Admin')
+    : (nomeUsuario.split(/\s+/)[0] || emailUsuario.split('@')[0] || 'equipe');
   const urgentItems = getDashboardChatItems('urgent', 4);
   const unreadItems = getDashboardChatItems('unread', 4);
   return `
