@@ -2150,6 +2150,42 @@ function getPlantaoEscreventeNome(escreventeId) {
   return escrevente?.nome || 'Sem escrevente';
 }
 
+function addDaysToDateInput(value, days) {
+  const [year, month, day] = String(value || '').split('-').map(Number);
+  if (!year || !month || !day) return '';
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + days);
+  const nextYear = date.getFullYear();
+  const nextMonth = String(date.getMonth() + 1).padStart(2, '0');
+  const nextDay = String(date.getDate()).padStart(2, '0');
+  return `${nextYear}-${nextMonth}-${nextDay}`;
+}
+
+function getPlantaoEscalaPeriodos() {
+  const ordenadas = [...plantaoState.escalas].sort((a, b) => String(a.data).localeCompare(String(b.data)));
+  return ordenadas.reduce((periodos, item) => {
+    const anterior = periodos[periodos.length - 1];
+    const mesmaPessoa = anterior && Number(anterior.escreventeId) === Number(item.escreventeId);
+    const mesmoConflito = anterior && Boolean(anterior.conflito) === Boolean(item.conflito);
+    const mesmaObservacao = anterior && String(anterior.observacao || '') === String(item.observacao || '');
+    const diaSeguinte = anterior && addDaysToDateInput(anterior.fim, 1) === item.data;
+
+    if (mesmaPessoa && mesmoConflito && mesmaObservacao && diaSeguinte) {
+      anterior.fim = item.data;
+      return periodos;
+    }
+
+    periodos.push({
+      inicio: item.data,
+      fim: item.data,
+      escreventeId: item.escreventeId,
+      conflito: Boolean(item.conflito),
+      observacao: item.observacao || ''
+    });
+    return periodos;
+  }, []);
+}
+
 function normalizarPlantaoState(data) {
   plantaoState = {
     escreventes: Array.isArray(data?.escreventes) ? data.escreventes : [],
@@ -2252,10 +2288,11 @@ function renderPlantaoPanel() {
   }
 
   if (escalaList) {
-    escalaList.innerHTML = plantaoState.escalas.length
-      ? [...plantaoState.escalas].sort((a, b) => String(a.data).localeCompare(String(b.data))).map((item) => `
+    const periodos = getPlantaoEscalaPeriodos();
+    escalaList.innerHTML = periodos.length
+      ? periodos.map((item) => `
         <div class="plantao-scale-row ${item.conflito ? 'conflict' : ''}">
-          <strong>${formatDateOnlyBr(item.data)}</strong>
+          <strong>${formatDateOnlyBr(item.inicio)} a ${formatDateOnlyBr(item.fim)}</strong>
           <span>${item.conflito ? 'Conflito de ferias' : escapeHtml(getPlantaoEscreventeNome(item.escreventeId))}</span>
           ${item.observacao ? `<small>${escapeHtml(item.observacao)}</small>` : ''}
         </div>

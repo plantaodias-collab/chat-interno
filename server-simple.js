@@ -141,6 +141,7 @@ class SimpleDB {
 
 const db = new SimpleDB();
 ensurePlantaoGroup();
+ensureDefaultPlantaoJuneSchedule();
 const onlineUsers = new Map();
 const socketUsers = new Map();
 const typingTimeouts = new Map();
@@ -781,6 +782,46 @@ function ensurePlantaoGroup() {
     criado_em: new Date().toISOString()
   });
   db.saveFile('grupos.json', db.grupos);
+}
+
+function ensureDefaultPlantaoJuneSchedule() {
+  const state = getEscalaPlantaoState();
+  if (state.escalas.length || state.escreventes.length) return;
+
+  const nomes = ['Duda', 'Daniela', 'Régis', 'Sté'];
+  const escreventes = nomes.map((nome, index) => ({
+    id: 2026060100 + index + 1,
+    nome,
+    ativo: true
+  }));
+  const byName = new Map(escreventes.map((item) => [normalizeKey(item.nome), item.id]));
+  const periodos = [
+    { inicio: '2026-05-29', fim: '2026-06-04', nome: 'Duda' },
+    { inicio: '2026-06-05', fim: '2026-06-11', nome: 'Daniela' },
+    { inicio: '2026-06-12', fim: '2026-06-18', nome: 'Régis' },
+    { inicio: '2026-06-19', fim: '2026-06-25', nome: 'Sté' }
+  ];
+  const escalas = [];
+
+  periodos.forEach((periodo) => {
+    const cursor = parseDateOnly(periodo.inicio);
+    const end = parseDateOnly(periodo.fim);
+    while (cursor && end && cursor <= end) {
+      escalas.push({
+        data: toDateOnly(cursor),
+        escreventeId: byName.get(normalizeKey(periodo.nome)),
+        conflito: false,
+        observacao: 'Escala inicial de junho/2026'
+      });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  });
+
+  saveEscalaPlantaoState({
+    escreventes,
+    ferias: [],
+    escalas
+  });
 }
 
 function getEscalaPlantaoState() {

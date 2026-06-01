@@ -7343,7 +7343,7 @@ body:not(.theme-dark) .contact-group-count.zero {
 }
 
 .plantao-scale-row {
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: minmax(190px, auto) minmax(0, 1fr);
 }
 
 .plantao-scale-row strong {
