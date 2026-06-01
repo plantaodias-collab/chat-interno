@@ -2150,6 +2150,25 @@ function getPlantaoEscreventeNome(escreventeId) {
   return escrevente?.nome || 'Sem escrevente';
 }
 
+function getPlantaoColor(escreventeId) {
+  const palette = [
+    { bg: '#fee2e2', border: '#fca5a5', text: '#7f1d1d' },
+    { bg: '#dcfce7', border: '#86efac', text: '#14532d' },
+    { bg: '#dbeafe', border: '#93c5fd', text: '#1e3a8a' },
+    { bg: '#fef3c7', border: '#fbbf24', text: '#78350f' },
+    { bg: '#ede9fe', border: '#c4b5fd', text: '#4c1d95' },
+    { bg: '#cffafe', border: '#67e8f9', text: '#164e63' }
+  ];
+  const index = Math.max(0, plantaoState.escreventes.findIndex((item) => Number(item.id) === Number(escreventeId)));
+  return palette[index % palette.length];
+}
+
+function getPlantaoColorStyle(escreventeId, conflito = false) {
+  if (conflito) return '';
+  const color = getPlantaoColor(escreventeId);
+  return `style="--plantao-bg:${color.bg};--plantao-border:${color.border};--plantao-text:${color.text};"`;
+}
+
 function addDaysToDateInput(value, days) {
   const [year, month, day] = String(value || '').split('-').map(Number);
   if (!year || !month || !day) return '';
@@ -2258,7 +2277,8 @@ function renderPlantaoPanel() {
   if (escreventesList) {
     escreventesList.innerHTML = plantaoState.escreventes.length
       ? plantaoState.escreventes.map((item) => `
-        <div class="plantao-row">
+        <div class="plantao-row plantao-person-row" ${getPlantaoColorStyle(item.id)}>
+          <span class="plantao-color-dot"></span>
           <span>${escapeHtml(item.nome)}</span>
           <button type="button" onclick="removerEscreventePlantao(${Number(item.id)})" title="Remover escrevente" aria-label="Remover escrevente">x</button>
         </div>
@@ -2281,7 +2301,7 @@ function renderPlantaoPanel() {
   const conflitos = plantaoState.escalas.filter((item) => item.conflito).length;
   if (resumo) {
     resumo.innerHTML = `
-      <span>${plantaoState.escalas.length} dias escalados</span>
+      <span>${getPlantaoEscalaPeriodos().length} periodos</span>
       <span>${plantaoState.escreventes.length} escreventes</span>
       <span class="${conflitos ? 'plantao-conflict-text' : ''}">${conflitos} conflitos</span>
     `;
@@ -2291,7 +2311,7 @@ function renderPlantaoPanel() {
     const periodos = getPlantaoEscalaPeriodos();
     escalaList.innerHTML = periodos.length
       ? periodos.map((item) => `
-        <div class="plantao-scale-row ${item.conflito ? 'conflict' : ''}">
+        <div class="plantao-scale-row ${item.conflito ? 'conflict' : ''}" ${getPlantaoColorStyle(item.escreventeId, item.conflito)}>
           <strong>${formatDateOnlyBr(item.inicio)} a ${formatDateOnlyBr(item.fim)}</strong>
           <span>${item.conflito ? 'Conflito de ferias' : escapeHtml(getPlantaoEscreventeNome(item.escreventeId))}</span>
           ${item.observacao ? `<small>${escapeHtml(item.observacao)}</small>` : ''}
@@ -2357,6 +2377,15 @@ async function gerarEscalaPlantao() {
     method: 'POST',
     body: JSON.stringify({ inicio, fim })
   }, 'Escala gerada');
+}
+
+async function excluirEscalaPlantao() {
+  if (!plantaoState.escalas.length) {
+    mostrarNotificacao('Nao ha escala para excluir', 'info');
+    return;
+  }
+  if (!confirm('Excluir toda a escala atual? Os escreventes e ferias cadastrados serao mantidos.')) return;
+  await salvarPlantaoViaApi('/api/plantao/escala', { method: 'DELETE' }, 'Escala excluida');
 }
 
 async function carregarGrupos() {

@@ -7255,7 +7255,7 @@ body:not(.theme-dark) .contact-group-count.zero {
 }
 
 .plantao-form-grid.escala {
-  grid-template-columns: minmax(140px, 180px) minmax(140px, 180px) auto;
+  grid-template-columns: minmax(140px, 180px) minmax(140px, 180px) auto auto;
 }
 
 .plantao-action {
@@ -7263,6 +7263,12 @@ body:not(.theme-dark) .contact-group-count.zero {
   margin-top: 0;
   border-radius: 8px;
   white-space: nowrap;
+}
+
+.plantao-action.danger {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
 }
 
 .plantao-list {
@@ -7284,6 +7290,20 @@ body:not(.theme-dark) .contact-group-count.zero {
   border: 1px solid rgba(148, 163, 184, .14);
   border-radius: 8px;
   background: rgba(15, 23, 42, .72);
+}
+
+.plantao-person-row {
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  background: var(--plantao-bg, rgba(15, 23, 42, .72));
+  border-color: var(--plantao-border, rgba(148, 163, 184, .14));
+  color: var(--plantao-text, inherit);
+}
+
+.plantao-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--plantao-text, #64748b);
 }
 
 .plantao-row span,
@@ -7335,7 +7355,7 @@ body:not(.theme-dark) .contact-group-count.zero {
 
 .plantao-schedule {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
   gap: 8px;
   margin-top: 10px;
   max-height: 210px;
@@ -7344,10 +7364,13 @@ body:not(.theme-dark) .contact-group-count.zero {
 
 .plantao-scale-row {
   grid-template-columns: minmax(190px, auto) minmax(0, 1fr);
+  background: var(--plantao-bg, rgba(15, 23, 42, .72));
+  border-color: var(--plantao-border, rgba(148, 163, 184, .14));
+  color: var(--plantao-text, inherit);
 }
 
 .plantao-scale-row strong {
-  color: #e5e7eb;
+  color: var(--plantao-text, #e5e7eb);
   font-size: 13px;
 }
 
@@ -7397,9 +7420,16 @@ body:not(.theme-dark) .plantao-scale-row {
   border-color: rgba(148, 163, 184, .28);
 }
 
+body:not(.theme-dark) .plantao-person-row,
+body:not(.theme-dark) .plantao-scale-row {
+  background: var(--plantao-bg, #ffffff);
+  border-color: var(--plantao-border, rgba(148, 163, 184, .28));
+  color: var(--plantao-text, #0f172a);
+}
+
 body:not(.theme-dark) .plantao-card-title,
 body:not(.theme-dark) .plantao-scale-row strong {
-  color: #0f172a;
+  color: var(--plantao-text, #0f172a);
 }
 
 body:not(.theme-dark) .plantao-row small,

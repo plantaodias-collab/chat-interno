@@ -899,6 +899,20 @@ function escreventeEstaDeFerias(escreventeId, data, ferias) {
   ));
 }
 
+function getDateRange(start, end) {
+  const dates = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    dates.push(toDateOnly(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
+function escreventeDisponivelNoPeriodo(escreventeId, datas, ferias) {
+  return datas.every((data) => !escreventeEstaDeFerias(escreventeId, data, ferias));
+}
+
 function gerarEscalaPlantao(inicio, fim) {
   const state = sanitizeEscalaPlantaoPayload();
   const escreventes = state.escreventes.filter((item) => item.ativo !== false);
@@ -925,9 +939,13 @@ function gerarEscalaPlantao(inicio, fim) {
   const novasEscalas = [];
   const cursor = new Date(start);
   while (cursor <= end) {
-    const data = toDateOnly(cursor);
+    const blocoInicio = new Date(cursor);
+    const blocoFim = new Date(cursor);
+    blocoFim.setDate(blocoFim.getDate() + 6);
+    if (blocoFim > end) blocoFim.setTime(end.getTime());
+    const datasDoBloco = getDateRange(blocoInicio, blocoFim);
     const disponiveis = escreventes
-      .filter((item) => !escreventeEstaDeFerias(item.id, data, state.ferias))
+      .filter((item) => escreventeDisponivelNoPeriodo(item.id, datasDoBloco, state.ferias))
       .sort((a, b) => (
         (counts.get(Number(a.id)) - counts.get(Number(b.id))) ||
         (lastAssigned.get(Number(a.id)) - lastAssigned.get(Number(b.id))) ||
@@ -936,14 +954,17 @@ function gerarEscalaPlantao(inicio, fim) {
 
     if (disponiveis.length) {
       const escolhido = disponiveis[0];
-      const escala = { data, escreventeId: Number(escolhido.id), conflito: false, observacao: '' };
-      novasEscalas.push(escala);
-      counts.set(Number(escolhido.id), counts.get(Number(escolhido.id)) + 1);
+      datasDoBloco.forEach((data) => {
+        novasEscalas.push({ data, escreventeId: Number(escolhido.id), conflito: false, observacao: 'Escala semanal automatica' });
+      });
+      counts.set(Number(escolhido.id), counts.get(Number(escolhido.id)) + datasDoBloco.length);
       lastAssigned.set(Number(escolhido.id), novasEscalas.length + state.escalas.length);
     } else {
-      novasEscalas.push({ data, escreventeId: null, conflito: true, observacao: 'Todos os escreventes estao em ferias nesta data' });
+      datasDoBloco.forEach((data) => {
+        novasEscalas.push({ data, escreventeId: null, conflito: true, observacao: 'Nenhum escrevente disponivel durante toda esta semana' });
+      });
     }
-    cursor.setDate(cursor.getDate() + 1);
+    cursor.setDate(cursor.getDate() + 7);
   }
 
   const datasGeradas = new Set(novasEscalas.map((item) => item.data));
@@ -1677,6 +1698,18 @@ app.post('/api/plantao/gerar-escala', verificarToken, (req, res) => {
     res.json(state);
   } catch (err) {
     res.status(err.statusCode || 500).json({ erro: err.message });
+  }
+});
+
+app.delete('/api/plantao/escala', verificarToken, (_req, res) => {
+  try {
+    const state = sanitizeEscalaPlantaoPayload();
+    state.escalas = [];
+    saveEscalaPlantaoState(state);
+    io.emit('plantao-escala-atualizada', state);
+    res.json(state);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
   }
 });
 
