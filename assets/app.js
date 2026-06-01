@@ -2323,8 +2323,11 @@ function renderPlantaoPanel() {
     escalaList.innerHTML = periodos.length
       ? periodos.map((item) => `
         <div class="plantao-scale-row ${item.conflito ? 'conflict' : ''}" ${getPlantaoColorStyle(item.escreventeId, item.conflito)}>
-          <strong>${formatDateOnlyBr(item.inicio)} a ${formatDateOnlyBr(item.fim)}</strong>
-          <span>${item.conflito ? 'Conflito de ferias' : escapeHtml(getPlantaoEscreventeNome(item.escreventeId))}</span>
+          <div class="plantao-scale-main">
+            <strong>${formatDateOnlyBr(item.inicio)} a ${formatDateOnlyBr(item.fim)}</strong>
+            <span>${item.conflito ? 'Conflito de ferias' : escapeHtml(getPlantaoEscreventeNome(item.escreventeId))}</span>
+          </div>
+          <button class="plantao-scale-delete" type="button" onclick="excluirPeriodoEscalaPlantao('${escapeHtml(item.inicio)}','${escapeHtml(item.fim)}')" title="Excluir este periodo" aria-label="Excluir este periodo">x</button>
           ${item.observacao ? `<small>${escapeHtml(item.observacao)}</small>` : ''}
         </div>
       `).join('')
@@ -2407,6 +2410,14 @@ async function excluirEscalaPlantao() {
   }
   if (!confirm('Excluir toda a escala atual? Os escreventes e ferias cadastrados serao mantidos.')) return;
   await salvarPlantaoViaApi('/api/plantao/escala', { method: 'DELETE' }, 'Escala excluida');
+}
+
+async function excluirPeriodoEscalaPlantao(inicio, fim) {
+  if (!confirm(`Excluir a escala de ${formatDateOnlyBr(inicio)} a ${formatDateOnlyBr(fim)}?`)) return;
+  await salvarPlantaoViaApi('/api/plantao/escala-periodo', {
+    method: 'DELETE',
+    body: JSON.stringify({ inicio, fim })
+  }, 'Periodo excluido');
 }
 
 async function carregarGrupos() {

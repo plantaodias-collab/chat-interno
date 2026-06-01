@@ -7381,15 +7381,34 @@ body:not(.theme-dark) .contact-group-count.zero {
 }
 
 .plantao-scale-row {
-  grid-template-columns: minmax(190px, auto) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   background: var(--plantao-bg, rgba(15, 23, 42, .72));
   border-color: var(--plantao-border, rgba(148, 163, 184, .14));
   color: var(--plantao-text, inherit);
 }
 
+.plantao-scale-main {
+  display: grid;
+  grid-template-columns: minmax(158px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
 .plantao-scale-row strong {
   color: var(--plantao-text, #e5e7eb);
   font-size: 12px;
+}
+
+.plantao-scale-delete {
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(248, 113, 113, .28);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .45);
+  color: #991b1b;
+  cursor: pointer;
+  font-weight: 900;
 }
 
 .plantao-scale-row small {

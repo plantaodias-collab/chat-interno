@@ -1008,6 +1008,22 @@ function cadastrarPlantaoPeriodo(escreventeId, inicio, fim) {
   return state;
 }
 
+function excluirPlantaoPeriodo(inicio, fim) {
+  const state = sanitizeEscalaPlantaoPayload();
+  const start = parseDateOnly(inicio);
+  const end = parseDateOnly(fim);
+  if (!start || !end || start > end) {
+    const error = new Error('Informe um periodo valido para excluir');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const datasPeriodo = new Set(getDateRange(start, end));
+  state.escalas = state.escalas.filter((item) => !datasPeriodo.has(item.data));
+  saveEscalaPlantaoState(state);
+  return state;
+}
+
 function gerarSenhaTemporaria() {
   return `Senha${Math.floor(100000 + Math.random() * 900000)}!`;
 }
@@ -1752,6 +1768,16 @@ app.delete('/api/plantao/escala', verificarToken, (_req, res) => {
     res.json(state);
   } catch (err) {
     res.status(500).json({ erro: err.message });
+  }
+});
+
+app.delete('/api/plantao/escala-periodo', verificarToken, (req, res) => {
+  try {
+    const state = excluirPlantaoPeriodo(req.body?.inicio, req.body?.fim);
+    io.emit('plantao-escala-atualizada', state);
+    res.json(state);
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ erro: err.message });
   }
 });
 
