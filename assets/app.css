@@ -7172,17 +7172,17 @@ body:not(.theme-dark) .contact-group-count.zero {
   border-bottom: 1px solid rgba(148, 163, 184, .16);
   background: rgba(15, 23, 42, .62);
   flex: 0 0 auto;
-  max-height: 46vh;
+  max-height: 34vh;
   overflow: auto;
 }
 
 .plantao-toolbar {
-  min-height: 58px;
+  min-height: 46px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 12px 18px;
+  padding: 8px 18px;
   border-bottom: 1px solid rgba(148, 163, 184, .14);
 }
 
@@ -7195,14 +7195,14 @@ body:not(.theme-dark) .contact-group-count.zero {
 }
 
 .plantao-toolbar h3 {
-  margin-top: 3px;
+  margin-top: 2px;
   color: #e5e7eb;
-  font-size: 17px;
+  font-size: 15px;
 }
 
 .plantao-icon-btn {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border: 1px solid rgba(148, 163, 184, .22);
   border-radius: 8px;
   background: rgba(255, 255, 255, .06);
@@ -7212,13 +7212,13 @@ body:not(.theme-dark) .contact-group-count.zero {
 }
 
 .plantao-body {
-  padding: 14px 18px 18px;
+  padding: 10px 18px 12px;
 }
 
 .plantao-grid {
   display: grid;
   grid-template-columns: minmax(220px, .75fr) minmax(280px, 1fr);
-  gap: 12px;
+  gap: 10px;
 }
 
 .plantao-card {
@@ -7226,7 +7226,7 @@ body:not(.theme-dark) .contact-group-count.zero {
   border: 1px solid rgba(148, 163, 184, .16);
   border-radius: 8px;
   background: rgba(17, 24, 39, .78);
-  padding: 12px;
+  padding: 9px 10px;
 }
 
 .plantao-card-wide {
@@ -7234,16 +7234,22 @@ body:not(.theme-dark) .contact-group-count.zero {
 }
 
 .plantao-card-title {
-  margin-bottom: 10px;
+  margin-bottom: 7px;
   color: #cbd5e1;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
+}
+
+.plantao-card .field {
+  min-height: 38px;
+  border-radius: 8px;
+  padding: 9px 12px;
 }
 
 .plantao-inline-form,
 .plantao-form-grid {
   display: grid;
-  gap: 8px;
+  gap: 7px;
 }
 
 .plantao-inline-form {
@@ -7255,13 +7261,15 @@ body:not(.theme-dark) .contact-group-count.zero {
 }
 
 .plantao-form-grid.escala {
-  grid-template-columns: minmax(140px, 180px) minmax(140px, 180px) auto auto;
+  grid-template-columns: minmax(128px, 170px) minmax(128px, 170px) minmax(180px, 1fr) auto;
 }
 
 .plantao-action {
   width: auto;
   margin-top: 0;
   border-radius: 8px;
+  min-height: 38px;
+  padding: 9px 13px;
   white-space: nowrap;
 }
 
@@ -7273,9 +7281,9 @@ body:not(.theme-dark) .contact-group-count.zero {
 
 .plantao-list {
   display: grid;
-  gap: 7px;
-  margin-top: 10px;
-  max-height: 150px;
+  gap: 6px;
+  margin-top: 8px;
+  max-height: 96px;
   overflow: auto;
 }
 
@@ -7284,9 +7292,9 @@ body:not(.theme-dark) .contact-group-count.zero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  padding: 8px 10px;
+  gap: 7px;
+  min-height: 32px;
+  padding: 6px 9px;
   border: 1px solid rgba(148, 163, 184, .14);
   border-radius: 8px;
   background: rgba(15, 23, 42, .72);
@@ -7320,8 +7328,8 @@ body:not(.theme-dark) .contact-group-count.zero {
 }
 
 .plantao-row button {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border: 1px solid rgba(248, 113, 113, .28);
   border-radius: 7px;
   background: rgba(239, 68, 68, .12);
@@ -7333,14 +7341,14 @@ body:not(.theme-dark) .contact-group-count.zero {
 .plantao-summary {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .plantao-summary span {
   border: 1px solid rgba(147, 197, 253, .22);
   border-radius: 999px;
-  padding: 6px 10px;
+  padding: 5px 9px;
   color: #bfdbfe;
   background: rgba(37, 99, 235, .10);
   font-size: 12px;
@@ -7356,9 +7364,9 @@ body:not(.theme-dark) .contact-group-count.zero {
 .plantao-schedule {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-  gap: 8px;
-  margin-top: 10px;
-  max-height: 210px;
+  gap: 7px;
+  margin-top: 8px;
+  max-height: 118px;
   overflow: auto;
 }
 
@@ -7371,13 +7379,13 @@ body:not(.theme-dark) .contact-group-count.zero {
 
 .plantao-scale-row strong {
   color: var(--plantao-text, #e5e7eb);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .plantao-scale-row small {
   grid-column: 1 / -1;
   color: #fca5a5;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .plantao-scale-row.conflict {
