@@ -2230,6 +2230,8 @@ function atualizarVisibilidadePlantaoPanel() {
   const panel = document.getElementById('plantaoPanel');
   if (!panel) return;
   const visible = isGrupoPlantaoSelecionado();
+  const mainContent = panel.closest('.main-content');
+  if (mainContent) mainContent.classList.toggle('plantao-mode', visible);
   panel.classList.toggle('hidden', !visible);
   if (visible) {
     prepararCamposPlantao();
