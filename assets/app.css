@@ -7240,6 +7240,12 @@ body:not(.theme-dark) .contact-group-count.zero {
   font-weight: 900;
 }
 
+.plantao-card-title.secondary {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(148, 163, 184, .14);
+}
+
 .plantao-card .field {
   min-height: 38px;
   border-radius: 8px;
@@ -7262,6 +7268,10 @@ body:not(.theme-dark) .contact-group-count.zero {
 
 .plantao-form-grid.escala {
   grid-template-columns: minmax(128px, 170px) minmax(128px, 170px) minmax(180px, 1fr) auto;
+}
+
+.plantao-form-grid.periodo {
+  grid-template-columns: minmax(150px, 1fr) minmax(128px, 170px) minmax(128px, 170px) auto;
 }
 
 .plantao-action {

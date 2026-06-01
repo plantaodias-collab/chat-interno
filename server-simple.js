@@ -976,6 +976,38 @@ function gerarEscalaPlantao(inicio, fim) {
   return state;
 }
 
+function cadastrarPlantaoPeriodo(escreventeId, inicio, fim) {
+  const state = sanitizeEscalaPlantaoPayload();
+  const selectedId = Number(escreventeId);
+  const start = parseDateOnly(inicio);
+  const end = parseDateOnly(fim);
+  if (!selectedId || !start || !end || start > end) {
+    const error = new Error('Informe escrevente e periodo validos');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!state.escreventes.some((item) => Number(item.id) === selectedId)) {
+    const error = new Error('Escrevente nao encontrado');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const datasPeriodo = new Set(getDateRange(start, end));
+  const novasEscalas = Array.from(datasPeriodo).map((data) => ({
+    data,
+    escreventeId: selectedId,
+    conflito: false,
+    observacao: 'Plantao cadastrado manualmente'
+  }));
+
+  state.escalas = [
+    ...state.escalas.filter((item) => !datasPeriodo.has(item.data)),
+    ...novasEscalas
+  ].sort((a, b) => a.data.localeCompare(b.data));
+  saveEscalaPlantaoState(state);
+  return state;
+}
+
 function gerarSenhaTemporaria() {
   return `Senha${Math.floor(100000 + Math.random() * 900000)}!`;
 }
@@ -1694,6 +1726,16 @@ app.delete('/api/plantao/ferias/:id', verificarToken, (req, res) => {
 app.post('/api/plantao/gerar-escala', verificarToken, (req, res) => {
   try {
     const state = gerarEscalaPlantao(req.body?.inicio, req.body?.fim);
+    io.emit('plantao-escala-atualizada', state);
+    res.json(state);
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ erro: err.message });
+  }
+});
+
+app.post('/api/plantao/escala-periodo', verificarToken, (req, res) => {
+  try {
+    const state = cadastrarPlantaoPeriodo(req.body?.escreventeId, req.body?.inicio, req.body?.fim);
     io.emit('plantao-escala-atualizada', state);
     res.json(state);
   } catch (err) {

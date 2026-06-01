@@ -2243,10 +2243,14 @@ function prepararCamposPlantao() {
   const feriasFim = document.getElementById('plantaoFeriasFim');
   const escalaInicio = document.getElementById('plantaoEscalaInicio');
   const escalaFim = document.getElementById('plantaoEscalaFim');
+  const periodoInicio = document.getElementById('plantaoPeriodoInicio');
+  const periodoFim = document.getElementById('plantaoPeriodoFim');
   if (feriasInicio && !feriasInicio.value) feriasInicio.value = hoje;
   if (feriasFim && !feriasFim.value) feriasFim.value = hoje;
   if (escalaInicio && !escalaInicio.value) escalaInicio.value = hoje;
   if (escalaFim && !escalaFim.value) escalaFim.value = hoje;
+  if (periodoInicio && !periodoInicio.value) periodoInicio.value = hoje;
+  if (periodoFim && !periodoFim.value) periodoFim.value = addDaysToDateInput(hoje, 6);
 }
 
 function alternarPlantaoPanel() {
@@ -2265,13 +2269,18 @@ function renderPlantaoPanel() {
   const escreventesList = document.getElementById('plantaoEscreventesList');
   const feriasList = document.getElementById('plantaoFeriasList');
   const feriasSelect = document.getElementById('plantaoFeriasEscrevente');
+  const periodoSelect = document.getElementById('plantaoPeriodoEscrevente');
   const escalaList = document.getElementById('plantaoEscalaList');
   const resumo = document.getElementById('plantaoResumo');
 
-  if (feriasSelect) {
-    feriasSelect.innerHTML = plantaoState.escreventes.length
-      ? plantaoState.escreventes.map((item) => `<option value="${Number(item.id)}">${escapeHtml(item.nome)}</option>`).join('')
-      : '<option value="">Cadastre um escrevente</option>';
+  const escreventeOptions = plantaoState.escreventes.length
+    ? plantaoState.escreventes.map((item) => `<option value="${Number(item.id)}">${escapeHtml(item.nome)}</option>`).join('')
+    : '<option value="">Cadastre um escrevente</option>';
+  if (feriasSelect) feriasSelect.innerHTML = escreventeOptions;
+  if (periodoSelect) {
+    const currentValue = periodoSelect.value;
+    periodoSelect.innerHTML = escreventeOptions;
+    if (currentValue) periodoSelect.value = currentValue;
   }
 
   if (escreventesList) {
@@ -2377,6 +2386,16 @@ async function gerarEscalaPlantao() {
     method: 'POST',
     body: JSON.stringify({ inicio, fim })
   }, 'Escala gerada');
+}
+
+async function cadastrarPeriodoPlantao() {
+  const escreventeId = Number(document.getElementById('plantaoPeriodoEscrevente').value);
+  const inicio = document.getElementById('plantaoPeriodoInicio').value;
+  const fim = document.getElementById('plantaoPeriodoFim').value;
+  await salvarPlantaoViaApi('/api/plantao/escala-periodo', {
+    method: 'POST',
+    body: JSON.stringify({ escreventeId, inicio, fim })
+  }, 'Periodo cadastrado');
 }
 
 async function excluirEscalaPlantao() {
