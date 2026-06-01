@@ -46,6 +46,12 @@ let painelSenhaState = {
   atualizadoPor: '',
   atualizadoEm: null
 };
+let plantaoState = {
+  escreventes: [],
+  ferias: [],
+  escalas: []
+};
+let plantaoCollapsed = false;
 const REACTION_OPTIONS = ['\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F44F}', '\u{1F525}', '\u{1F440}'];
 const STORAGE_KEY = 'chatinterno.session';
 const THEME_KEY = 'chatinterno.theme';
@@ -690,6 +696,21 @@ function formatMessageTimestamp(date = new Date()) {
   const target = new Date(date);
   if (Number.isNaN(target.getTime())) return formatTime();
   return `${formatCalendarDayLabel(target)} às ${formatTime(target)}`;
+}
+
+function formatDateOnlyBr(value) {
+  const dateText = String(value || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)) return '';
+  const [year, month, day] = dateText.split('-');
+  return `${day}/${month}/${year}`;
+}
+
+function getTodayDateInput() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function toTimestamp(value) {
@@ -1772,6 +1793,7 @@ function voltarTelaInicial() {
   updateHeaderStatus();
   renderPinnedNotice();
   renderPinnedMessageBar();
+  atualizarVisibilidadePlantaoPanel();
   atualizarBotaoFavorito();
   renderGrupos();
   renderContatos();
@@ -1981,6 +2003,11 @@ function conectarSocket() {
     }
   });
 
+  socket.on('plantao-escala-atualizada', (data) => {
+    normalizarPlantaoState(data);
+    renderPlantaoPanel();
+  });
+
   socket.on('usuario-digitando', (data) => {
     if (Number(data.usuarioId) === Number(usuarioAtual.id)) return;
     typingUsers.set(`${data.tipo}-${data.chatId}`, data.usuarioNome);
@@ -2108,6 +2135,193 @@ function conectarSocket() {
   });
 }
 
+function isGrupoPlantaoSelecionado() {
+  if (tipoChat !== 'grupo' || !chatIdAtual) return false;
+  const grupo = gruposCache.find((item) => Number(item.id) === Number(chatIdAtual));
+  return String(grupo?.nome || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim() === 'plantao';
+}
+
+function getPlantaoEscreventeNome(escreventeId) {
+  const escrevente = plantaoState.escreventes.find((item) => Number(item.id) === Number(escreventeId));
+  return escrevente?.nome || 'Sem escrevente';
+}
+
+function normalizarPlantaoState(data) {
+  plantaoState = {
+    escreventes: Array.isArray(data?.escreventes) ? data.escreventes : [],
+    ferias: Array.isArray(data?.ferias) ? data.ferias : [],
+    escalas: Array.isArray(data?.escalas) ? data.escalas : []
+  };
+}
+
+async function carregarEscalaPlantao() {
+  if (!token) return;
+  try {
+    const response = await fetch('/api/plantao/escala', { headers: authHeaders() });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.erro || 'Falha ao carregar escala');
+    normalizarPlantaoState(data);
+    renderPlantaoPanel();
+  } catch (err) {
+    mostrarNotificacao('Erro na escala de plantao: ' + err.message, 'error');
+  }
+}
+
+function atualizarVisibilidadePlantaoPanel() {
+  const panel = document.getElementById('plantaoPanel');
+  if (!panel) return;
+  const visible = isGrupoPlantaoSelecionado();
+  panel.classList.toggle('hidden', !visible);
+  if (visible) {
+    prepararCamposPlantao();
+    carregarEscalaPlantao();
+  }
+}
+
+function prepararCamposPlantao() {
+  const hoje = getTodayDateInput();
+  const feriasInicio = document.getElementById('plantaoFeriasInicio');
+  const feriasFim = document.getElementById('plantaoFeriasFim');
+  const escalaInicio = document.getElementById('plantaoEscalaInicio');
+  const escalaFim = document.getElementById('plantaoEscalaFim');
+  if (feriasInicio && !feriasInicio.value) feriasInicio.value = hoje;
+  if (feriasFim && !feriasFim.value) feriasFim.value = hoje;
+  if (escalaInicio && !escalaInicio.value) escalaInicio.value = hoje;
+  if (escalaFim && !escalaFim.value) escalaFim.value = hoje;
+}
+
+function alternarPlantaoPanel() {
+  plantaoCollapsed = !plantaoCollapsed;
+  renderPlantaoPanel();
+}
+
+function renderPlantaoPanel() {
+  const panel = document.getElementById('plantaoPanel');
+  if (!panel) return;
+  const body = document.getElementById('plantaoBody');
+  const icon = document.getElementById('plantaoToggleIcon');
+  if (body) body.classList.toggle('hidden', plantaoCollapsed);
+  if (icon) icon.textContent = plantaoCollapsed ? '+' : '-';
+
+  const escreventesList = document.getElementById('plantaoEscreventesList');
+  const feriasList = document.getElementById('plantaoFeriasList');
+  const feriasSelect = document.getElementById('plantaoFeriasEscrevente');
+  const escalaList = document.getElementById('plantaoEscalaList');
+  const resumo = document.getElementById('plantaoResumo');
+
+  if (feriasSelect) {
+    feriasSelect.innerHTML = plantaoState.escreventes.length
+      ? plantaoState.escreventes.map((item) => `<option value="${Number(item.id)}">${escapeHtml(item.nome)}</option>`).join('')
+      : '<option value="">Cadastre um escrevente</option>';
+  }
+
+  if (escreventesList) {
+    escreventesList.innerHTML = plantaoState.escreventes.length
+      ? plantaoState.escreventes.map((item) => `
+        <div class="plantao-row">
+          <span>${escapeHtml(item.nome)}</span>
+          <button type="button" onclick="removerEscreventePlantao(${Number(item.id)})" title="Remover escrevente" aria-label="Remover escrevente">x</button>
+        </div>
+      `).join('')
+      : '<div class="plantao-empty">Nenhum escrevente cadastrado.</div>';
+  }
+
+  if (feriasList) {
+    feriasList.innerHTML = plantaoState.ferias.length
+      ? [...plantaoState.ferias].sort((a, b) => String(a.inicio).localeCompare(String(b.inicio))).map((item) => `
+        <div class="plantao-row">
+          <span>${escapeHtml(getPlantaoEscreventeNome(item.escreventeId))}</span>
+          <small>${formatDateOnlyBr(item.inicio)} a ${formatDateOnlyBr(item.fim)}</small>
+          <button type="button" onclick="removerFeriasPlantao(${Number(item.id)})" title="Remover ferias" aria-label="Remover ferias">x</button>
+        </div>
+      `).join('')
+      : '<div class="plantao-empty">Nenhum periodo de ferias cadastrado.</div>';
+  }
+
+  const conflitos = plantaoState.escalas.filter((item) => item.conflito).length;
+  if (resumo) {
+    resumo.innerHTML = `
+      <span>${plantaoState.escalas.length} dias escalados</span>
+      <span>${plantaoState.escreventes.length} escreventes</span>
+      <span class="${conflitos ? 'plantao-conflict-text' : ''}">${conflitos} conflitos</span>
+    `;
+  }
+
+  if (escalaList) {
+    escalaList.innerHTML = plantaoState.escalas.length
+      ? [...plantaoState.escalas].sort((a, b) => String(a.data).localeCompare(String(b.data))).map((item) => `
+        <div class="plantao-scale-row ${item.conflito ? 'conflict' : ''}">
+          <strong>${formatDateOnlyBr(item.data)}</strong>
+          <span>${item.conflito ? 'Conflito de ferias' : escapeHtml(getPlantaoEscreventeNome(item.escreventeId))}</span>
+          ${item.observacao ? `<small>${escapeHtml(item.observacao)}</small>` : ''}
+        </div>
+      `).join('')
+      : '<div class="plantao-empty">Gere a escala para visualizar os plantoes.</div>';
+  }
+}
+
+async function salvarPlantaoViaApi(url, options, successMessage) {
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: authHeaders({ 'Content-Type': 'application/json', ...(options?.headers || {}) })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.erro || 'Erro ao salvar escala');
+    normalizarPlantaoState(data);
+    renderPlantaoPanel();
+    if (successMessage) mostrarNotificacao(successMessage, 'success');
+  } catch (err) {
+    mostrarNotificacao(err.message, 'error');
+  }
+}
+
+async function adicionarEscreventePlantao() {
+  const input = document.getElementById('plantaoNomeInput');
+  const nome = input.value.trim();
+  if (!nome) {
+    mostrarNotificacao('Informe o nome do escrevente', 'warning');
+    return;
+  }
+  await salvarPlantaoViaApi('/api/plantao/escreventes', {
+    method: 'POST',
+    body: JSON.stringify({ nome })
+  }, 'Escrevente cadastrado');
+  input.value = '';
+}
+
+async function removerEscreventePlantao(escreventeId) {
+  if (!confirm('Remover este escrevente, suas ferias e escalas futuras?')) return;
+  await salvarPlantaoViaApi(`/api/plantao/escreventes/${Number(escreventeId)}`, { method: 'DELETE' }, 'Escrevente removido');
+}
+
+async function adicionarFeriasPlantao() {
+  const escreventeId = Number(document.getElementById('plantaoFeriasEscrevente').value);
+  const inicio = document.getElementById('plantaoFeriasInicio').value;
+  const fim = document.getElementById('plantaoFeriasFim').value;
+  await salvarPlantaoViaApi('/api/plantao/ferias', {
+    method: 'POST',
+    body: JSON.stringify({ escreventeId, inicio, fim })
+  }, 'Ferias adicionadas');
+}
+
+async function removerFeriasPlantao(feriasId) {
+  await salvarPlantaoViaApi(`/api/plantao/ferias/${Number(feriasId)}`, { method: 'DELETE' }, 'Ferias removidas');
+}
+
+async function gerarEscalaPlantao() {
+  const inicio = document.getElementById('plantaoEscalaInicio').value;
+  const fim = document.getElementById('plantaoEscalaFim').value;
+  await salvarPlantaoViaApi('/api/plantao/gerar-escala', {
+    method: 'POST',
+    body: JSON.stringify({ inicio, fim })
+  }, 'Escala gerada');
+}
+
 async function carregarGrupos() {
   try {
     const response = await fetch('/api/grupos', { headers: authHeaders() });
@@ -2117,6 +2331,7 @@ async function carregarGrupos() {
     renderGrupos();
     renderPinnedNotice();
     renderAvisosGrupoAdmin();
+    atualizarVisibilidadePlantaoPanel();
     atualizarPainelInicialSeAberto();
   } catch (err) {
     console.error(err);
@@ -2124,6 +2339,7 @@ async function carregarGrupos() {
     renderGrupos();
     renderPinnedNotice();
     renderAvisosGrupoAdmin();
+    atualizarVisibilidadePlantaoPanel();
     atualizarPainelInicialSeAberto();
   }
 }
@@ -2339,6 +2555,7 @@ async function carregarChat(tipo, id, nome) {
   renderPinnedNotice();
   renderPinnedMessageBar();
   atualizarBotaoFavorito();
+  atualizarVisibilidadePlantaoPanel();
   const messagesContainer = document.getElementById('messagesContainer');
   messagesContainer.classList.add('preparing-scroll');
   messagesContainer.innerHTML = '';
@@ -3548,6 +3765,7 @@ function fazerLogout() {
   document.getElementById('headerMotivation').classList.remove('hidden');
   document.getElementById('typingIndicator').textContent = '';
   renderPinnedNotice();
+  atualizarVisibilidadePlantaoPanel();
   document.getElementById('fileInput').value = '';
   setUploadStatus('');
   updateHeaderIcon(null);

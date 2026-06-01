@@ -212,6 +212,52 @@
 
       <div class="drop-hint">Solte o arquivo para enviar nesta conversa</div>
 
+      <section class="plantao-panel hidden" id="plantaoPanel" aria-label="Escala de plantao">
+        <div class="plantao-toolbar">
+          <div>
+            <div class="plantao-kicker">Registro Civil de Chapeco SC</div>
+            <h3>Escala de plantao dos escreventes</h3>
+          </div>
+          <button class="plantao-icon-btn" type="button" onclick="alternarPlantaoPanel()" title="Recolher escala" aria-label="Recolher escala">
+            <span id="plantaoToggleIcon">-</span>
+          </button>
+        </div>
+        <div class="plantao-body" id="plantaoBody">
+          <div class="plantao-grid">
+            <div class="plantao-card">
+              <div class="plantao-card-title">Escreventes</div>
+              <div class="plantao-inline-form">
+                <input class="field" id="plantaoNomeInput" type="text" maxlength="80" placeholder="Nome do escrevente" />
+                <button class="btn btn-primary plantao-action" type="button" onclick="adicionarEscreventePlantao()">Cadastrar</button>
+              </div>
+              <div class="plantao-list" id="plantaoEscreventesList"></div>
+            </div>
+
+            <div class="plantao-card">
+              <div class="plantao-card-title">Ferias</div>
+              <div class="plantao-form-grid">
+                <select class="field" id="plantaoFeriasEscrevente"></select>
+                <input class="field" id="plantaoFeriasInicio" type="date" />
+                <input class="field" id="plantaoFeriasFim" type="date" />
+                <button class="btn btn-primary plantao-action" type="button" onclick="adicionarFeriasPlantao()">Adicionar</button>
+              </div>
+              <div class="plantao-list" id="plantaoFeriasList"></div>
+            </div>
+
+            <div class="plantao-card plantao-card-wide">
+              <div class="plantao-card-title">Gerar escala automatica</div>
+              <div class="plantao-form-grid escala">
+                <input class="field" id="plantaoEscalaInicio" type="date" />
+                <input class="field" id="plantaoEscalaFim" type="date" />
+                <button class="btn btn-primary plantao-action" type="button" onclick="gerarEscalaPlantao()">Gerar escala</button>
+              </div>
+              <div class="plantao-summary" id="plantaoResumo"></div>
+              <div class="plantao-schedule" id="plantaoEscalaList"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div class="messages-container" id="messagesContainer" role="log" aria-live="polite" aria-label="Mensagens da conversa">
         <div class="empty-state welcome-state">
           <div class="welcome-logo-card" aria-label="Logo Dias de Castro">
@@ -601,7 +647,6 @@
   <script src="/assets/app.js?v=20260529-console-polish"></script>
 </body>
 </html>
-
 
 
 
