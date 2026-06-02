@@ -1,7 +1,7 @@
 // Service Worker — Chat Interno
 // Estratégia: Cache-first para assets, network-first para API, push real.
 
-const CACHE_NAME = 'chatinterno-v13-plantao-excluir-periodo';
+const CACHE_NAME = 'chatinterno-v14-chat-scroll-race';
 const STATIC_ASSETS = ['/manifest.json'];
 
 // ── Install ────────────────────────────────────────────────────────────────

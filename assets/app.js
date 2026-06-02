@@ -21,6 +21,7 @@ let currentMessagesCache = [];
 let currentMessagesHasMore = false;
 let currentMessagesNextBefore = null;
 let currentMessagesLoadingOlder = false;
+let currentChatLoadSeq = 0;
 let initialScrollLockTimers = [];
 let activeReplyMessageId = null;
 let editingMessageId = null;
@@ -2625,6 +2626,7 @@ function renderContatos() {
 }
 
 async function carregarChat(tipo, id, nome) {
+  const loadSeq = ++currentChatLoadSeq;
   tipoChat = tipo;
   chatIdAtual = id;
   currentMessageSearch = '';
@@ -2667,6 +2669,8 @@ async function carregarChat(tipo, id, nome) {
     if (!response.ok) throw new Error('Falha ao carregar mensagens');
 
     const payload = await response.json();
+    if (loadSeq !== currentChatLoadSeq || tipoChat !== tipo || Number(chatIdAtual) !== Number(id)) return;
+
     const mensagens = Array.isArray(payload) ? payload : payload.mensagens;
     currentMessagesHasMore = Boolean(payload?.hasMore);
     currentMessagesNextBefore = payload?.nextBefore || (Array.isArray(mensagens) && mensagens.length ? mensagens[0].criado_em : null);
@@ -2687,6 +2691,7 @@ async function carregarChat(tipo, id, nome) {
       socket.emit('marcar-lidas', { remetenteId: id, destinatarioId: usuarioAtual.id });
     }
   } catch (err) {
+    if (loadSeq !== currentChatLoadSeq || tipoChat !== tipo || Number(chatIdAtual) !== Number(id)) return;
     console.error(err);
     messagesContainer.classList.remove('preparing-scroll');
     mostrarNotificacao('Erro ao carregar conversa', 'error');
@@ -2836,7 +2841,7 @@ function scrollMessagesToBottom({ stabilize = false } = {}) {
   if (!stabilize) return;
 
   initialScrollLockTimers.forEach(clearTimeout);
-  initialScrollLockTimers = [80, 180, 420, 900].map((delay) => setTimeout(applyScroll, delay));
+  initialScrollLockTimers = [80, 180, 420, 900, 1400].map((delay) => setTimeout(applyScroll, delay));
 
   container.querySelectorAll('img, video').forEach((media) => {
     if (media.complete || media.readyState >= 1) return;
@@ -2901,18 +2906,23 @@ function renderMessages(options = {}) {
 
 async function carregarMensagensAnteriores() {
   if (!tipoChat || !chatIdAtual || !currentMessagesHasMore || currentMessagesLoadingOlder || !currentMessagesNextBefore) return;
+  const loadSeq = currentChatLoadSeq;
+  const requestTipo = tipoChat;
+  const requestChatId = chatIdAtual;
   const container = document.getElementById('messagesContainer');
   const previousHeight = container.scrollHeight;
   currentMessagesLoadingOlder = true;
   renderMessages({ scrollToBottom: false });
 
   try {
-    const endpoint = tipoChat === 'grupo'
-      ? `/api/mensagens/grupo/${chatIdAtual}?limit=${MESSAGE_PAGE_SIZE}&before=${encodeURIComponent(currentMessagesNextBefore)}`
-      : `/api/mensagens/privadas/${chatIdAtual}?limit=${MESSAGE_PAGE_SIZE}&before=${encodeURIComponent(currentMessagesNextBefore)}`;
+    const endpoint = requestTipo === 'grupo'
+      ? `/api/mensagens/grupo/${requestChatId}?limit=${MESSAGE_PAGE_SIZE}&before=${encodeURIComponent(currentMessagesNextBefore)}`
+      : `/api/mensagens/privadas/${requestChatId}?limit=${MESSAGE_PAGE_SIZE}&before=${encodeURIComponent(currentMessagesNextBefore)}`;
     const response = await fetch(endpoint, { headers: authHeaders() });
     if (!response.ok) throw new Error('Falha ao carregar historico');
     const payload = await response.json();
+    if (loadSeq !== currentChatLoadSeq || tipoChat !== requestTipo || Number(chatIdAtual) !== Number(requestChatId)) return;
+
     const mensagens = Array.isArray(payload) ? payload : payload.mensagens;
     const older = Array.isArray(mensagens)
       ? mensagens.map((msg) => normalizeMessage({
@@ -2931,8 +2941,10 @@ async function carregarMensagensAnteriores() {
     currentMessagesHasMore = Boolean(payload?.hasMore);
     currentMessagesNextBefore = payload?.nextBefore || (currentMessagesCache.length ? currentMessagesCache[0].criado_em : null);
   } catch (err) {
+    if (loadSeq !== currentChatLoadSeq || tipoChat !== requestTipo || Number(chatIdAtual) !== Number(requestChatId)) return;
     mostrarNotificacao('Erro ao carregar historico: ' + err.message, 'error');
   } finally {
+    if (loadSeq !== currentChatLoadSeq || tipoChat !== requestTipo || Number(chatIdAtual) !== Number(requestChatId)) return;
     currentMessagesLoadingOlder = false;
     renderMessages({ scrollToBottom: false });
     container.scrollTop = Math.max(0, container.scrollHeight - previousHeight);
