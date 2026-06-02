@@ -7608,3 +7608,33 @@ body:not(.theme-dark) .plantao-empty {
   height: 40px;
   border-radius: 12px;
 }
+
+/* Mantem conversas em lados opostos: recebidas na esquerda, enviadas na direita. */
+.message-row {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.message-row:not(.own) {
+  justify-content: flex-start;
+}
+
+.message-row.own {
+  justify-content: flex-end;
+}
+
+.message-row:not(.own) .message-avatar {
+  order: 1;
+}
+
+.message-row:not(.own) .message {
+  order: 2;
+}
+
+.message-row.own .message {
+  order: 1;
+}
+
+.message-row.own .message-avatar {
+  order: 2;
+}
