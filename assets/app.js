@@ -34,6 +34,7 @@ let conversationFilter = 'todos';
 let favoriteChats = new Set();
 let priorityChats = new Set();
 let priorityMessages = new Set();
+let savedStickers = [];
 let pinnedMessagesByConversation = {};
 let attendanceStatusState = {};
 let forwardMessageId = null;
@@ -60,6 +61,7 @@ const THEME_KEY = 'chatinterno.theme';
 const FAVORITES_KEY = 'chatinterno.favoriteChats';
 const PRIORITY_KEY = 'chatinterno.priorityChats';
 const MESSAGE_PRIORITY_KEY = 'chatinterno.priorityMessages';
+const STICKERS_KEY = 'chatinterno.savedStickers';
 const ATTENDANCE_STATUS_KEY = 'chatinterno.attendanceStatus';
 const SIDEBAR_KEY = 'chatinterno.sidebarCollapsed';
 const DENSITY_KEY = 'chatinterno.messageDensity';
@@ -861,6 +863,105 @@ function getAttachmentKindLabel(message) {
   return 'Arquivo';
 }
 
+function getStickerFromMessage(message) {
+  if (!isStickerAttachment(message) || !message.arquivo_url) return null;
+  return {
+    url: message.arquivo_url,
+    name: message.arquivo_nome_original || 'figurinha.webp',
+    mimetype: message.arquivo_mimetype || 'image/webp',
+    size: Number(message.arquivo_tamanho || 0),
+    savedAt: new Date().toISOString()
+  };
+}
+
+function carregarFigurinhasSalvas() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(STICKERS_KEY) || '[]');
+    savedStickers = Array.isArray(stored)
+      ? stored.filter((item) => item?.url && item?.name).slice(0, 80)
+      : [];
+  } catch (_err) {
+    savedStickers = [];
+  }
+}
+
+function salvarFigurinhasSalvas() {
+  localStorage.setItem(STICKERS_KEY, JSON.stringify(savedStickers.slice(0, 80)));
+}
+
+function adicionarFigurinhaSalva(message, { notify = false } = {}) {
+  const sticker = getStickerFromMessage(message);
+  if (!sticker) return false;
+  const exists = savedStickers.some((item) => item.url === sticker.url);
+  if (exists) return false;
+  savedStickers = [sticker, ...savedStickers].slice(0, 80);
+  salvarFigurinhasSalvas();
+  renderStickerPicker();
+  if (notify) mostrarNotificacao('Figurinha salva', 'success');
+  return true;
+}
+
+function salvarFigurinhaMensagem(messageId) {
+  const message = getMessageByIdFromCache(messageId);
+  if (!message) return;
+  const added = adicionarFigurinhaSalva(message, { notify: true });
+  if (!added) mostrarNotificacao('Essa figurinha ja esta salva', 'info');
+}
+
+function fecharStickerPicker() {
+  document.getElementById('stickerPicker')?.classList.add('hidden');
+  document.getElementById('stickerToggleBtn')?.setAttribute('aria-expanded', 'false');
+}
+
+function renderStickerPicker() {
+  const picker = document.getElementById('stickerPicker');
+  if (!picker) return;
+  if (!savedStickers.length) {
+    picker.innerHTML = '<div class="sticker-empty">Nenhuma figurinha salva</div>';
+    return;
+  }
+  picker.innerHTML = savedStickers.map((sticker, index) => `
+    <button type="button" class="sticker-option" data-sticker-index="${index}" title="${escapeHtml(sticker.name)}" aria-label="Enviar figurinha ${escapeHtml(sticker.name)}">
+      <img src="${escapeHtml(sticker.url)}" alt="${escapeHtml(sticker.name)}" loading="lazy" />
+    </button>
+  `).join('');
+  picker.querySelectorAll('[data-sticker-index]').forEach((button) => {
+    button.addEventListener('click', () => enviarFigurinhaSalva(Number(button.dataset.stickerIndex)));
+  });
+}
+
+function alternarFigurinhas(event) {
+  event.stopPropagation();
+  const picker = document.getElementById('stickerPicker');
+  if (!picker) return;
+  renderStickerPicker();
+  picker.classList.toggle('hidden');
+  document.getElementById('stickerToggleBtn')?.setAttribute('aria-expanded', String(!picker.classList.contains('hidden')));
+  fecharEmojiPicker();
+  document.getElementById('templatePicker')?.classList.add('hidden');
+}
+
+async function enviarFigurinhaSalva(index) {
+  const sticker = savedStickers[index];
+  if (!sticker) return;
+  if (!tipoChat || !chatIdAtual) {
+    mostrarNotificacao('Selecione uma conversa antes de enviar figurinha', 'error');
+    return;
+  }
+  try {
+    const response = await fetch(sticker.url);
+    if (!response.ok) throw new Error('Nao foi possivel abrir a figurinha salva');
+    const blob = await response.blob();
+    const extension = getClipboardExtension(blob.type || sticker.mimetype) || '.webp';
+    const cleanName = String(sticker.name || 'figurinha.webp').replace(/\.[^.]+$/, '') || 'figurinha';
+    const file = new File([blob], `${cleanName}${extension}`, { type: blob.type || sticker.mimetype || 'image/webp' });
+    fecharStickerPicker();
+    await enviarArquivoSelecionado(file, { clearInput: false });
+  } catch (err) {
+    mostrarNotificacao(err.message || 'Erro ao enviar figurinha', 'error');
+  }
+}
+
 function isPdfAttachment(message) {
   return message?.tipo === 'arquivo' && /\.pdf$/i.test(String(message.arquivo_nome_original || message.arquivo_url || ''));
 }
@@ -1541,6 +1642,8 @@ function alternarEmojis(event) {
   const picker = document.getElementById('emojiPicker');
   picker.classList.toggle('hidden');
   document.getElementById('emojiToggleBtn')?.setAttribute('aria-expanded', String(!picker.classList.contains('hidden')));
+  fecharStickerPicker();
+  document.getElementById('templatePicker')?.classList.add('hidden');
 }
 
 function inserirEmoji(emoji) {
@@ -1895,6 +1998,7 @@ function processarMensagemGrupo(data) {
     usuarioNome: data.usuarioNome,
     usuarioId: data.usuarioId
   });
+  adicionarFigurinhaSalva(message);
   const chatKey = getChatKey('grupo', data.grupoId);
   const isCurrent = tipoChat === 'grupo' && Number(chatIdAtual) === Number(data.grupoId);
   const preview = data.tipo === 'arquivo'
@@ -1939,6 +2043,7 @@ function processarMensagemPrivada(data) {
     usuarioNome: data.remetenteNome,
     usuarioId: data.remetente_id
   });
+  adicionarFigurinhaSalva(message);
   const chatKey = getChatKey('privado', data.remetente_id);
   const isCurrent = tipoChat === 'privado' && Number(chatIdAtual) === Number(data.remetente_id);
   const preview = data.tipo === 'arquivo'
@@ -2796,6 +2901,7 @@ async function carregarChat(tipo, id, nome) {
           showReactionPicker: false
         }))
       : [];
+    currentMessagesCache.forEach((message) => adicionarFigurinhaSalva(message));
     renderMessages({ stabilizeBottom: true });
 
     if (tipo === 'grupo') {
@@ -2876,6 +2982,7 @@ function renderMessageRow(message) {
       <button class="message-action-btn" onclick="responderMensagem(${Number(message.id)})" title="Responder">&#8617;</button>
       <button class="message-action-btn" onclick="copiarMensagem(${Number(message.id)})" title="Copiar mensagem">&#128203;</button>
       <button class="message-action-btn" onclick="abrirEncaminharMensagem(${Number(message.id)})" title="Encaminhar">&#10150;</button>
+      ${stickerAttachment ? `<button class="message-action-btn" onclick="salvarFigurinhaMensagem(${Number(message.id)})" title="Salvar figurinha">Salvar</button>` : ''}
       ${ehOutro && tipoChat === 'privado' ? `<button class="message-action-btn" onclick="marcarConversaComoNaoLida(${Number(message.id)}, ${Number(message.usuarioId)})" title="Marcar conversa como não lida">Nao lido</button>` : ''}
       ${!ehOutro && message.tipo === 'texto' ? `<button class="message-action-btn" onclick="prepararEdicaoMensagem(${Number(message.id)})" title="Editar">&#9998;</button>` : ''}
       <button class="message-action-btn" onclick="alternarReacaoRapida(${Number(message.id)})" title="Reagir">+</button>
@@ -3380,6 +3487,7 @@ function enviarMensagem() {
   autoResizeComposer();
   input.focus();
   fecharEmojiPicker();
+  fecharStickerPicker();
   activeReplyMessageId = null;
   atualizarBarraContexto();
 }
@@ -3428,6 +3536,12 @@ async function enviarArquivoSelecionado(arquivo, options = {}) {
       tipo: 'arquivo',
       showReactionPicker: false
     });
+    adicionarFigurinhaSalva(normalizeMessage({
+      ...data,
+      usuarioNome: usuarioAtual.nome,
+      usuarioId: usuarioAtual.id,
+      tipo: 'arquivo'
+    }));
 
     if (tipoChat === 'grupo') renderGrupos();
     else renderContatos();
@@ -4007,6 +4121,7 @@ function fecharModal(modalId) {
 window.onclick = function(event) {
   if (!event.target.closest('.composer')) {
     fecharEmojiPicker();
+    fecharStickerPicker();
   }
   if (event.target.classList.contains('modal')) {
     event.target.classList.remove('active');
@@ -4016,6 +4131,7 @@ window.onclick = function(event) {
 carregarFavoritos();
 carregarPrioridades();
 carregarMensagensPrioritarias();
+carregarFigurinhasSalvas();
 carregarStatusAtendimento();
 aplicarTema();
 aplicarEstadoSidebar();
@@ -4255,6 +4371,7 @@ function alternarTemplates(event) {
     renderTemplatePicker();
     picker.classList.remove('hidden');
     document.getElementById('emojiPicker').classList.add('hidden');
+    fecharStickerPicker();
   } else {
     picker.classList.add('hidden');
   }

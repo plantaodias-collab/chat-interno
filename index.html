@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chat Interno - Equipe</title>
   <link rel="icon" id="appFavicon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Cpath d='M18 22c0-4.4 3.6-8 8-8h12c4.4 0 8 3.6 8 8v9c0 4.4-3.6 8-8 8H31l-8 7v-7h-1c-4.4 0-8-3.6-8-8V22Z' fill='white'/%3E%3Ccircle cx='27' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='33' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='39' cy='27' r='3' fill='%232563eb'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="/assets/app.css?v=20260602-stickers-resumo" />
+  <link rel="stylesheet" href="/assets/app.css?v=20260602-sticker-library" />
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
 </head>
@@ -328,6 +328,8 @@
           <input type="file" id="fileInput" class="hidden" onchange="enviarArquivo()" />
           <button class="emoji-btn" id="emojiToggleBtn" onclick="alternarEmojis(event)" title="Emojis" aria-label="Abrir seletor de emojis" aria-expanded="false">&#128522;</button>
           <div class="emoji-picker hidden" id="emojiPicker"></div>
+          <button class="attach-btn" id="stickerToggleBtn" onclick="alternarFigurinhas(event)" title="Figurinhas" aria-label="Abrir figurinhas salvas" aria-expanded="false">&#128444;</button>
+          <div class="sticker-picker hidden" id="stickerPicker"></div>
           <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Anexar" aria-label="Anexar arquivo">&#128206;</button>
           <button class="attach-btn" id="templateToggleBtn" onclick="alternarTemplates(event)" title="Templates de resposta" aria-label="Templates de resposta">&#9741;</button>
           <div class="template-picker hidden" id="templatePicker"></div>
@@ -653,6 +655,6 @@
   <div id="notificationContainer" class="notification-container"></div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.js?v=20260602-webp-whatsapp"></script>
+  <script src="/assets/app.js?v=20260602-sticker-library"></script>
 </body>
 </html>
