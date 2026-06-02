@@ -325,7 +325,7 @@
           <button class="quick-reply-btn" type="button" onclick="usarRespostaRapida('Vou encaminhar para o setor responsável e acompanho por aqui.')">Encaminhar</button>
         </div>
         <div class="composer">
-          <input type="file" id="fileInput" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.avi,image/gif,image/webp,video/x-msvideo" onchange="enviarArquivo()" />
+          <input type="file" id="fileInput" class="hidden" onchange="enviarArquivo()" />
           <button class="emoji-btn" id="emojiToggleBtn" onclick="alternarEmojis(event)" title="Emojis" aria-label="Abrir seletor de emojis" aria-expanded="false">&#128522;</button>
           <div class="emoji-picker hidden" id="emojiPicker"></div>
           <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Anexar" aria-label="Anexar arquivo">&#128206;</button>
@@ -653,6 +653,6 @@
   <div id="notificationContainer" class="notification-container"></div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.js?v=20260602-stickers-resumo"></script>
+  <script src="/assets/app.js?v=20260602-webp-whatsapp"></script>
 </body>
 </html>

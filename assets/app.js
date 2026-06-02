@@ -1324,6 +1324,40 @@ function getClipboardExtension(mimeType = '') {
   }[normalized] || '';
 }
 
+function hasAllowedUploadExtension(fileName = '') {
+  return /\.(pdf|docx?|xlsx?|jpe?g|png|gif|webp|avi)$/i.test(String(fileName || ''));
+}
+
+async function hasWebpSignature(file) {
+  if (!file?.slice || !file?.arrayBuffer) return false;
+  try {
+    const bytes = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+    const text = Array.from(bytes).map((byte) => String.fromCharCode(byte)).join('');
+    return text.startsWith('RIFF') && text.slice(8, 12) === 'WEBP';
+  } catch (_err) {
+    return false;
+  }
+}
+
+async function normalizeUploadFile(file) {
+  if (!file) return null;
+  if (hasAllowedUploadExtension(file.name)) return file;
+
+  const isWebp = String(file.type || '').toLowerCase() === 'image/webp' || await hasWebpSignature(file);
+  if (!isWebp) return file;
+
+  const cleanBase = String(file.name || 'figurinha-whatsapp')
+    .replace(/\.[^.]+$/, '')
+    .replace(/\s+/g, ' ')
+    .trim() || 'figurinha-whatsapp';
+
+  try {
+    return new File([file], `${cleanBase}.webp`, { type: 'image/webp' });
+  } catch (_err) {
+    return file;
+  }
+}
+
 function normalizeClipboardFile(file) {
   if (!file) return null;
   if (file.name) return file;
@@ -3354,6 +3388,7 @@ async function enviarArquivoSelecionado(arquivo, options = {}) {
   const input = document.getElementById('fileInput');
   const clearInput = options.clearInput !== false;
   if (!arquivo) return;
+  const uploadFile = await normalizeUploadFile(arquivo);
   if (!tipoChat || !chatIdAtual) {
     mostrarNotificacao('Selecione um grupo ou contato antes de enviar arquivo', 'error');
     if (clearInput) input.value = '';
@@ -3361,9 +3396,9 @@ async function enviarArquivoSelecionado(arquivo, options = {}) {
   }
 
   try {
-    setUploadStatus(`Enviando ${arquivo.name}...`);
+    setUploadStatus(`Enviando ${uploadFile.name}...`);
     const formData = new FormData();
-    formData.append('arquivo', arquivo);
+    formData.append('arquivo', uploadFile);
     formData.append('tipoChat', tipoChat);
     formData.append('chatId', chatIdAtual);
     if (activeReplyMessageId) formData.append('replyToId', activeReplyMessageId);
@@ -3397,7 +3432,7 @@ async function enviarArquivoSelecionado(arquivo, options = {}) {
     if (tipoChat === 'grupo') renderGrupos();
     else renderContatos();
 
-    setUploadStatus(`Arquivo enviado: ${arquivo.name}`);
+    setUploadStatus(`Arquivo enviado: ${uploadFile.name}`);
     setTimeout(() => setUploadStatus(''), 4000);
     activeReplyMessageId = null;
     atualizarBarraContexto();

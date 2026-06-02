@@ -29,6 +29,19 @@ const BACKUP_DIR = path.join(STORAGE_ROOT, 'backups');
 const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.avi']);
+const ALLOWED_MIME_EXTENSIONS = {
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+  'video/x-msvideo': '.avi',
+  'application/pdf': '.pdf',
+  'application/msword': '.doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+  'application/vnd.ms-excel': '.xls',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
+};
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json'];
 
@@ -167,10 +180,16 @@ function sanitizeFileName(name) {
     .replace(/[^a-zA-Z0-9._-]/g, '_');
 }
 
+function getUploadExtension(file) {
+  const ext = path.extname(file?.originalname || '').toLowerCase();
+  if (ALLOWED_EXTENSIONS.has(ext)) return ext;
+  return ALLOWED_MIME_EXTENSIONS[String(file?.mimetype || '').toLowerCase()] || ext;
+}
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase();
+    const ext = getUploadExtension(file);
     const base = path.basename(file.originalname || 'arquivo', ext);
     const safeBase = sanitizeFileName(base);
     cb(null, `${Date.now()}_${safeBase}${ext}`);
@@ -181,7 +200,7 @@ const upload = multer({
   storage,
   limits: { fileSize: MAX_FILE_SIZE },
   fileFilter: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase();
+    const ext = getUploadExtension(file);
     if (!ALLOWED_EXTENSIONS.has(ext)) {
       return cb(new Error('Tipo de arquivo n�o permitido'));
     }
