@@ -53,6 +53,7 @@ let plantaoState = {
   escalas: []
 };
 let plantaoCollapsed = false;
+let plantaoEditingPeriodoKey = '';
 const REACTION_OPTIONS = ['\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F44F}', '\u{1F525}', '\u{1F440}'];
 const STORAGE_KEY = 'chatinterno.session';
 const THEME_KEY = 'chatinterno.theme';
@@ -2206,6 +2207,10 @@ function getPlantaoEscalaPeriodos() {
   }, []);
 }
 
+function getPlantaoPeriodoKey(inicio, fim) {
+  return `${String(inicio || '')}|${String(fim || '')}`;
+}
+
 function normalizarPlantaoState(data) {
   plantaoState = {
     escreventes: Array.isArray(data?.escreventes) ? data.escreventes : [],
@@ -2322,16 +2327,37 @@ function renderPlantaoPanel() {
   if (escalaList) {
     const periodos = getPlantaoEscalaPeriodos();
     escalaList.innerHTML = periodos.length
-      ? periodos.map((item) => `
+      ? periodos.map((item) => {
+        const periodoKey = getPlantaoPeriodoKey(item.inicio, item.fim);
+        const isEditing = plantaoEditingPeriodoKey === periodoKey;
+        const editOptions = plantaoState.escreventes.length
+          ? plantaoState.escreventes.map((escrevente) => `
+            <option value="${Number(escrevente.id)}" ${Number(escrevente.id) === Number(item.escreventeId) ? 'selected' : ''}>${escapeHtml(escrevente.nome)}</option>
+          `).join('')
+          : '<option value="">Cadastre um escrevente</option>';
+        return `
         <div class="plantao-scale-row ${item.conflito ? 'conflict' : ''}" ${getPlantaoColorStyle(item.escreventeId, item.conflito)}>
           <div class="plantao-scale-main">
             <strong>${formatDateOnlyBr(item.inicio)} a ${formatDateOnlyBr(item.fim)}</strong>
             <span>${item.conflito ? 'Conflito de ferias' : escapeHtml(getPlantaoEscreventeNome(item.escreventeId))}</span>
           </div>
-          <button class="plantao-scale-delete" type="button" onclick="excluirPeriodoEscalaPlantao('${escapeHtml(item.inicio)}','${escapeHtml(item.fim)}')" title="Excluir este periodo" aria-label="Excluir este periodo">x</button>
+          <div class="plantao-scale-actions">
+            <button class="plantao-scale-edit" type="button" onclick="editarPeriodoEscalaPlantao('${escapeHtml(item.inicio)}','${escapeHtml(item.fim)}')" title="Editar escrevente deste periodo" aria-label="Editar escrevente deste periodo">Editar</button>
+            <button class="plantao-scale-delete" type="button" onclick="excluirPeriodoEscalaPlantao('${escapeHtml(item.inicio)}','${escapeHtml(item.fim)}')" title="Excluir este periodo" aria-label="Excluir este periodo">x</button>
+          </div>
+          ${isEditing ? `
+            <div class="plantao-period-edit">
+              <select class="field" id="plantaoEditPeriodoSelect">
+                ${editOptions}
+              </select>
+              <button class="btn btn-primary plantao-edit-save" type="button" onclick="salvarEdicaoPeriodoEscalaPlantao('${escapeHtml(item.inicio)}','${escapeHtml(item.fim)}')">Salvar</button>
+              <button class="btn btn-secondary plantao-edit-cancel" type="button" onclick="cancelarEdicaoPeriodoEscalaPlantao()">Cancelar</button>
+            </div>
+          ` : ''}
           ${item.observacao ? `<small>${escapeHtml(item.observacao)}</small>` : ''}
         </div>
-      `).join('')
+      `;
+      }).join('')
       : '<div class="plantao-empty">Gere a escala para visualizar os plantoes.</div>';
   }
 }
@@ -2402,6 +2428,30 @@ async function cadastrarPeriodoPlantao() {
     method: 'POST',
     body: JSON.stringify({ escreventeId, inicio, fim })
   }, 'Periodo cadastrado');
+}
+
+function editarPeriodoEscalaPlantao(inicio, fim) {
+  plantaoEditingPeriodoKey = getPlantaoPeriodoKey(inicio, fim);
+  renderPlantaoPanel();
+}
+
+function cancelarEdicaoPeriodoEscalaPlantao() {
+  plantaoEditingPeriodoKey = '';
+  renderPlantaoPanel();
+}
+
+async function salvarEdicaoPeriodoEscalaPlantao(inicio, fim) {
+  const select = document.getElementById('plantaoEditPeriodoSelect');
+  const escreventeId = Number(select?.value);
+  if (!escreventeId) {
+    mostrarNotificacao('Selecione um escrevente para este periodo', 'warning');
+    return;
+  }
+  plantaoEditingPeriodoKey = '';
+  await salvarPlantaoViaApi('/api/plantao/escala-periodo', {
+    method: 'POST',
+    body: JSON.stringify({ escreventeId, inicio, fim })
+  }, 'Periodo atualizado');
 }
 
 async function excluirEscalaPlantao() {

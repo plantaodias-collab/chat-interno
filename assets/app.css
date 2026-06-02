@@ -7400,6 +7400,13 @@ body:not(.theme-dark) .contact-group-count.zero {
   font-size: 12px;
 }
 
+.plantao-scale-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plantao-scale-edit,
 .plantao-scale-delete {
   width: 24px;
   height: 24px;
@@ -7409,6 +7416,35 @@ body:not(.theme-dark) .contact-group-count.zero {
   color: #991b1b;
   cursor: pointer;
   font-weight: 900;
+}
+
+.plantao-scale-edit {
+  width: auto;
+  padding: 0 9px;
+  border-color: rgba(37, 99, 235, .25);
+  color: #1d4ed8;
+}
+
+.plantao-period-edit {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.plantao-period-edit .field {
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.plantao-period-edit .btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 7px;
+  font-size: 12px;
 }
 
 .plantao-scale-row small {
@@ -7488,6 +7524,10 @@ body:not(.theme-dark) .plantao-empty {
 
   .plantao-action {
     width: 100%;
+  }
+
+  .plantao-period-edit {
+    grid-template-columns: 1fr;
   }
 }
 
