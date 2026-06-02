@@ -806,7 +806,7 @@ function getReactionNames(message, emoji, userIds = []) {
 function getMessageSnippet(message) {
   if (!message) return '';
   if (message.tipo === 'arquivo') {
-    return `Arquivo: ${message.arquivo_nome_original || 'anexo'}`;
+    return `${getAttachmentKindLabel(message)}: ${message.arquivo_nome_original || 'anexo'}`;
   }
   return String(message.conteudo || '').trim() || 'Mensagem';
 }
@@ -841,6 +841,24 @@ function isMessageMatch(message, query) {
 
 function isImageAttachment(message) {
   return message?.tipo === 'arquivo' && /\.(png|jpe?g|gif|webp)$/i.test(String(message.arquivo_nome_original || message.arquivo_url || ''));
+}
+
+function isStickerAttachment(message) {
+  if (!isImageAttachment(message)) return false;
+  const name = String(message.arquivo_nome_original || message.arquivo_url || '');
+  const mimetype = String(message.arquivo_mimetype || '').toLowerCase();
+  const extSticker = /\.(gif|webp)$/i.test(name);
+  const smallImage = Number(message.arquivo_tamanho || 0) > 0 && Number(message.arquivo_tamanho || 0) <= 512 * 1024;
+  return extSticker || (mimetype.startsWith('image/') && smallImage);
+}
+
+function getAttachmentKindLabel(message) {
+  if (!message || message.tipo !== 'arquivo') return '';
+  if (isStickerAttachment(message)) return 'Figurinha';
+  if (isImageAttachment(message)) return 'Imagem';
+  if (isVideoAttachment(message)) return 'Video';
+  if (isPdfAttachment(message)) return 'PDF';
+  return 'Arquivo';
 }
 
 function isPdfAttachment(message) {
@@ -1296,6 +1314,8 @@ function getClipboardExtension(mimeType = '') {
     'image/png': '.png',
     'image/jpeg': '.jpg',
     'image/jpg': '.jpg',
+    'image/gif': '.gif',
+    'image/webp': '.webp',
     'application/pdf': '.pdf',
     'application/msword': '.doc',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
@@ -1612,7 +1632,8 @@ function getDashboardChatItems(filter, limit = 4) {
     favorite: favoriteChats.has(getChatKey('grupo', grupo.id)),
     attendanceStatus: getAttendanceStatus(getChatKey('grupo', grupo.id)),
     online: false,
-    time: lastTimeState[getChatKey('grupo', grupo.id)] || ''
+    time: lastTimeState[getChatKey('grupo', grupo.id)] || '',
+    timestamp: lastTimestampState[getChatKey('grupo', grupo.id)] || 0
   }));
 
   const contactItems = contatosCache.map((usuario) => ({
@@ -1625,7 +1646,8 @@ function getDashboardChatItems(filter, limit = 4) {
     favorite: favoriteChats.has(getChatKey('privado', usuario.id)),
     attendanceStatus: getAttendanceStatus(getChatKey('privado', usuario.id)),
     online: onlineState.has(Number(usuario.id)),
-    time: lastTimeState[getChatKey('privado', usuario.id)] || ''
+    time: lastTimeState[getChatKey('privado', usuario.id)] || '',
+    timestamp: lastTimestampState[getChatKey('privado', usuario.id)] || 0
   }));
 
   let items = [...groupItems, ...contactItems];
@@ -1640,6 +1662,7 @@ function getDashboardChatItems(filter, limit = 4) {
       if (a.priority !== b.priority) return a.priority ? -1 : 1;
       if (a.unread !== b.unread) return b.unread - a.unread;
       if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
+      if (a.timestamp !== b.timestamp) return b.timestamp - a.timestamp;
       return String(a.nome).localeCompare(String(b.nome), 'pt-BR');
     })
     .slice(0, limit);
@@ -1841,7 +1864,7 @@ function processarMensagemGrupo(data) {
   const chatKey = getChatKey('grupo', data.grupoId);
   const isCurrent = tipoChat === 'grupo' && Number(chatIdAtual) === Number(data.grupoId);
   const preview = data.tipo === 'arquivo'
-    ? `${data.usuarioNome}: Arquivo: ${data.arquivo_nome_original}`
+    ? `${data.usuarioNome}: ${getAttachmentKindLabel(data)}: ${data.arquivo_nome_original}`
     : `${data.usuarioNome}: ${data.conteudo}`;
 
   lastPreviewState[chatKey] = preview;
@@ -1885,7 +1908,7 @@ function processarMensagemPrivada(data) {
   const chatKey = getChatKey('privado', data.remetente_id);
   const isCurrent = tipoChat === 'privado' && Number(chatIdAtual) === Number(data.remetente_id);
   const preview = data.tipo === 'arquivo'
-    ? `${data.remetenteNome}: Arquivo: ${data.arquivo_nome_original}`
+    ? `${data.remetenteNome}: ${getAttachmentKindLabel(data)}: ${data.arquivo_nome_original}`
     : `${data.remetenteNome}: ${data.conteudo}`;
 
   lastPreviewState[chatKey] = preview;
@@ -2053,7 +2076,7 @@ function conectarSocket() {
 
   socket.on('arquivo-enviado-confirmacao', (data) => {
     const chatKey = getChatKey('privado', data.destinatario_id);
-    lastPreviewState[chatKey] = `Voce: Arquivo: ${data.arquivo_nome_original}`;
+    lastPreviewState[chatKey] = `Voce: ${getAttachmentKindLabel(data)}: ${data.arquivo_nome_original}`;
     lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
     lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
     renderContatos();
@@ -2477,6 +2500,13 @@ async function carregarGrupos() {
     if (!response.ok) throw new Error('Falha ao carregar grupos');
     gruposCache = await response.json();
     if (!Array.isArray(gruposCache)) gruposCache = [];
+    gruposCache.forEach((grupo) => {
+      const key = getChatKey('grupo', grupo.id);
+      unreadState[key] = Number(grupo.naoLidas || 0);
+      lastPreviewState[key] = grupo.ultimaMensagem || '';
+      lastTimeState[key] = grupo.criado_em ? formatTime(grupo.criado_em) : '';
+      lastTimestampState[key] = grupo.criado_em ? toTimestamp(grupo.criado_em) : 0;
+    });
     renderGrupos();
     renderPinnedNotice();
     renderAvisosGrupoAdmin();
@@ -2771,16 +2801,18 @@ function renderMessageRow(message) {
     `
     : '';
   const editedHtml = message.editado_em ? `<span class="message-edited">(editada)</span>` : '';
+  const stickerAttachment = isStickerAttachment(message);
+  const attachmentLabel = getAttachmentKindLabel(message);
   const filePreviewHtml = message.tipo === 'arquivo' && isImageAttachment(message)
-    ? `<div class="file-preview"><img src="${escapeHtml(message.arquivo_url)}" alt="${escapeHtml(message.arquivo_nome_original || 'Imagem anexada')}" loading="lazy" /></div>`
+    ? `<div class="file-preview ${stickerAttachment ? 'sticker' : ''}"><img src="${escapeHtml(message.arquivo_url)}" alt="${escapeHtml(message.arquivo_nome_original || 'Imagem anexada')}" loading="lazy" /></div>`
     : message.tipo === 'arquivo' && isPdfAttachment(message)
       ? `<div class="file-preview pdf"><span>&#128196;</span><span>Previa de PDF disponivel ao abrir o arquivo</span></div>`
       : message.tipo === 'arquivo' && isVideoAttachment(message)
         ? `<div class="file-preview video"><video src="${escapeHtml(message.arquivo_url)}" controls preload="metadata"></video></div>`
       : '';
   const innerContent = message.tipo === 'arquivo'
-    ? `<a class="file-card" href="${escapeHtml(message.arquivo_url)}" target="_blank" rel="noopener noreferrer">
-         <strong>&#128206; ${highlightText(message.arquivo_nome_original, query)}</strong>
+    ? `<a class="file-card ${stickerAttachment ? 'sticker-card' : ''}" href="${escapeHtml(message.arquivo_url)}" target="_blank" rel="noopener noreferrer">
+         <strong>${stickerAttachment ? '&#128444;' : '&#128206;'} ${escapeHtml(attachmentLabel)}: ${highlightText(message.arquivo_nome_original, query)}</strong>
          <small>${escapeHtml(formatFileSize(message.arquivo_tamanho))}</small>
        </a>${filePreviewHtml}`
     : `<div class="message-text">${linkifyTextHtml(message.conteudo, query)}</div>${getLinkPreviewHtml(message.conteudo)}`;
@@ -2830,7 +2862,7 @@ function renderMessageRow(message) {
     const nomeMensagem = message.usuarioNome || message.usuario_nome || 'Usuario';
     return `
       <div class="message-avatar" ${avatarStyle(nomeMensagem)}>${escapeHtml(initials(nomeMensagem))}</div>
-      <div class="message other">
+      <div class="message other ${stickerAttachment ? 'sticker-message' : ''}">
         ${priorityBadgeHtml}
         <div class="message-sender">${escapeHtml(nomeMensagem)}</div>
         ${replyHtml}
@@ -2860,7 +2892,7 @@ function renderMessageRow(message) {
 
   return `
     <div class="message-avatar" ${avatarStyle(usuarioAtual.nome || usuarioAtual.email)}>${escapeHtml(initials(usuarioAtual.nome))}</div>
-    <div class="message own">
+    <div class="message own ${stickerAttachment ? 'sticker-message' : ''}">
       ${priorityBadgeHtml}
       <div class="message-sender">${escapeHtml(usuarioAtual.nome || 'Voce')}</div>
       ${replyHtml}
@@ -3334,6 +3366,7 @@ async function enviarArquivoSelecionado(arquivo, options = {}) {
     formData.append('arquivo', arquivo);
     formData.append('tipoChat', tipoChat);
     formData.append('chatId', chatIdAtual);
+    if (activeReplyMessageId) formData.append('replyToId', activeReplyMessageId);
 
     const response = await fetch('/api/upload', {
       method: 'POST',
@@ -3349,7 +3382,7 @@ async function enviarArquivoSelecionado(arquivo, options = {}) {
     }
 
     const key = getChatKey(tipoChat, chatIdAtual);
-    lastPreviewState[key] = `Voce: Arquivo: ${data.arquivo_nome_original}`;
+    lastPreviewState[key] = `Voce: ${getAttachmentKindLabel(data)}: ${data.arquivo_nome_original}`;
     lastTimeState[key] = formatTime(data.criado_em || new Date());
     lastTimestampState[key] = toTimestamp(data.criado_em || new Date());
 

@@ -28,7 +28,7 @@ const UPLOAD_DIR = path.join(STORAGE_ROOT, 'uploads');
 const BACKUP_DIR = path.join(STORAGE_ROOT, 'backups');
 const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
-const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.avi']);
+const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.avi']);
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json'];
 
@@ -1180,6 +1180,44 @@ function listarGruposVisiveisParaUsuario(userId) {
   return db.grupos.filter((grupo) => usuarioPodeAcessarGrupo(userId, grupo.id));
 }
 
+function getArquivoPreviewLabel(message) {
+  const ext = path.extname(message?.arquivo_nome_original || message?.arquivo_url || '').toLowerCase();
+  if (['.gif', '.webp'].includes(ext)) return 'Figurinha';
+  if (['.jpg', '.jpeg', '.png'].includes(ext)) return 'Imagem';
+  if (ext === '.avi') return 'Video';
+  return 'Arquivo';
+}
+
+function getMessagePreviewText(message) {
+  if (!message) return '';
+  if (message.tipo === 'arquivo') {
+    return `${getArquivoPreviewLabel(message)}: ${message.arquivo_nome_original || 'anexo'}`;
+  }
+  return String(message.conteudo || '').trim();
+}
+
+function compareByCreatedDesc(a, b) {
+  return new Date(b?.criado_em || 0).getTime() - new Date(a?.criado_em || 0).getTime();
+}
+
+function getGroupConversationSummary(grupoId, userId) {
+  const messages = db.mensagens
+    .filter((message) => Number(message.grupo_id) === Number(grupoId))
+    .sort(compareByCreatedDesc);
+  const latest = messages[0] || null;
+  const unread = messages.filter((message) => {
+    if (Number(message.usuario_id) === Number(userId)) return false;
+    ensureGroupReadTracking(message);
+    return !message.leituras_grupo.some((item) => Number(item.usuario_id) === Number(userId));
+  }).length;
+
+  return {
+    ultimaMensagem: latest ? getMessagePreviewText(latest) : '',
+    criado_em: latest?.criado_em || null,
+    naoLidas: unread
+  };
+}
+
 function removeFileIfExists(fileName) {
   if (!fileName) return;
   const filePath = path.join(UPLOAD_DIR, fileName);
@@ -1628,11 +1666,14 @@ app.put('/api/admin/grupos/:id/aviso', verificarToken, (req, res) => {
 app.get('/api/grupos', verificarToken, (req, res) => {
   try {
     res.json(
-      listarGruposVisiveisParaUsuario(req.userId).map((grupo) => ({
-        ...grupo,
-        restrito: grupoEhRestrito(grupo.id),
-        membros: getMembrosDoGrupo(grupo.id)
-      }))
+      listarGruposVisiveisParaUsuario(req.userId)
+        .map((grupo) => ({
+          ...grupo,
+          ...getGroupConversationSummary(grupo.id, req.userId),
+          restrito: grupoEhRestrito(grupo.id),
+          membros: getMembrosDoGrupo(grupo.id)
+        }))
+        .sort((a, b) => compareByCreatedDesc(a, b))
     );
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -1876,7 +1917,7 @@ app.get('/api/conversas/privadas/resumo', verificarToken, (req, res) => {
         if (!resumo[outroId] || new Date(m.criado_em) > new Date(resumo[outroId].criado_em)) {
           resumo[outroId] = {
             usuarioId: outroId,
-            ultimaMensagem: m.tipo === 'arquivo' ? `Arquivo: ${m.arquivo_nome_original}` : m.conteudo,
+            ultimaMensagem: getMessagePreviewText(m),
             criado_em: m.criado_em,
             naoLidas: 0
           };
@@ -1906,7 +1947,7 @@ app.get('/api/conversas/privadas/resumo', verificarToken, (req, res) => {
         resumo[outroId].naoLidas = Math.max(Number(resumo[outroId].naoLidas) || 0, 1);
       });
 
-    res.json(Object.values(resumo));
+    res.json(Object.values(resumo).sort((a, b) => compareByCreatedDesc(a, b)));
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }

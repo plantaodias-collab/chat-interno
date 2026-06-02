@@ -7638,3 +7638,59 @@ body:not(.theme-dark) .plantao-empty {
 .message-row.own .message-avatar {
   order: 2;
 }
+
+.message.sticker-message {
+  max-width: min(330px, 78%);
+  padding: 8px;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.message.sticker-message .message-sender,
+.message.sticker-message .message-time,
+.message.sticker-message .message-reply-preview,
+.message.sticker-message .message-reactions,
+.message.sticker-message .reaction-picker {
+  margin-left: 4px;
+  margin-right: 4px;
+}
+
+.message.sticker-message .file-card.sticker-card {
+  margin-top: 4px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  font-size: 12px;
+  background: rgba(15, 23, 42, .08);
+  backdrop-filter: blur(8px);
+}
+
+.message.sticker-message .file-card.sticker-card strong {
+  margin-bottom: 2px;
+  font-size: 12px;
+}
+
+.file-preview.sticker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: min(220px, 58vw);
+  min-height: 120px;
+  margin-top: 6px;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+}
+
+.file-preview.sticker img {
+  width: auto;
+  max-width: 220px;
+  max-height: 220px;
+  object-fit: contain;
+  background: transparent;
+  filter: drop-shadow(0 8px 18px rgba(15, 23, 42, .18));
+}
+
+body.theme-dark .message.sticker-message .file-card.sticker-card {
+  background: rgba(255, 255, 255, .08);
+}
