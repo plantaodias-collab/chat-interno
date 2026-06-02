@@ -71,8 +71,16 @@ app.use((req, res, next) => {
   }
   next();
 });
-app.use(express.static(path.join(__dirname, '.')));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use('/emergencia', express.static(path.join(__dirname, 'emergencia')));
 app.use('/uploads', express.static(UPLOAD_DIR));
+
+app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/index.html', (_req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/admin.html', (_req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+app.get('/manifest.json', (_req, res) => res.sendFile(path.join(__dirname, 'manifest.json')));
+app.get('/sw.js', (_req, res) => res.sendFile(path.join(__dirname, 'sw.js')));
+app.get('/signal_cartography.png', (_req, res) => res.sendFile(path.join(__dirname, 'signal_cartography.png')));
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, storageRoot: STORAGE_ROOT, persistentStorage: !IS_EPHEMERAL_STORAGE });
