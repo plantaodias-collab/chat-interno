@@ -41,6 +41,9 @@ let forwardMessageId = null;
 let globalSearchTimer = null;
 let titleBlinkInterval = null;
 let titleBlinkVisible = false;
+const secureAttachmentBlobUrls = new Map();
+const secureAttachmentBlobCache = new Map();
+const secureAttachmentPending = new Map();
 const SHARED_PASSWORD_PANEL_ENABLED = false;
 let painelSenhaState = {
   senhaAtual: '',
@@ -66,6 +69,7 @@ const ATTENDANCE_STATUS_KEY = 'chatinterno.attendanceStatus';
 const SIDEBAR_KEY = 'chatinterno.sidebarCollapsed';
 const DENSITY_KEY = 'chatinterno.messageDensity';
 const MESSAGE_RENDER_LIMIT = 220;
+const ATTACHMENT_PLACEHOLDER_SRC = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 const ATTENDANCE_STATUS_LABELS = {
   pendente: 'Pendente',
   aguardando: 'Aguardando',
@@ -863,6 +867,93 @@ function getAttachmentKindLabel(message) {
   return 'Arquivo';
 }
 
+function getAttachmentFileName(rawUrl = '') {
+  const value = String(rawUrl || '');
+  if (!value) return '';
+  try {
+    const pathname = new URL(value, window.location.origin).pathname;
+    return decodeURIComponent(pathname.split('/').filter(Boolean).pop() || '');
+  } catch (_err) {
+    return decodeURIComponent(value.split('/').filter(Boolean).pop() || '');
+  }
+}
+
+function getProtectedAttachmentUrl(rawUrl = '') {
+  const fileName = getAttachmentFileName(rawUrl);
+  return fileName ? `/api/uploads/${encodeURIComponent(fileName)}` : '';
+}
+
+function getCachedAttachmentObjectUrl(rawUrl = '') {
+  const protectedUrl = getProtectedAttachmentUrl(rawUrl);
+  return protectedUrl ? (secureAttachmentBlobUrls.get(protectedUrl) || '') : '';
+}
+
+async function fetchProtectedAttachmentBlob(rawUrl = '') {
+  const protectedUrl = getProtectedAttachmentUrl(rawUrl);
+  if (!protectedUrl) throw new Error('Arquivo invalido');
+  if (secureAttachmentBlobCache.has(protectedUrl)) return secureAttachmentBlobCache.get(protectedUrl);
+  if (secureAttachmentPending.has(protectedUrl)) return secureAttachmentPending.get(protectedUrl);
+
+  const pending = fetch(protectedUrl, { headers: authHeaders() })
+    .then((response) => {
+      if (!response.ok) throw new Error('Arquivo indisponivel ou sem permissao');
+      return response.blob();
+    })
+    .then((blob) => {
+      secureAttachmentBlobCache.set(protectedUrl, blob);
+      if (!secureAttachmentBlobUrls.has(protectedUrl)) {
+        secureAttachmentBlobUrls.set(protectedUrl, URL.createObjectURL(blob));
+      }
+      return blob;
+    })
+    .finally(() => secureAttachmentPending.delete(protectedUrl));
+
+  secureAttachmentPending.set(protectedUrl, pending);
+  return pending;
+}
+
+async function getProtectedAttachmentObjectUrl(rawUrl = '') {
+  const protectedUrl = getProtectedAttachmentUrl(rawUrl);
+  const cached = protectedUrl ? secureAttachmentBlobUrls.get(protectedUrl) : '';
+  if (cached) return cached;
+  await fetchProtectedAttachmentBlob(rawUrl);
+  return secureAttachmentBlobUrls.get(protectedUrl) || '';
+}
+
+function hydrateSecureAttachments(root = document) {
+  root.querySelectorAll('[data-secure-attachment]').forEach(async (element) => {
+    const rawUrl = element.getAttribute('data-secure-attachment');
+    if (!rawUrl || element.dataset.secureLoaded === 'true') return;
+    try {
+      const objectUrl = await getProtectedAttachmentObjectUrl(rawUrl);
+      if (!objectUrl) return;
+      if (element.tagName === 'IMG' || element.tagName === 'VIDEO') {
+        element.src = objectUrl;
+        element.dataset.secureLoaded = 'true';
+      }
+    } catch (_err) {
+      element.classList.add('attachment-load-error');
+    }
+  });
+}
+
+async function baixarArquivoMensagem(messageId) {
+  const message = getMessageByIdFromCache(messageId);
+  if (!message?.arquivo_url) return;
+  try {
+    await fetchProtectedAttachmentBlob(message.arquivo_url);
+    const objectUrl = await getProtectedAttachmentObjectUrl(message.arquivo_url);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = message.arquivo_nome_original || 'arquivo';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } catch (err) {
+    mostrarNotificacao(err.message || 'Erro ao baixar arquivo', 'error');
+  }
+}
+
 function getStickerFromMessage(message) {
   if (!isStickerAttachment(message) || !message.arquivo_url) return null;
   return {
@@ -922,12 +1013,13 @@ function renderStickerPicker() {
   }
   picker.innerHTML = savedStickers.map((sticker, index) => `
     <button type="button" class="sticker-option" data-sticker-index="${index}" title="${escapeHtml(sticker.name)}" aria-label="Enviar figurinha ${escapeHtml(sticker.name)}">
-      <img src="${escapeHtml(sticker.url)}" alt="${escapeHtml(sticker.name)}" loading="lazy" />
+      <img src="${escapeHtml(getCachedAttachmentObjectUrl(sticker.url) || ATTACHMENT_PLACEHOLDER_SRC)}" data-secure-attachment="${escapeHtml(sticker.url)}" alt="${escapeHtml(sticker.name)}" loading="lazy" />
     </button>
   `).join('');
   picker.querySelectorAll('[data-sticker-index]').forEach((button) => {
     button.addEventListener('click', () => enviarFigurinhaSalva(Number(button.dataset.stickerIndex)));
   });
+  hydrateSecureAttachments(picker);
 }
 
 function alternarFigurinhas(event) {
@@ -949,9 +1041,7 @@ async function enviarFigurinhaSalva(index) {
     return;
   }
   try {
-    const response = await fetch(sticker.url);
-    if (!response.ok) throw new Error('Nao foi possivel abrir a figurinha salva');
-    const blob = await response.blob();
+    const blob = await fetchProtectedAttachmentBlob(sticker.url);
     const extension = getClipboardExtension(blob.type || sticker.mimetype) || '.webp';
     const cleanName = String(sticker.name || 'figurinha.webp').replace(/\.[^.]+$/, '') || 'figurinha';
     const file = new File([blob], `${cleanName}${extension}`, { type: blob.type || sticker.mimetype || 'image/webp' });
@@ -991,7 +1081,7 @@ function getLinkPreviewHtml(text) {
 function getMessageCopyText(message) {
   if (!message) return '';
   if (message.tipo === 'arquivo') {
-    const url = message.arquivo_url ? new URL(message.arquivo_url, window.location.origin).href : '';
+    const url = message.arquivo_url ? new URL(getProtectedAttachmentUrl(message.arquivo_url), window.location.origin).href : '';
     return [message.arquivo_nome_original || 'Arquivo', url].filter(Boolean).join('\n');
   }
   return String(message.conteudo || '').trim();
@@ -2943,15 +3033,16 @@ function renderMessageRow(message) {
   const editedHtml = message.editado_em ? `<span class="message-edited">(editada)</span>` : '';
   const stickerAttachment = isStickerAttachment(message);
   const attachmentLabel = getAttachmentKindLabel(message);
+  const secureAttachmentSrc = getCachedAttachmentObjectUrl(message.arquivo_url);
   const filePreviewHtml = message.tipo === 'arquivo' && isImageAttachment(message)
-    ? `<div class="file-preview ${stickerAttachment ? 'sticker' : ''}"><img src="${escapeHtml(message.arquivo_url)}" alt="${escapeHtml(message.arquivo_nome_original || 'Imagem anexada')}" loading="lazy" /></div>`
+    ? `<div class="file-preview ${stickerAttachment ? 'sticker' : ''}"><img src="${escapeHtml(secureAttachmentSrc || ATTACHMENT_PLACEHOLDER_SRC)}" data-secure-attachment="${escapeHtml(message.arquivo_url)}" alt="${escapeHtml(message.arquivo_nome_original || 'Imagem anexada')}" loading="lazy" /></div>`
     : message.tipo === 'arquivo' && isPdfAttachment(message)
       ? `<div class="file-preview pdf"><span>&#128196;</span><span>Previa de PDF disponivel ao abrir o arquivo</span></div>`
       : message.tipo === 'arquivo' && isVideoAttachment(message)
-        ? `<div class="file-preview video"><video src="${escapeHtml(message.arquivo_url)}" controls preload="metadata"></video></div>`
+        ? `<div class="file-preview video"><video src="${escapeHtml(secureAttachmentSrc)}" data-secure-attachment="${escapeHtml(message.arquivo_url)}" controls preload="metadata"></video></div>`
       : '';
   const innerContent = message.tipo === 'arquivo'
-    ? `<a class="file-card ${stickerAttachment ? 'sticker-card' : ''}" href="${escapeHtml(message.arquivo_url)}" target="_blank" rel="noopener noreferrer">
+    ? `<a class="file-card ${stickerAttachment ? 'sticker-card' : ''}" href="#" onclick="baixarArquivoMensagem(${Number(message.id)}); return false;">
          <strong>${stickerAttachment ? '&#128444;' : '&#128206;'} ${escapeHtml(attachmentLabel)}: ${highlightText(message.arquivo_nome_original, query)}</strong>
          <small>${escapeHtml(formatFileSize(message.arquivo_tamanho))}</small>
        </a>${filePreviewHtml}`
@@ -3123,6 +3214,7 @@ function renderMessages(options = {}) {
     const priorityClass = isMensagemPrioritaria(message.id) ? 'message-priority-row' : '';
     return `${dividerHtml}<div class="message-row ${ehOutro ? '' : 'own'} ${compact ? 'compact' : ''} ${priorityClass}" data-message-id="${Number(message.id)}" data-usuario-id="${Number(message.usuarioId || 0)}">${renderMessageRow(message)}</div>`;
   }).join('');
+  hydrateSecureAttachments(container);
   if (scrollToBottom) scrollMessagesToBottom({ stabilize: stabilizeBottom });
   else container.classList.remove('preparing-scroll');
 }

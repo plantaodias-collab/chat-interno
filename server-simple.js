@@ -73,7 +73,6 @@ app.use((req, res, next) => {
 });
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use('/emergencia', express.static(path.join(__dirname, 'emergencia')));
-app.use('/uploads', express.static(UPLOAD_DIR));
 
 app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/index.html', (_req, res) => res.sendFile(path.join(__dirname, 'index.html')));
@@ -84,6 +83,24 @@ app.get('/signal_cartography.png', (_req, res) => res.sendFile(path.join(__dirna
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, storageRoot: STORAGE_ROOT, persistentStorage: !IS_EPHEMERAL_STORAGE });
+});
+
+app.get('/api/uploads/:fileName', verificarToken, (req, res) => {
+  try {
+    const fileName = path.basename(String(req.params.fileName || ''));
+    if (!fileName) return res.status(404).json({ erro: 'Arquivo nao encontrado' });
+
+    const message = db.mensagens.find((item) => String(item.arquivo_nome_salvo || '') === fileName);
+    if (!message || !canUserAccessMessage(req.userId, message)) {
+      return res.status(404).json({ erro: 'Arquivo nao encontrado' });
+    }
+
+    const filePath = path.join(UPLOAD_DIR, fileName);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ erro: 'Arquivo nao encontrado' });
+    res.sendFile(filePath);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
 });
 
 class SimpleDB {
