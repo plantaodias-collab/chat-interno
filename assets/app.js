@@ -860,6 +860,7 @@ function isStickerAttachment(message) {
 
 function getAttachmentKindLabel(message) {
   if (!message || message.tipo !== 'arquivo') return '';
+  if (message.arquivo_expirado_em) return 'PDF removido';
   if (isStickerAttachment(message)) return 'Figurinha';
   if (isImageAttachment(message)) return 'Imagem';
   if (isVideoAttachment(message)) return 'Video';
@@ -1081,6 +1082,9 @@ function getLinkPreviewHtml(text) {
 function getMessageCopyText(message) {
   if (!message) return '';
   if (message.tipo === 'arquivo') {
+    if (message.arquivo_expirado_em) {
+      return [message.arquivo_nome_original || 'PDF', 'Arquivo removido automaticamente apos 30 dias'].join('\n');
+    }
     const url = message.arquivo_url ? new URL(getProtectedAttachmentUrl(message.arquivo_url), window.location.origin).href : '';
     return [message.arquivo_nome_original || 'Arquivo', url].filter(Boolean).join('\n');
   }
@@ -3033,8 +3037,11 @@ function renderMessageRow(message) {
   const editedHtml = message.editado_em ? `<span class="message-edited">(editada)</span>` : '';
   const stickerAttachment = isStickerAttachment(message);
   const attachmentLabel = getAttachmentKindLabel(message);
+  const attachmentExpired = message.tipo === 'arquivo' && Boolean(message.arquivo_expirado_em || !message.arquivo_url);
   const secureAttachmentSrc = getCachedAttachmentObjectUrl(message.arquivo_url);
-  const filePreviewHtml = message.tipo === 'arquivo' && isImageAttachment(message)
+  const filePreviewHtml = attachmentExpired
+    ? `<div class="file-preview pdf expired"><span>&#128196;</span><span>Arquivo removido automaticamente apos 30 dias</span></div>`
+    : message.tipo === 'arquivo' && isImageAttachment(message)
     ? `<div class="file-preview ${stickerAttachment ? 'sticker' : ''}"><img src="${escapeHtml(secureAttachmentSrc || ATTACHMENT_PLACEHOLDER_SRC)}" data-secure-attachment="${escapeHtml(message.arquivo_url)}" alt="${escapeHtml(message.arquivo_nome_original || 'Imagem anexada')}" loading="lazy" /></div>`
     : message.tipo === 'arquivo' && isPdfAttachment(message)
       ? `<div class="file-preview pdf"><span>&#128196;</span><span>Previa de PDF disponivel ao abrir o arquivo</span></div>`
@@ -3042,7 +3049,12 @@ function renderMessageRow(message) {
         ? `<div class="file-preview video"><video src="${escapeHtml(secureAttachmentSrc)}" data-secure-attachment="${escapeHtml(message.arquivo_url)}" controls preload="metadata"></video></div>`
       : '';
   const innerContent = message.tipo === 'arquivo'
-    ? `<a class="file-card ${stickerAttachment ? 'sticker-card' : ''}" href="#" onclick="baixarArquivoMensagem(${Number(message.id)}); return false;">
+    ? attachmentExpired
+      ? `<div class="file-card expired-file ${stickerAttachment ? 'sticker-card' : ''}">
+         <strong>&#128196; ${escapeHtml(attachmentLabel)}: ${highlightText(message.arquivo_nome_original || 'PDF', query)}</strong>
+         <small>Removido automaticamente apos 30 dias</small>
+       </div>${filePreviewHtml}`
+      : `<a class="file-card ${stickerAttachment ? 'sticker-card' : ''}" href="#" onclick="baixarArquivoMensagem(${Number(message.id)}); return false;">
          <strong>${stickerAttachment ? '&#128444;' : '&#128206;'} ${escapeHtml(attachmentLabel)}: ${highlightText(message.arquivo_nome_original, query)}</strong>
          <small>${escapeHtml(formatFileSize(message.arquivo_tamanho))}</small>
        </a>${filePreviewHtml}`

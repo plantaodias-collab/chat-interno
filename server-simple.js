@@ -28,6 +28,8 @@ const UPLOAD_DIR = path.join(STORAGE_ROOT, 'uploads');
 const BACKUP_DIR = path.join(STORAGE_ROOT, 'backups');
 const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
+const PDF_ATTACHMENT_RETENTION_DAYS = 30;
+const PDF_ATTACHMENT_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.avi']);
 const ALLOWED_MIME_EXTENSIONS = {
   'image/jpeg': '.jpg',
@@ -1226,9 +1228,11 @@ function listarGruposVisiveisParaUsuario(userId) {
 
 function getArquivoPreviewLabel(message) {
   const ext = path.extname(message?.arquivo_nome_original || message?.arquivo_url || '').toLowerCase();
+  if (message?.arquivo_expirado_em) return 'PDF removido';
   if (['.gif', '.webp'].includes(ext)) return 'Figurinha';
   if (['.jpg', '.jpeg', '.png'].includes(ext)) return 'Imagem';
   if (ext === '.avi') return 'Video';
+  if (ext === '.pdf') return 'PDF';
   return 'Arquivo';
 }
 
@@ -1272,6 +1276,42 @@ function removeFileIfExists(fileName) {
       // Ignore file deletion failures to avoid blocking message removal.
     }
   }
+}
+
+function isPdfAttachmentMessage(message) {
+  if (!message || message.tipo !== 'arquivo') return false;
+  const ext = path.extname(message.arquivo_nome_original || message.arquivo_nome_salvo || message.arquivo_url || '').toLowerCase();
+  return ext === '.pdf' || String(message.arquivo_mimetype || '').toLowerCase() === 'application/pdf';
+}
+
+function cleanupExpiredPdfAttachments(now = new Date()) {
+  const cutoff = now.getTime() - PDF_ATTACHMENT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  let removed = 0;
+  let changed = false;
+
+  db.mensagens.forEach((message) => {
+    if (!isPdfAttachmentMessage(message) || message.arquivo_expirado_em) return;
+    const createdAt = new Date(message.criado_em || 0).getTime();
+    if (!Number.isFinite(createdAt) || createdAt > cutoff) return;
+
+    if (message.arquivo_nome_salvo) {
+      const filePath = path.join(UPLOAD_DIR, message.arquivo_nome_salvo);
+      if (fs.existsSync(filePath)) {
+        removeFileIfExists(message.arquivo_nome_salvo);
+        removed++;
+      }
+    }
+
+    message.arquivo_expirado_em = now.toISOString();
+    message.arquivo_retencao_dias = PDF_ATTACHMENT_RETENTION_DAYS;
+    message.arquivo_removido_motivo = 'retencao_pdf';
+    message.arquivo_nome_salvo = null;
+    message.arquivo_url = null;
+    changed = true;
+  });
+
+  if (changed) db.save();
+  return { removed, changed };
 }
 
 app.post('/api/login', async (req, res) => {
@@ -2878,5 +2918,25 @@ setInterval(() => {
     console.error('Erro ao executar backup automatico:', err);
   }
 }, 30000);
+
+try {
+  const result = cleanupExpiredPdfAttachments();
+  if (result.removed) {
+    console.log(`PDFs expirados removidos: ${result.removed}`);
+  }
+} catch (err) {
+  console.error('Erro ao limpar PDFs expirados:', err);
+}
+
+setInterval(() => {
+  try {
+    const result = cleanupExpiredPdfAttachments();
+    if (result.removed) {
+      console.log(`PDFs expirados removidos: ${result.removed}`);
+    }
+  } catch (err) {
+    console.error('Erro ao limpar PDFs expirados:', err);
+  }
+}, PDF_ATTACHMENT_CLEANUP_INTERVAL_MS);
 
 pruneAutomaticBackups(AUTOMATIC_BACKUP_RETENTION);
