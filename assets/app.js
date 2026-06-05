@@ -1318,11 +1318,41 @@ function updateBrowserTitle() {
 
 document.addEventListener('visibilitychange', () => {
   updateBrowserTitle();
+  marcarConversaAtualComoLidaSeVisivel();
 });
 
 window.addEventListener('focus', () => {
   updateBrowserTitle();
+  marcarConversaAtualComoLidaSeVisivel();
 });
+
+function isAppVisibleAndFocused() {
+  return document.visibilityState === 'visible' && document.hasFocus();
+}
+
+function marcarConversaAtualComoLidaSeVisivel() {
+  if (!socket || !tipoChat || !chatIdAtual || !usuarioAtual || !isAppVisibleAndFocused()) return false;
+  const key = getChatKey(tipoChat, chatIdAtual);
+
+  if (tipoChat === 'grupo') {
+    socket.emit('marcar-lidas-grupo', {
+      grupoId: chatIdAtual,
+      usuarioId: usuarioAtual.id
+    });
+    unreadState[key] = 0;
+    renderGrupos();
+  } else {
+    socket.emit('marcar-lidas', {
+      remetenteId: chatIdAtual,
+      destinatarioId: usuarioAtual.id
+    });
+    unreadState[key] = 0;
+    renderContatos();
+  }
+
+  updateBrowserTitle();
+  return true;
+}
 
 document.addEventListener('paste', (event) => {
   const target = event.target;
@@ -2106,10 +2136,11 @@ function processarMensagemGrupo(data) {
   if (isCurrent) {
     upsertMessageInCache(message);
     if (Number(data.usuarioId) !== Number(usuarioAtual.id)) {
-      socket.emit('marcar-lidas-grupo', {
-        grupoId: data.grupoId,
-        usuarioId: usuarioAtual.id
-      });
+      if (isAppVisibleAndFocused()) {
+        marcarConversaAtualComoLidaSeVisivel();
+      } else {
+        unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
+      }
     }
   } else {
     unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
@@ -2151,10 +2182,11 @@ function processarMensagemPrivada(data) {
   if (isCurrent) {
     upsertMessageInCache(message);
 
-    socket.emit('marcar-lidas', {
-      remetenteId: data.remetente_id,
-      destinatarioId: usuarioAtual.id
-    });
+    if (isAppVisibleAndFocused()) {
+      marcarConversaAtualComoLidaSeVisivel();
+    } else {
+      unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
+    }
   } else {
     unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
   }
@@ -3000,10 +3032,8 @@ async function carregarChat(tipo, id, nome) {
 
     if (tipo === 'grupo') {
       socket.emit('entrar-grupo', { grupoId: id, usuarioId: usuarioAtual.id });
-      socket.emit('marcar-lidas-grupo', { grupoId: id, usuarioId: usuarioAtual.id });
-    } else {
-      socket.emit('marcar-lidas', { remetenteId: id, destinatarioId: usuarioAtual.id });
     }
+    marcarConversaAtualComoLidaSeVisivel();
   } catch (err) {
     if (loadSeq !== currentChatLoadSeq || tipoChat !== tipo || Number(chatIdAtual) !== Number(id)) return;
     console.error(err);

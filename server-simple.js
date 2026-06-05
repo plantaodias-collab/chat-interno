@@ -1949,8 +1949,6 @@ app.get('/api/mensagens/grupo/:grupoId', verificarToken, (req, res) => {
       return res.status(403).json({ erro: 'Acesso negado a este grupo' });
     }
 
-    marcarMensagensGrupoComoLidas(grupoId, req.userId);
-
     const mensagens = db.mensagens
       .filter((m) => m.grupo_id === grupoId)
       .map((m) => ensureGroupReadTracking(m))
@@ -1965,14 +1963,6 @@ app.get('/api/mensagens/grupo/:grupoId', verificarToken, (req, res) => {
 app.get('/api/mensagens/privadas/:usuarioId', verificarToken, (req, res) => {
   try {
     const outroUsuarioId = parseInt(req.params.usuarioId, 10);
-    const alterouLeitura = marcarComoLidas(outroUsuarioId, req.userId);
-    if (alterouLeitura) {
-      io.to(`usuario-${outroUsuarioId}`).emit('mensagens-lidas', {
-        remetenteId: Number(outroUsuarioId),
-        destinatarioId: Number(req.userId)
-      });
-    }
-    limparConversaPrivadaPendente(req.userId, outroUsuarioId);
 
     const mensagens = db.mensagens
       .filter(
@@ -2615,6 +2605,7 @@ io.on('connection', (socket) => {
   socket.on('marcar-lidas', (data) => {
     const { remetenteId, destinatarioId } = data;
     const alterou = marcarComoLidas(remetenteId, destinatarioId);
+    limparConversaPrivadaPendente(destinatarioId, remetenteId);
 
     if (alterou) {
       io.to(`usuario-${remetenteId}`).emit('mensagens-lidas', {
