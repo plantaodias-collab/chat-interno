@@ -132,6 +132,40 @@ const DEFAULT_TITLE = 'Chat Interno - Equipe';
 const DEFAULT_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Cpath d='M18 22c0-4.4 3.6-8 8-8h12c4.4 0 8 3.6 8 8v9c0 4.4-3.6 8-8 8H31l-8 7v-7h-1c-4.4 0-8-3.6-8-8V22Z' fill='white'/%3E%3Ccircle cx='27' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='33' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='39' cy='27' r='3' fill='%232563eb'/%3E%3C/svg%3E";
 const ALERT_FAVICON_A = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23ef4444'/%3E%3Ccircle cx='32' cy='32' r='23' fill='%23fef2f2'/%3E%3Cpath d='M32 18 18 44h28L32 18Z' fill='%23ef4444'/%3E%3Crect x='30' y='26' width='4' height='10' rx='2' fill='white'/%3E%3Ccircle cx='32' cy='40' r='2.2' fill='white'/%3E%3C/svg%3E";
 const ALERT_FAVICON_B = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23f59e0b'/%3E%3Ccircle cx='32' cy='32' r='23' fill='%23fffbeb'/%3E%3Cpath d='M32 18 18 44h28L32 18Z' fill='%23f59e0b'/%3E%3Crect x='30' y='26' width='4' height='10' rx='2' fill='%2378360f'/%3E%3Ccircle cx='32' cy='40' r='2.2' fill='%2378360f'/%3E%3C/svg%3E";
+const DEFAULT_STICKERS = [
+  ['1F600', 'sorriso'],
+  ['1F602', 'risada'],
+  ['1F60D', 'apaixonado'],
+  ['1F914', 'pensando'],
+  ['1F642', 'simpatia'],
+  ['1F44D', 'positivo'],
+  ['1F44F', 'aplausos'],
+  ['1F64F', 'agradecimento'],
+  ['1F91D', 'combinado'],
+  ['1F525', 'urgente'],
+  ['1F440', 'olhando'],
+  ['2728', 'brilho'],
+  ['1F389', 'comemoracao'],
+  ['1F3C6', 'trofeu'],
+  ['2615', 'cafe'],
+  ['1F355', 'pizza'],
+  ['1F382', 'aniversario'],
+  ['1F680', 'foguete'],
+  ['1F4A1', 'ideia'],
+  ['1F4CC', 'fixado'],
+  ['2705', 'concluido'],
+  ['26A0', 'atencao'],
+  ['1F4AC', 'mensagem'],
+  ['1F4C4', 'documento'],
+  ['1F4DE', 'telefone']
+].map(([code, label]) => ({
+  url: `/assets/stickers/openmoji/${code}.png`,
+  name: `openmoji-${label}.png`,
+  mimetype: 'image/png',
+  size: 0,
+  bundled: true,
+  savedAt: 'bundled'
+}));
 
 function getDailyMotivationMessage(date = new Date()) {
   const start = new Date(date.getFullYear(), 0, 0);
@@ -884,6 +918,10 @@ function getProtectedAttachmentUrl(rawUrl = '') {
   return fileName ? `/api/uploads/${encodeURIComponent(fileName)}` : '';
 }
 
+function isBundledSticker(sticker) {
+  return Boolean(sticker?.bundled || String(sticker?.url || '').startsWith('/assets/stickers/'));
+}
+
 function getCachedAttachmentObjectUrl(rawUrl = '') {
   const protectedUrl = getProtectedAttachmentUrl(rawUrl);
   return protectedUrl ? (secureAttachmentBlobUrls.get(protectedUrl) || '') : '';
@@ -969,16 +1007,26 @@ function getStickerFromMessage(message) {
 function carregarFigurinhasSalvas() {
   try {
     const stored = JSON.parse(localStorage.getItem(STICKERS_KEY) || '[]');
-    savedStickers = Array.isArray(stored)
-      ? stored.filter((item) => item?.url && item?.name).slice(0, 80)
+    const customStickers = Array.isArray(stored)
+      ? stored.filter((item) => item?.url && item?.name && !isBundledSticker(item))
       : [];
+    const merged = [...DEFAULT_STICKERS, ...customStickers];
+    const seen = new Set();
+    savedStickers = merged
+      .filter((item) => {
+        const key = String(item.url || '');
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 80);
   } catch (_err) {
-    savedStickers = [];
+    savedStickers = [...DEFAULT_STICKERS];
   }
 }
 
 function salvarFigurinhasSalvas() {
-  localStorage.setItem(STICKERS_KEY, JSON.stringify(savedStickers.slice(0, 80)));
+  localStorage.setItem(STICKERS_KEY, JSON.stringify(savedStickers.filter((item) => !isBundledSticker(item)).slice(0, 80)));
 }
 
 function adicionarFigurinhaSalva(message, { notify = false } = {}) {
@@ -1014,13 +1062,22 @@ function renderStickerPicker() {
   }
   picker.innerHTML = savedStickers.map((sticker, index) => `
     <button type="button" class="sticker-option" data-sticker-index="${index}" title="${escapeHtml(sticker.name)}" aria-label="Enviar figurinha ${escapeHtml(sticker.name)}">
-      <img src="${escapeHtml(getCachedAttachmentObjectUrl(sticker.url) || ATTACHMENT_PLACEHOLDER_SRC)}" data-secure-attachment="${escapeHtml(sticker.url)}" alt="${escapeHtml(sticker.name)}" loading="lazy" />
+      <img src="${escapeHtml(isBundledSticker(sticker) ? sticker.url : (getCachedAttachmentObjectUrl(sticker.url) || ATTACHMENT_PLACEHOLDER_SRC))}" ${isBundledSticker(sticker) ? '' : `data-secure-attachment="${escapeHtml(sticker.url)}"`} alt="${escapeHtml(sticker.name)}" loading="lazy" />
     </button>
   `).join('');
   picker.querySelectorAll('[data-sticker-index]').forEach((button) => {
     button.addEventListener('click', () => enviarFigurinhaSalva(Number(button.dataset.stickerIndex)));
   });
   hydrateSecureAttachments(picker);
+}
+
+async function fetchStickerBlob(sticker) {
+  if (isBundledSticker(sticker)) {
+    const response = await fetch(sticker.url);
+    if (!response.ok) throw new Error('Figurinha indisponivel');
+    return response.blob();
+  }
+  return fetchProtectedAttachmentBlob(sticker.url);
 }
 
 function alternarFigurinhas(event) {
@@ -1042,7 +1099,7 @@ async function enviarFigurinhaSalva(index) {
     return;
   }
   try {
-    const blob = await fetchProtectedAttachmentBlob(sticker.url);
+    const blob = await fetchStickerBlob(sticker);
     const extension = getClipboardExtension(blob.type || sticker.mimetype) || '.webp';
     const cleanName = String(sticker.name || 'figurinha.webp').replace(/\.[^.]+$/, '') || 'figurinha';
     const file = new File([blob], `${cleanName}${extension}`, { type: blob.type || sticker.mimetype || 'image/webp' });
