@@ -8648,3 +8648,16 @@ body.theme-dark .header-more-panel .header-btn[aria-disabled="true"] {
   color: #9fb0c7 !important;
   opacity: .72;
 }
+
+/* Conversation open performance pass */
+.message {
+  animation: none !important;
+}
+
+.messages-container.preparing-scroll .message,
+.messages-container.preparing-scroll .message-row,
+.messages-container.preparing-scroll .file-preview img,
+.messages-container.preparing-scroll .file-preview video {
+  transition: none !important;
+  animation: none !important;
+}

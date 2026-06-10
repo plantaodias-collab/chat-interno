@@ -1041,6 +1041,23 @@ function adicionarFigurinhaSalva(message, { notify = false } = {}) {
   return true;
 }
 
+function adicionarFigurinhasSalvasEmLote(messages = []) {
+  const currentUrls = new Set(savedStickers.map((item) => item.url));
+  const newStickers = [];
+
+  messages.forEach((message) => {
+    const sticker = getStickerFromMessage(message);
+    if (!sticker || currentUrls.has(sticker.url)) return;
+    currentUrls.add(sticker.url);
+    newStickers.push(sticker);
+  });
+
+  if (!newStickers.length) return false;
+  savedStickers = [...newStickers, ...savedStickers].slice(0, 80);
+  salvarFigurinhasSalvas();
+  return true;
+}
+
 function salvarFigurinhaMensagem(messageId) {
   const message = getMessageByIdFromCache(messageId);
   if (!message) return;
@@ -3084,7 +3101,7 @@ async function carregarChat(tipo, id, nome) {
           showReactionPicker: false
         }))
       : [];
-    currentMessagesCache.forEach((message) => adicionarFigurinhaSalva(message));
+    adicionarFigurinhasSalvasEmLote(currentMessagesCache);
     renderMessages({ stabilizeBottom: true });
 
     if (tipo === 'grupo') {
