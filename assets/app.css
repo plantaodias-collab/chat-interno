@@ -8524,6 +8524,61 @@ body:not(.theme-dark) .sidebar .chat-item.unread {
   background: linear-gradient(135deg, rgba(22, 104, 255, .28), rgba(0, 167, 200, .16));
 }
 
+/* Performance pass: keep the polished look without forcing constant repaints. */
+body::before {
+  display: none;
+}
+
+.sidebar,
+.main-content,
+body:not(.theme-dark) .sidebar,
+body:not(.theme-dark) .main-content,
+body.theme-dark .sidebar,
+body.theme-dark .main-content,
+.modal-content,
+.header-more-panel,
+.notification {
+  backdrop-filter: none !important;
+}
+
+.sidebar,
+.main-content,
+body:not(.theme-dark) .sidebar,
+body:not(.theme-dark) .main-content {
+  box-shadow: 0 14px 34px rgba(20, 32, 51, .12);
+}
+
+.sidebar .presence-dot.online,
+.sidebar .chat-item.unread .chat-name,
+.sidebar .chat-item.unread .notification-badge {
+  animation: none !important;
+}
+
+.chat-item,
+.conversation-filter-btn,
+.dashboard-chat-card,
+.quick-reply-btn,
+.header-btn {
+  transition-duration: .10s;
+}
+
+body.theme-dark .sidebar .chat-item.active .chat-name,
+body.theme-dark .sidebar .chat-item.active .chat-preview,
+body.theme-dark .sidebar .chat-item.active .chat-time,
+body.theme-dark .sidebar .chat-item.unread .chat-name,
+body.theme-dark .sidebar .chat-item.unread .chat-preview,
+body.theme-dark .sidebar .chat-item.unread .chat-time {
+  color: #f8fbff;
+  text-shadow: none;
+}
+
+body.theme-dark .sidebar .chat-item.active .chat-preview,
+body.theme-dark .sidebar .chat-item.active .chat-time,
+body.theme-dark .sidebar .chat-item.unread .chat-preview,
+body.theme-dark .sidebar .chat-item.unread .chat-time {
+  color: rgba(226, 238, 255, .82);
+}
+
 body:not(.theme-dark) .header-motivation,
 body.theme-dark .header-motivation,
 .header-motivation {

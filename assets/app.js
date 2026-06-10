@@ -30,6 +30,9 @@ let conversationSearchTerm = '';
 let conversationSearchRemoteMatches = new Set();
 let conversationSearchTimer = null;
 let conversationRenderTimer = null;
+let sidebarRenderFrame = null;
+let pendingSidebarGroupsRender = false;
+let pendingSidebarContactsRender = false;
 let conversationFilter = 'todos';
 let favoriteChats = new Set();
 let priorityChats = new Set();
@@ -638,6 +641,23 @@ function scheduleConversationRender() {
     renderGrupos();
     renderContatos();
   }, 90);
+}
+
+function scheduleSidebarRender({ groups = false, contacts = false } = {}) {
+  pendingSidebarGroupsRender = pendingSidebarGroupsRender || groups;
+  pendingSidebarContactsRender = pendingSidebarContactsRender || contacts;
+  if (sidebarRenderFrame) return;
+
+  sidebarRenderFrame = requestAnimationFrame(() => {
+    sidebarRenderFrame = null;
+    const shouldRenderGroups = pendingSidebarGroupsRender;
+    const shouldRenderContacts = pendingSidebarContactsRender;
+    pendingSidebarGroupsRender = false;
+    pendingSidebarContactsRender = false;
+
+    if (shouldRenderGroups) renderGrupos();
+    if (shouldRenderContacts) renderContatos();
+  });
 }
 
 function conversationMatchesFilter(key, options = {}) {
@@ -1420,14 +1440,14 @@ function marcarConversaAtualComoLidaSeVisivel() {
       usuarioId: usuarioAtual.id
     });
     unreadState[key] = 0;
-    renderGrupos();
+    scheduleSidebarRender({ groups: true });
   } else {
     socket.emit('marcar-lidas', {
       remetenteId: chatIdAtual,
       destinatarioId: usuarioAtual.id
     });
     unreadState[key] = 0;
-    renderContatos();
+    scheduleSidebarRender({ contacts: true });
   }
 
   updateBrowserTitle();
@@ -1552,8 +1572,7 @@ function renderTypingIndicator() {
 
 function renderTypingSurfaces() {
   renderTypingIndicator();
-  renderGrupos();
-  renderContatos();
+  scheduleSidebarRender({ groups: true, contacts: true });
 }
 
 function getMiniBrandMarkup() {
@@ -2333,7 +2352,7 @@ function conectarSocket() {
   socket.on('presenca-atualizada', (data) => {
     onlineState = new Set((data.online || []).map(Number));
     userStatusState = data.status || userStatusState || {};
-    renderContatos();
+    scheduleSidebarRender({ contacts: true });
     updateHeaderStatus();
     atualizarPainelInicialSeAberto();
   });
@@ -2416,7 +2435,7 @@ function conectarSocket() {
         usuarioId: usuarioAtual.id
       });
     }
-    renderContatos();
+    scheduleSidebarRender({ contacts: true });
   });
 
   socket.on('arquivo-enviado-confirmacao', (data) => {
@@ -2424,7 +2443,7 @@ function conectarSocket() {
     lastPreviewState[chatKey] = `Voce: ${getAttachmentKindLabel(data)}: ${data.arquivo_nome_original}`;
     lastTimeState[chatKey] = formatTime(data.criado_em || new Date());
     lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
-    renderContatos();
+    scheduleSidebarRender({ contacts: true });
   });
 
   socket.on('mensagem-excluida', async (data) => {
@@ -2477,8 +2496,7 @@ function conectarSocket() {
     salvarStatusAtendimento();
     atualizarBotaoFavorito();
     updateHeaderStatus();
-    renderGrupos();
-    renderContatos();
+    scheduleSidebarRender({ groups: true, contacts: true });
     atualizarPainelInicialSeAberto();
   });
 
