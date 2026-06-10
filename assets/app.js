@@ -1073,11 +1073,17 @@ function fecharStickerPicker() {
 function renderStickerPicker() {
   const picker = document.getElementById('stickerPicker');
   if (!picker) return;
+  const headerHtml = `
+    <div class="sticker-picker-header">
+      <span>Figurinhas</span>
+      <button type="button" class="sticker-picker-close" onclick="fecharStickerPicker()" aria-label="Fechar figurinhas" title="Fechar figurinhas">Fechar</button>
+    </div>
+  `;
   if (!savedStickers.length) {
-    picker.innerHTML = '<div class="sticker-empty">Nenhuma figurinha salva</div>';
+    picker.innerHTML = `${headerHtml}<div class="sticker-empty">Nenhuma figurinha salva</div>`;
     return;
   }
-  picker.innerHTML = savedStickers.map((sticker, index) => `
+  picker.innerHTML = headerHtml + savedStickers.map((sticker, index) => `
     <button type="button" class="sticker-option" data-sticker-index="${index}" title="${escapeHtml(sticker.name)}" aria-label="Enviar figurinha ${escapeHtml(sticker.name)}">
       <img src="${escapeHtml(isBundledSticker(sticker) ? sticker.url : (getCachedAttachmentObjectUrl(sticker.url) || ATTACHMENT_PLACEHOLDER_SRC))}" ${isBundledSticker(sticker) ? '' : `data-secure-attachment="${escapeHtml(sticker.url)}"`} alt="${escapeHtml(sticker.name)}" loading="lazy" />
     </button>
@@ -4338,6 +4344,13 @@ window.onclick = function(event) {
     event.target.classList.remove('active');
   }
 };
+
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  fecharEmojiPicker();
+  fecharStickerPicker();
+  document.getElementById('templatePicker')?.classList.add('hidden');
+});
 
 carregarFavoritos();
 carregarPrioridades();
