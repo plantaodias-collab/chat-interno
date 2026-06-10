@@ -4654,7 +4654,7 @@ textarea:focus-visible {
 
 .messages-container {
   min-height: 0;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 .message-row {

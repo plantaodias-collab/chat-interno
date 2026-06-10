@@ -3184,7 +3184,10 @@ function scrollMessagesToBottom({ stabilize = false } = {}) {
   if (!container) return;
 
   const applyScroll = () => {
+    const previousScrollBehavior = container.style.scrollBehavior;
+    container.style.scrollBehavior = 'auto';
     container.scrollTop = container.scrollHeight;
+    container.style.scrollBehavior = previousScrollBehavior;
     container.classList.remove('preparing-scroll');
   };
 
