@@ -47,6 +47,7 @@ let titleBlinkVisible = false;
 const secureAttachmentBlobUrls = new Map();
 const secureAttachmentBlobCache = new Map();
 const secureAttachmentPending = new Map();
+let currentAttachmentViewerMessageId = null;
 const SHARED_PASSWORD_PANEL_ENABLED = false;
 let painelSenhaState = {
   senhaAtual: '',
@@ -922,6 +923,10 @@ function getAttachmentKindLabel(message) {
   return 'Arquivo';
 }
 
+function isOfficeAttachment(message) {
+  return message?.tipo === 'arquivo' && /\.(docx?|xlsx?)$/i.test(String(message.arquivo_nome_original || message.arquivo_url || ''));
+}
+
 function getAttachmentFileName(rawUrl = '') {
   const value = String(rawUrl || '');
   if (!value) return '';
@@ -1010,6 +1015,125 @@ async function baixarArquivoMensagem(messageId) {
     link.remove();
   } catch (err) {
     mostrarNotificacao(err.message || 'Erro ao baixar arquivo', 'error');
+  }
+}
+
+function getAttachmentViewerMode(message) {
+  if (isImageAttachment(message)) return 'image';
+  if (isPdfAttachment(message)) return 'pdf';
+  if (isVideoAttachment(message)) return 'video';
+  if (isOfficeAttachment(message)) return 'office';
+  return 'file';
+}
+
+function setAttachmentViewerLoading(message) {
+  const title = document.getElementById('attachmentViewerTitle');
+  const meta = document.getElementById('attachmentViewerMeta');
+  const body = document.getElementById('attachmentViewerBody');
+  const printBtn = document.getElementById('attachmentPrintBtn');
+  if (title) title.textContent = message?.arquivo_nome_original || 'Arquivo';
+  if (meta) meta.textContent = `${getAttachmentKindLabel(message)} · ${formatFileSize(message?.arquivo_tamanho)}`;
+  if (body) body.innerHTML = '<div class="attachment-viewer-fallback"><strong>Carregando arquivo...</strong><p>Preparando a visualizacao segura.</p></div>';
+  if (printBtn) printBtn.disabled = true;
+}
+
+async function abrirVisualizadorArquivo(messageId) {
+  const message = getMessageByIdFromCache(messageId);
+  if (!message?.arquivo_url) {
+    mostrarNotificacao('Arquivo indisponivel', 'error');
+    return;
+  }
+
+  currentAttachmentViewerMessageId = Number(messageId);
+  setAttachmentViewerLoading(message);
+  document.getElementById('attachmentViewerModal')?.classList.add('active');
+
+  try {
+    const objectUrl = await getProtectedAttachmentObjectUrl(message.arquivo_url);
+    const mode = getAttachmentViewerMode(message);
+    const body = document.getElementById('attachmentViewerBody');
+    const printBtn = document.getElementById('attachmentPrintBtn');
+    const canPrint = mode === 'image' || mode === 'pdf';
+    if (printBtn) printBtn.disabled = !canPrint;
+
+    if (mode === 'image') {
+      body.innerHTML = `<img src="${escapeHtml(objectUrl)}" alt="${escapeHtml(message.arquivo_nome_original || 'Imagem anexada')}" />`;
+    } else if (mode === 'pdf') {
+      body.innerHTML = `<iframe id="attachmentViewerFrame" src="${escapeHtml(objectUrl)}" title="${escapeHtml(message.arquivo_nome_original || 'PDF')}"></iframe>`;
+    } else if (mode === 'video') {
+      body.innerHTML = `<video src="${escapeHtml(objectUrl)}" controls autoplay></video>`;
+    } else if (mode === 'office') {
+      body.innerHTML = `
+        <div class="attachment-viewer-fallback">
+          <strong>Documento pronto para baixar</strong>
+          <p>Arquivos do Word e Excel nao sao exibidos diretamente pelo navegador de forma segura dentro do chat. Use Baixar para abrir no aplicativo correspondente.</p>
+        </div>
+      `;
+    } else {
+      body.innerHTML = `
+        <div class="attachment-viewer-fallback">
+          <strong>Previa nao disponivel</strong>
+          <p>Este tipo de arquivo nao possui visualizacao interna. Voce ainda pode baixar o anexo.</p>
+        </div>
+      `;
+    }
+  } catch (err) {
+    document.getElementById('attachmentViewerBody').innerHTML = `
+      <div class="attachment-viewer-fallback">
+        <strong>Nao foi possivel abrir</strong>
+        <p>${escapeHtml(err.message || 'Erro ao carregar arquivo')}</p>
+      </div>
+    `;
+  }
+}
+
+function fecharVisualizadorArquivo() {
+  document.getElementById('attachmentViewerModal')?.classList.remove('active');
+  const body = document.getElementById('attachmentViewerBody');
+  if (body) body.innerHTML = '';
+  currentAttachmentViewerMessageId = null;
+}
+
+function baixarArquivoVisualizado() {
+  if (!currentAttachmentViewerMessageId) return;
+  baixarArquivoMensagem(currentAttachmentViewerMessageId);
+}
+
+async function imprimirArquivoVisualizado() {
+  const message = getMessageByIdFromCache(currentAttachmentViewerMessageId);
+  if (!message?.arquivo_url) return;
+
+  try {
+    const objectUrl = await getProtectedAttachmentObjectUrl(message.arquivo_url);
+    if (isPdfAttachment(message)) {
+      const frame = document.getElementById('attachmentViewerFrame');
+      if (frame?.contentWindow) {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+        return;
+      }
+    }
+
+    if (isImageAttachment(message)) {
+      const printFrame = document.createElement('iframe');
+      printFrame.style.position = 'fixed';
+      printFrame.style.right = '0';
+      printFrame.style.bottom = '0';
+      printFrame.style.width = '0';
+      printFrame.style.height = '0';
+      printFrame.style.border = '0';
+      document.body.appendChild(printFrame);
+      const doc = printFrame.contentDocument;
+      doc.open();
+      doc.write(`<!doctype html><html><head><title>${escapeHtml(message.arquivo_nome_original || 'Imagem')}</title><style>body{margin:0;display:grid;place-items:center;min-height:100vh}img{max-width:100%;max-height:100vh}</style></head><body><img src="${escapeHtml(objectUrl)}" onload="window.focus();window.print();"></body></html>`);
+      doc.close();
+      setTimeout(() => printFrame.remove(), 3000);
+      return;
+    }
+
+    mostrarNotificacao('Impressao disponivel para PDF e imagens', 'info');
+  } catch (err) {
+    mostrarNotificacao(err.message || 'Erro ao imprimir arquivo', 'error');
   }
 }
 
@@ -3182,9 +3306,13 @@ function renderMessageRow(message) {
          <strong>&#128196; ${escapeHtml(attachmentLabel)}: ${highlightText(message.arquivo_nome_original || 'PDF', query)}</strong>
          <small>Removido automaticamente apos 30 dias</small>
        </div>${filePreviewHtml}`
-      : `<a class="file-card ${stickerAttachment ? 'sticker-card' : ''}" href="#" onclick="baixarArquivoMensagem(${Number(message.id)}); return false;">
+      : `<a class="file-card ${stickerAttachment ? 'sticker-card' : ''}" href="#" onclick="abrirVisualizadorArquivo(${Number(message.id)}); return false;">
          <strong>${stickerAttachment ? '&#128444;' : '&#128206;'} ${escapeHtml(attachmentLabel)}: ${highlightText(message.arquivo_nome_original, query)}</strong>
          <small>${escapeHtml(formatFileSize(message.arquivo_tamanho))}</small>
+         <div class="file-card-actions">
+           <span class="file-inline-action">Visualizar</span>
+           <span class="file-inline-action" role="button" tabindex="0" onclick="event.preventDefault(); event.stopPropagation(); baixarArquivoMensagem(${Number(message.id)});">Baixar</span>
+         </div>
        </a>${filePreviewHtml}`
     : `<div class="message-text">${linkifyTextHtml(message.conteudo, query)}</div>${getLinkPreviewHtml(message.conteudo)}`;
 
@@ -4350,6 +4478,10 @@ function fazerLogout() {
 }
 
 function fecharModal(modalId) {
+  if (modalId === 'attachmentViewerModal') {
+    fecharVisualizadorArquivo();
+    return;
+  }
   document.getElementById(modalId).classList.remove('active');
 }
 
@@ -4359,7 +4491,8 @@ window.onclick = function(event) {
     fecharStickerPicker();
   }
   if (event.target.classList.contains('modal')) {
-    event.target.classList.remove('active');
+    if (event.target.id === 'attachmentViewerModal') fecharVisualizadorArquivo();
+    else event.target.classList.remove('active');
   }
 };
 
@@ -4367,7 +4500,16 @@ document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
   fecharEmojiPicker();
   fecharStickerPicker();
+  fecharVisualizadorArquivo();
   document.getElementById('templatePicker')?.classList.add('hidden');
+});
+
+Object.assign(window, {
+  abrirVisualizadorArquivo,
+  fecharVisualizadorArquivo,
+  baixarArquivoMensagem,
+  baixarArquivoVisualizado,
+  imprimirArquivoVisualizado
 });
 
 carregarFavoritos();
