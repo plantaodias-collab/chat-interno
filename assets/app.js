@@ -46,6 +46,7 @@ let conversationTagsState = {};
 let conversationNotesCountState = {};
 let conversationNotesCache = {};
 let conversationAssigneeState = {};
+let mentionsInbox = [];
 let forwardMessageId = null;
 let globalSearchTimer = null;
 let titleBlinkInterval = null;
@@ -77,6 +78,7 @@ const MESSAGE_PRIORITY_KEY = 'chatinterno.priorityMessages';
 const STICKERS_KEY = 'chatinterno.savedStickers';
 const ATTENDANCE_STATUS_KEY = 'chatinterno.attendanceStatus';
 const DRAFTS_KEY = 'chatinterno.messageDrafts';
+const MENTIONS_KEY = 'chatinterno.mentionsInbox';
 const SIDEBAR_KEY = 'chatinterno.sidebarCollapsed';
 const DENSITY_KEY = 'chatinterno.messageDensity';
 const MESSAGE_RENDER_LIMIT = 220;
@@ -411,6 +413,163 @@ function getCurrentSlaInfo(key = getCurrentChatKey()) {
       ? `SLA: sem atualização há ${formatDurationFromNow(new Date(lastTs).toISOString())}`
       : 'SLA: acompanhar urgente'
   };
+}
+
+function carregarMencoesInbox() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(MENTIONS_KEY) || '[]');
+    mentionsInbox = Array.isArray(stored) ? stored.slice(0, 40) : [];
+  } catch (_err) {
+    mentionsInbox = [];
+  }
+}
+
+function salvarMencoesInbox() {
+  localStorage.setItem(MENTIONS_KEY, JSON.stringify(mentionsInbox.slice(0, 40)));
+}
+
+function registrarMencaoInbox(data = {}) {
+  if (!data?.tipoChat || !data?.chatId) return;
+  const id = `${data.tipoChat}-${data.chatId}-${data.messageId || Date.now()}`;
+  mentionsInbox = [
+    {
+      id,
+      tipoChat: data.tipoChat,
+      chatId: Number(data.chatId),
+      messageId: Number(data.messageId || 0),
+      title: data.title || 'Voce foi mencionado',
+      body: data.body || '',
+      usuarioNome: data.usuarioNome || '',
+      criadoEm: new Date().toISOString(),
+      visto: false
+    },
+    ...mentionsInbox.filter((item) => item.id !== id)
+  ].slice(0, 40);
+  salvarMencoesInbox();
+  atualizarBadgeOperacional();
+}
+
+function getChatNameByKey(key) {
+  const [tipo, id] = String(key || '').split('-');
+  if (tipo === 'grupo') return gruposCache.find((grupo) => Number(grupo.id) === Number(id))?.nome || 'Grupo';
+  if (tipo === 'privado') return contatosCache.find((contato) => Number(contato.id) === Number(id))?.nome || 'Contato';
+  return 'Conversa';
+}
+
+function getOperationalChatItems() {
+  const items = [
+    ...gruposCache.map((grupo) => ({ tipo: 'grupo', id: Number(grupo.id), key: getChatKey('grupo', grupo.id), nome: grupo.nome })),
+    ...contatosCache.map((contato) => ({ tipo: 'privado', id: Number(contato.id), key: getChatKey('privado', contato.id), nome: contato.nome }))
+  ];
+  return items.map((item) => {
+    const status = getAttendanceStatus(item.key);
+    const assignee = getConversationAssignee(item.key);
+    const sla = getCurrentSlaInfo(item.key);
+    return {
+      ...item,
+      status,
+      assignee,
+      sla,
+      unread: Number(unreadState[item.key] || 0),
+      preview: lastPreviewState[item.key] || '',
+      time: lastTimeState[item.key] || ''
+    };
+  });
+}
+
+function getOperationsCount() {
+  const items = getOperationalChatItems();
+  const mentions = mentionsInbox.filter((item) => !item.visto).length;
+  const mine = items.filter((item) => Number(item.assignee?.usuario_id) === Number(usuarioAtual?.id) && item.status !== 'resolvido').length;
+  const sla = items.filter((item) => item.sla?.overdue).length;
+  return mentions + mine + sla;
+}
+
+function atualizarBadgeOperacional() {
+  const badge = document.getElementById('operationsBadge');
+  if (!badge) return;
+  const total = getOperationsCount();
+  badge.textContent = total > 99 ? '99+' : String(total);
+  badge.classList.toggle('hidden', total <= 0);
+}
+
+function getOperationItemHtml(item, label, tone = '') {
+  return `
+    <button class="operation-item ${tone}" type="button" onclick="abrirItemOperacional('${escapeHtml(item.tipo)}', ${Number(item.id)})">
+      <span class="operation-dot"></span>
+      <span class="operation-main">
+        <strong>${escapeHtml(item.nome)}</strong>
+        <small>${escapeHtml(label)}</small>
+      </span>
+      <span class="operation-meta">${escapeHtml(item.time || 'abrir')}</span>
+    </button>
+  `;
+}
+
+function renderCentralOperacional() {
+  const body = document.getElementById('operationsPanelBody');
+  if (!body) return;
+  const items = getOperationalChatItems();
+  const minhas = items.filter((item) => Number(item.assignee?.usuario_id) === Number(usuarioAtual?.id) && item.status !== 'resolvido').slice(0, 8);
+  const sla = items.filter((item) => item.sla?.overdue).slice(0, 8);
+  const naoLidas = items.filter((item) => item.unread > 0).slice(0, 8);
+  const mencoes = mentionsInbox.slice(0, 8);
+
+  const mentionsHtml = mencoes.length
+    ? mencoes.map((item) => `
+      <button class="operation-item mention ${item.visto ? 'seen' : ''}" type="button" onclick="abrirMencaoOperacional('${escapeHtml(item.id)}')">
+        <span class="operation-dot"></span>
+        <span class="operation-main">
+          <strong>${escapeHtml(getChatNameByKey(getChatKey(item.tipoChat, item.chatId)))}</strong>
+          <small>${escapeHtml(item.body || item.title || 'Mencao recebida')}</small>
+        </span>
+        <span class="operation-meta">${escapeHtml(formatMessageTimestamp(item.criadoEm))}</span>
+      </button>
+    `).join('')
+    : '<div class="operation-empty">Nenhuma mencao recente.</div>';
+
+  body.innerHTML = `
+    <section class="operation-section">
+      <div class="operation-section-title">Menções</div>
+      ${mentionsHtml}
+    </section>
+    <section class="operation-section">
+      <div class="operation-section-title">Meus atendimentos</div>
+      ${minhas.length ? minhas.map((item) => getOperationItemHtml(item, `${getAttendanceLabel(item.status) || 'Sem status'} - ${item.preview || 'Sem mensagem recente'}`, 'mine')).join('') : '<div class="operation-empty">Nenhum atendimento atribuido a voce.</div>'}
+    </section>
+    <section class="operation-section">
+      <div class="operation-section-title">SLA vencido</div>
+      ${sla.length ? sla.map((item) => getOperationItemHtml(item, item.sla.label, 'sla')).join('') : '<div class="operation-empty">Nenhum SLA vencido agora.</div>'}
+    </section>
+    <section class="operation-section">
+      <div class="operation-section-title">Não lidas</div>
+      ${naoLidas.length ? naoLidas.map((item) => getOperationItemHtml(item, `${item.unread} nao lida(s) - ${item.preview}`, 'unread')).join('') : '<div class="operation-empty">Sem mensagens nao lidas.</div>'}
+    </section>
+  `;
+  atualizarBadgeOperacional();
+}
+
+function abrirCentralOperacional() {
+  renderCentralOperacional();
+  document.getElementById('operationsPanel')?.classList.remove('hidden');
+}
+
+function fecharCentralOperacional() {
+  document.getElementById('operationsPanel')?.classList.add('hidden');
+}
+
+function abrirItemOperacional(tipo, id) {
+  const nome = getChatNameByKey(getChatKey(tipo, id));
+  fecharCentralOperacional();
+  carregarChat(tipo, id, nome);
+}
+
+function abrirMencaoOperacional(id) {
+  const mention = mentionsInbox.find((item) => item.id === id);
+  if (!mention) return;
+  mention.visto = true;
+  salvarMencoesInbox();
+  abrirItemOperacional(mention.tipoChat, mention.chatId);
 }
 
 function parseTagsInput(value) {
@@ -967,11 +1126,15 @@ function conversationMatchesFilter(key, options = {}) {
   const online = Boolean(options.online);
   const isGroup = options.tipo === 'grupo';
   const attendanceStatus = getAttendanceStatus(key);
+  const assignee = getConversationAssignee(key);
+  const sla = getCurrentSlaInfo(key);
 
   if (conversationFilter === 'online') return !isGroup && online;
   if (conversationFilter === 'grupos') return isGroup;
   if (conversationFilter === 'nao-lidas') return unread > 0;
+  if (conversationFilter === 'meus') return Number(assignee?.usuario_id) === Number(usuarioAtual?.id) && attendanceStatus !== 'resolvido';
   if (conversationFilter === 'pendentes') return attendanceStatus === 'pendente';
+  if (conversationFilter === 'sla') return Boolean(sla?.overdue);
   if (conversationFilter === 'urgentes') return attendanceStatus === 'urgente';
   return true;
 }
@@ -2391,6 +2554,8 @@ function aplicarSessaoUsuario() {
   document.getElementById('adminSection').classList.toggle('hidden', !isAdmin);
   document.getElementById('novoGrupoBtn').style.display = isAdmin ? 'inline-flex' : 'none';
   document.getElementById('ajustesBtn').classList.remove('hidden');
+  carregarMencoesInbox();
+  atualizarBadgeOperacional();
   updateDailyMotivation();
   if (!tipoChat || !chatIdAtual) renderWelcomeState();
 }
@@ -2419,6 +2584,7 @@ async function carregarWorkflow() {
     salvarStatusAtendimento();
     renderWorkflowPanel();
     salvarMensagensPrioritarias();
+    atualizarBadgeOperacional();
   } catch (err) {
     console.error(err);
   }
@@ -2459,6 +2625,8 @@ function getDashboardChatItems(filter, limit = 4) {
   if (filter === 'online') items = items.filter((item) => item.online);
   if (filter === 'pending') items = items.filter((item) => item.attendanceStatus === 'pendente');
   if (filter === 'urgent') items = items.filter((item) => item.attendanceStatus === 'urgente');
+  if (filter === 'mine') items = items.filter((item) => Number(getConversationAssignee(getChatKey(item.tipo, item.id))?.usuario_id) === Number(usuarioAtual?.id) && item.attendanceStatus !== 'resolvido');
+  if (filter === 'sla') items = items.filter((item) => getCurrentSlaInfo(getChatKey(item.tipo, item.id))?.overdue);
 
   return items
     .sort((a, b) => {
@@ -2519,6 +2687,9 @@ function getWelcomeStateHtml() {
   const totalNaoLidas = Object.values(unreadState).reduce((sum, value) => sum + (Number(value) || 0), 0);
   const totalPendentes = Object.values(attendanceStatusState).filter((status) => status === 'pendente').length;
   const totalUrgentes = Object.values(attendanceStatusState).filter((status) => status === 'urgente').length;
+  const operationalItems = getOperationalChatItems();
+  const totalMeus = operationalItems.filter((item) => Number(item.assignee?.usuario_id) === Number(usuarioAtual?.id) && item.status !== 'resolvido').length;
+  const totalSla = operationalItems.filter((item) => item.sla?.overdue).length;
   const nomeUsuario = String(usuarioAtual?.nome || '').trim();
   const emailUsuario = String(usuarioAtual?.email || '').trim();
   const firstNameRaw = /^\(?usu[aá]rio/i.test(nomeUsuario)
@@ -2527,6 +2698,8 @@ function getWelcomeStateHtml() {
   const firstName = firstNameRaw.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, '') || 'equipe';
   const urgentItems = getDashboardChatItems('urgent', 4);
   const unreadItems = getDashboardChatItems('unread', 4);
+  const mineItems = getDashboardChatItems('mine', 4);
+  const slaItems = getDashboardChatItems('sla', 4);
   return `
     <div class="empty-state welcome-state dashboard-home">
       <div class="dashboard-hero">
@@ -2554,6 +2727,8 @@ function getWelcomeStateHtml() {
           <div class="dashboard-actions">
             <button class="dashboard-action-btn primary" type="button" onclick="aplicarFiltroDashboard('nao-lidas')">Ver não lidas</button>
             <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('pendentes')">Pendentes</button>
+            <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('meus')">Meus atendimentos</button>
+            <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('sla')">SLA</button>
             <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('urgentes')">Urgentes</button>
             <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('online')">Equipe online</button>
             <button class="dashboard-action-btn" type="button" onclick="abrirBuscaGlobal()">Busca global</button>
@@ -2581,8 +2756,18 @@ function getWelcomeStateHtml() {
           <strong>${totalUrgentes}</strong>
           <span>urgentes</span>
         </div>
+        <div class="welcome-stat-card ${totalMeus > 0 ? 'is-active' : 'is-zero'}">
+          <strong>${totalMeus}</strong>
+          <span>meus atendimentos</span>
+        </div>
+        <div class="welcome-stat-card urgent ${totalSla > 0 ? 'is-active' : 'is-zero'}">
+          <strong>${totalSla}</strong>
+          <span>SLA vencido</span>
+        </div>
       </div>
       <div class="dashboard-grid">
+        ${getDashboardListHtml('Meus atendimentos', 'sob sua responsabilidade', mineItems, 'Nada atribuido a voce agora.')}
+        ${getDashboardListHtml('SLA', 'precisam de retorno', slaItems, 'Nenhum SLA vencido.')}
         ${getDashboardListHtml('Urgentes', 'atenção agora', urgentItems, 'Nenhuma conversa urgente.')}
         ${getDashboardListHtml('Não lidas', 'pendências', unreadItems, 'Tudo em dia por aqui.')}
       </div>
@@ -2871,6 +3056,7 @@ function conectarSocket() {
   });
 
   socket.on('mencao-recebida', (data) => {
+    registrarMencaoInbox(data);
     mostrarNotificacao(data?.title || 'Você foi mencionado', 'info');
     mostrarNotificacaoNavegador(data?.title || 'Você foi mencionado', {
       body: data?.body || 'Abra o chat para ver a mensagem.',
@@ -3363,8 +3549,9 @@ async function carregarGrupos() {
     renderPinnedNotice();
     renderAvisosGrupoAdmin();
     atualizarVisibilidadePlantaoPanel();
-    atualizarPainelInicialSeAberto();
-  }
+  atualizarPainelInicialSeAberto();
+  atualizarBadgeOperacional();
+}
 }
 
 async function carregarContatos() {
@@ -3380,8 +3567,9 @@ async function carregarContatos() {
     console.error(err);
     contatosCache = [];
     renderContatos();
-    atualizarPainelInicialSeAberto();
-  }
+  atualizarPainelInicialSeAberto();
+  atualizarBadgeOperacional();
+}
 }
 
 async function carregarResumoConversas() {
