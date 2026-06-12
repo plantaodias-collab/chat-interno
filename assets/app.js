@@ -47,6 +47,14 @@ let conversationNotesCountState = {};
 let conversationNotesCache = {};
 let conversationAssigneeState = {};
 let mentionsInbox = [];
+let mentionSuggestionsState = {
+  active: false,
+  query: '',
+  start: -1,
+  end: -1,
+  selected: 0,
+  items: []
+};
 let forwardMessageId = null;
 let globalSearchTimer = null;
 let titleBlinkInterval = null;
@@ -2752,6 +2760,7 @@ function atualizarPainelInicialSeAberto() {
 }
 
 function voltarTelaInicial() {
+  fecharSugestoesMencao();
   tipoChat = null;
   chatIdAtual = null;
   currentMessageSearch = '';
@@ -3705,6 +3714,7 @@ function renderContatos() {
 
 async function carregarChat(tipo, id, nome) {
   const loadSeq = ++currentChatLoadSeq;
+  fecharSugestoesMencao();
   tipoChat = tipo;
   chatIdAtual = id;
   nomeChatAtual = nome;
@@ -4459,6 +4469,114 @@ function limparRascunhoAtual() {
   setDraftForKey(getCurrentChatKey(), '');
 }
 
+function getMentionableUsersForCurrentChat() {
+  if (tipoChat !== 'grupo' || !chatIdAtual) return [];
+  const grupo = gruposCache.find((item) => Number(item.id) === Number(chatIdAtual));
+  const membros = new Set(Array.isArray(grupo?.membros) ? grupo.membros.map(Number) : []);
+  return contatosCache
+    .filter((user) => !membros.size || membros.has(Number(user.id)))
+    .filter((user) => Number(user.id) !== Number(usuarioAtual?.id))
+    .map((user) => ({
+      id: Number(user.id),
+      nome: user.nome || user.email || `#${user.id}`,
+      email: user.email || ''
+    }))
+    .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+}
+
+function getMentionTrigger(input) {
+  if (!input || tipoChat !== 'grupo') return null;
+  const cursor = Number(input.selectionStart || 0);
+  const before = input.value.slice(0, cursor);
+  const match = /(^|\s)@([^\s@]{0,32})$/.exec(before);
+  if (!match) return null;
+  const query = match[2] || '';
+  return {
+    query,
+    start: cursor - query.length - 1,
+    end: cursor
+  };
+}
+
+function fecharSugestoesMencao() {
+  mentionSuggestionsState = { active: false, query: '', start: -1, end: -1, selected: 0, items: [] };
+  const box = document.getElementById('mentionSuggestions');
+  if (box) box.classList.add('hidden');
+}
+
+function renderSugestoesMencao() {
+  const box = document.getElementById('mentionSuggestions');
+  if (!box) return;
+  const { items, selected } = mentionSuggestionsState;
+  if (!items.length) {
+    box.classList.add('hidden');
+    box.innerHTML = '';
+    return;
+  }
+  box.innerHTML = items.map((user, index) => `
+    <button class="mention-suggestion ${index === selected ? 'active' : ''}" type="button" role="option" aria-selected="${index === selected ? 'true' : 'false'}" onclick="selecionarSugestaoMencao(${index})">
+      <span class="mention-avatar">${escapeHtml(initials(user.nome))}</span>
+      <span class="mention-text">
+        <strong>${escapeHtml(user.nome)}</strong>
+        <small>${escapeHtml(user.email)}</small>
+      </span>
+    </button>
+  `).join('');
+  box.classList.remove('hidden');
+}
+
+function atualizarSugestoesMencao() {
+  const input = document.getElementById('messageInput');
+  const trigger = getMentionTrigger(input);
+  if (!trigger) {
+    fecharSugestoesMencao();
+    return;
+  }
+  const query = normalizeSearchText(trigger.query);
+  const items = getMentionableUsersForCurrentChat()
+    .filter((user) => {
+      const nome = normalizeSearchText(user.nome);
+      const email = normalizeSearchText(user.email);
+      return !query || nome.includes(query) || email.includes(query);
+    })
+    .slice(0, 8);
+  mentionSuggestionsState = {
+    active: items.length > 0,
+    query,
+    start: trigger.start,
+    end: trigger.end,
+    selected: 0,
+    items
+  };
+  renderSugestoesMencao();
+}
+
+function selecionarSugestaoMencao(index = mentionSuggestionsState.selected) {
+  const input = document.getElementById('messageInput');
+  const user = mentionSuggestionsState.items[index];
+  if (!input || !user) return false;
+  const before = input.value.slice(0, mentionSuggestionsState.start);
+  const after = input.value.slice(mentionSuggestionsState.end);
+  const mentionText = `@${user.nome} `;
+  input.value = `${before}${mentionText}${after}`;
+  const cursor = before.length + mentionText.length;
+  input.selectionStart = cursor;
+  input.selectionEnd = cursor;
+  fecharSugestoesMencao();
+  autoResizeComposer();
+  salvarRascunhoAtual();
+  input.focus();
+  return true;
+}
+
+function navegarSugestoesMencao(delta) {
+  if (!mentionSuggestionsState.items.length) return false;
+  const total = mentionSuggestionsState.items.length;
+  mentionSuggestionsState.selected = (mentionSuggestionsState.selected + delta + total) % total;
+  renderSugestoesMencao();
+  return true;
+}
+
 function alternarAgendamentoMensagem(event) {
   event?.stopPropagation?.();
   if (!tipoChat || !chatIdAtual) {
@@ -4670,8 +4788,31 @@ async function lidarColarArquivo(event) {
 }
 
 function enviarSeEnter(event) {
+  if (mentionSuggestionsState.active) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      navegarSugestoesMencao(1);
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      navegarSugestoesMencao(-1);
+      return;
+    }
+    if (event.key === 'Enter' || event.key === 'Tab') {
+      event.preventDefault();
+      selecionarSugestaoMencao();
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      fecharSugestoesMencao();
+      return;
+    }
+  }
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
+    fecharSugestoesMencao();
     enviarMensagem();
   }
 }
