@@ -48,7 +48,7 @@ const ALLOWED_MIME_EXTENSIONS = {
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
 };
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
-const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json'];
+const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'notas-conversa.json', 'etiquetas-conversa.json', 'responsavel-conversa.json', 'mensagens-agendadas.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json'];
 
 function getDefaultBackupSchedule() {
   return {
@@ -121,6 +121,10 @@ class SimpleDB {
     this.mensagens_apagadas = this.loadFile('mensagens-apagadas.json', []);
     this.conversas_pendentes = this.loadFile('conversas-pendentes.json', []);
     this.status_atendimento = this.loadFile('status-atendimento.json', {});
+    this.notas_conversa = this.loadFile('notas-conversa.json', {});
+    this.etiquetas_conversa = this.loadFile('etiquetas-conversa.json', {});
+    this.responsavel_conversa = this.loadFile('responsavel-conversa.json', {});
+    this.mensagens_agendadas = this.loadFile('mensagens-agendadas.json', []);
     this.mensagens_prioritarias = this.loadFile('mensagens-prioritarias.json', []);
     this.mensagens_fixadas = this.loadFile('mensagens-fixadas.json', []);
     this.templates = this.loadFile('templates.json', []);
@@ -184,6 +188,10 @@ class SimpleDB {
       ['mensagens-apagadas.json', this.mensagens_apagadas],
       ['conversas-pendentes.json', this.conversas_pendentes],
       ['status-atendimento.json', this.status_atendimento],
+      ['notas-conversa.json', this.notas_conversa],
+      ['etiquetas-conversa.json', this.etiquetas_conversa],
+      ['responsavel-conversa.json', this.responsavel_conversa],
+      ['mensagens-agendadas.json', this.mensagens_agendadas],
       ['mensagens-prioritarias.json', this.mensagens_prioritarias],
       ['mensagens-fixadas.json', this.mensagens_fixadas],
       ['painel-senhas.json', this.painel_senhas],
@@ -672,6 +680,27 @@ function getStoredConversationKey(tipo, id, userId) {
 
 function getClientConversationKey(tipo, id) {
   return getConversationKey(tipo, id);
+}
+
+// Converte uma chave de armazenamento (grupo-ID / privado-min-max) para a chave
+// do cliente do ponto de vista de um usuario, validando acesso. Retorna null se
+// o usuario nao participa da conversa. Usado na agregacao do /api/workflow.
+function mapStoredKeyToClient(storedKey, userId) {
+  const parts = String(storedKey).split('-');
+  const tipo = parts[0];
+  if (tipo === 'grupo') {
+    const id = parts[1];
+    if (!canUserAccessConversation(userId, 'grupo', id)) return null;
+    return getClientConversationKey('grupo', id);
+  }
+  if (tipo === 'privado') {
+    const ids = parts.slice(1).map(Number).filter(Boolean);
+    if (ids.length !== 2 || !ids.includes(Number(userId))) return null;
+    const otherId = ids.find((item) => Number(item) !== Number(userId));
+    if (!otherId || !canUserAccessConversation(userId, 'privado', otherId)) return null;
+    return getClientConversationKey('privado', otherId);
+  }
+  return null;
 }
 
 function isValidAttendanceStatus(status) {
@@ -2132,6 +2161,27 @@ app.get('/api/workflow', verificarToken, (req, res) => {
       }
     });
 
+    const etiquetas = {};
+    Object.entries(db.etiquetas_conversa || {}).forEach(([key, value]) => {
+      if (!Array.isArray(value) || !value.length) return;
+      const clientKey = mapStoredKeyToClient(key, req.userId);
+      if (clientKey) etiquetas[clientKey] = value;
+    });
+
+    const notasCount = {};
+    Object.entries(db.notas_conversa || {}).forEach(([key, value]) => {
+      if (!Array.isArray(value) || !value.length) return;
+      const clientKey = mapStoredKeyToClient(key, req.userId);
+      if (clientKey) notasCount[clientKey] = value.length;
+    });
+
+    const responsaveis = {};
+    Object.entries(db.responsavel_conversa || {}).forEach(([key, value]) => {
+      if (!value || !value.usuario_id) return;
+      const clientKey = mapStoredKeyToClient(key, req.userId);
+      if (clientKey) responsaveis[clientKey] = value;
+    });
+
     const mensagensPrioritarias = db.mensagens_prioritarias
       .map((item) => Number(item?.message_id))
       .filter((messageId) => {
@@ -2141,6 +2191,9 @@ app.get('/api/workflow', verificarToken, (req, res) => {
 
     res.json({
       statusAtendimento,
+      etiquetas,
+      notasCount,
+      responsaveis,
       mensagensPrioritarias,
       mensagensFixadas: getPinnedMessagesForUser(req.userId)
     });
@@ -2184,6 +2237,112 @@ app.put('/api/conversas/:tipo/:id/status-atendimento', verificarToken, (req, res
 
     emitConversationWorkflow(tipo, chatId, payload);
     res.json(payload);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BLOCO C — ETIQUETAS E NOTAS INTERNAS POR CONVERSA
+// ═══════════════════════════════════════════════════════════════════════════
+const MAX_ETIQUETAS = 8;
+const MAX_NOTAS = 200;
+
+function resolverConversa(req) {
+  const tipo = normalizeConversationType(req.params.tipo);
+  const chatId = Number(req.params.id);
+  const key = getStoredConversationKey(tipo, chatId, req.userId);
+  const clientKey = getClientConversationKey(tipo, chatId);
+  return { tipo, chatId, key, clientKey };
+}
+
+app.put('/api/conversas/:tipo/:id/etiquetas', verificarToken, (req, res) => {
+  try {
+    const { tipo, chatId, key, clientKey } = resolverConversa(req);
+    if (!key) return res.status(400).json({ erro: 'Conversa inválida' });
+    if (!canUserAccessConversation(req.userId, tipo, chatId)) {
+      return res.status(403).json({ erro: 'Acesso negado a esta conversa' });
+    }
+    const entrada = Array.isArray(req.body?.etiquetas) ? req.body.etiquetas : [];
+    const etiquetas = [...new Set(entrada.map((t) => sanitizeText(t).slice(0, 40)).filter(Boolean))].slice(0, MAX_ETIQUETAS);
+    if (etiquetas.length) db.etiquetas_conversa[key] = etiquetas;
+    else delete db.etiquetas_conversa[key];
+    db.save();
+    const payload = { tipoChat: tipo, chatId, key: clientKey, etiquetas, usuarioId: Number(req.userId), tipoEvento: 'etiquetas' };
+    emitConversationWorkflow(tipo, chatId, payload);
+    res.json(payload);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.get('/api/conversas/:tipo/:id/notas', verificarToken, (req, res) => {
+  try {
+    const { tipo, chatId, key } = resolverConversa(req);
+    if (!key) return res.status(400).json({ erro: 'Conversa inválida' });
+    if (!canUserAccessConversation(req.userId, tipo, chatId)) {
+      return res.status(403).json({ erro: 'Acesso negado a esta conversa' });
+    }
+    res.json({ notas: db.notas_conversa[key] || [] });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.post('/api/conversas/:tipo/:id/notas', verificarToken, (req, res) => {
+  try {
+    const { tipo, chatId, key, clientKey } = resolverConversa(req);
+    if (!key) return res.status(400).json({ erro: 'Conversa inválida' });
+    if (!canUserAccessConversation(req.userId, tipo, chatId)) {
+      return res.status(403).json({ erro: 'Acesso negado a esta conversa' });
+    }
+    const texto = sanitizeText(req.body?.texto).slice(0, 1000);
+    if (!texto) return res.status(400).json({ erro: 'Nota vazia' });
+    const autor = db.usuarios.find((u) => Number(u.id) === Number(req.userId));
+    const nota = {
+      id: gerarIdMensagem(),
+      texto,
+      autor_id: Number(req.userId),
+      autor_nome: autor?.nome || autor?.email || 'Usuário',
+      criado_em: new Date().toISOString()
+    };
+    const lista = db.notas_conversa[key] || [];
+    lista.push(nota);
+    db.notas_conversa[key] = lista.slice(-MAX_NOTAS);
+    db.save();
+    emitConversationWorkflow(tipo, chatId, {
+      tipoChat: tipo, chatId, key: clientKey, usuarioId: Number(req.userId),
+      tipoEvento: 'notas', notasCount: db.notas_conversa[key].length
+    });
+    res.json({ nota });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.delete('/api/conversas/:tipo/:id/notas/:notaId', verificarToken, (req, res) => {
+  try {
+    const { tipo, chatId, key, clientKey } = resolverConversa(req);
+    if (!key) return res.status(400).json({ erro: 'Conversa inválida' });
+    if (!canUserAccessConversation(req.userId, tipo, chatId)) {
+      return res.status(403).json({ erro: 'Acesso negado a esta conversa' });
+    }
+    const notaId = Number(req.params.notaId);
+    const lista = db.notas_conversa[key] || [];
+    const idx = lista.findIndex((n) => Number(n.id) === notaId);
+    if (idx < 0) return res.status(404).json({ erro: 'Nota não encontrada' });
+    if (Number(lista[idx].autor_id) !== Number(req.userId) && !isAdminUser(req.userId)) {
+      return res.status(403).json({ erro: 'Apenas o autor ou um admin pode remover a nota' });
+    }
+    lista.splice(idx, 1);
+    if (lista.length) db.notas_conversa[key] = lista;
+    else delete db.notas_conversa[key];
+    db.save();
+    emitConversationWorkflow(tipo, chatId, {
+      tipoChat: tipo, chatId, key: clientKey, usuarioId: Number(req.userId),
+      tipoEvento: 'notas', notasCount: lista.length
+    });
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
