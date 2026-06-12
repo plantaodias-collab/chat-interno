@@ -1103,6 +1103,9 @@ function normalizeMessage(msg) {
     tipo: msg.tipo || 'texto',
     reacoes: typeof msg.reacoes === 'object' && msg.reacoes ? msg.reacoes : {},
     reacoes_nomes: typeof msg.reacoes_nomes === 'object' && msg.reacoes_nomes ? msg.reacoes_nomes : {},
+    mencoes_usuario_ids: Array.isArray(msg.mencoes_usuario_ids)
+      ? msg.mencoes_usuario_ids.map(Number).filter(Boolean)
+      : [],
     leituras_grupo: Array.isArray(msg.leituras_grupo)
       ? msg.leituras_grupo
           .map((item) => ({
@@ -1117,6 +1120,11 @@ function normalizeMessage(msg) {
     usuario_nome: msg.usuario_nome || msg.usuarioNome || msg.remetenteNome || '',
     usuarioNome: msg.usuarioNome || msg.usuario_nome || msg.remetenteNome || ''
   };
+}
+
+function isMessageMentioningMe(message) {
+  return Array.isArray(message?.mencoes_usuario_ids)
+    && message.mencoes_usuario_ids.some((id) => Number(id) === Number(usuarioAtual?.id));
 }
 
 function getLeiturasGrupo(message) {
@@ -3711,6 +3719,9 @@ function renderMessageRow(message) {
   const priorityBadgeHtml = isPriorityMessage
     ? '<div class="message-priority-badge">Mensagem prioritária</div>'
     : '';
+  const mentionBadgeHtml = isMessageMentioningMe(message)
+    ? '<div class="message-mention-badge">Voce foi mencionado</div>'
+    : '';
 
   if (ehOutro) {
     const nomeMensagem = message.usuarioNome || message.usuario_nome || 'Usuario';
@@ -3718,6 +3729,7 @@ function renderMessageRow(message) {
       <div class="message-avatar" ${avatarStyle(nomeMensagem)}>${escapeHtml(initials(nomeMensagem))}</div>
       <div class="message other ${stickerAttachment ? 'sticker-message' : ''}">
         ${priorityBadgeHtml}
+        ${mentionBadgeHtml}
         <div class="message-sender">${escapeHtml(nomeMensagem)}</div>
         ${replyHtml}
         ${innerContent}
@@ -3748,6 +3760,7 @@ function renderMessageRow(message) {
     <div class="message-avatar" ${avatarStyle(usuarioAtual.nome || usuarioAtual.email)}>${escapeHtml(initials(usuarioAtual.nome))}</div>
     <div class="message own ${stickerAttachment ? 'sticker-message' : ''}">
       ${priorityBadgeHtml}
+      ${mentionBadgeHtml}
       <div class="message-sender">${escapeHtml(usuarioAtual.nome || 'Voce')}</div>
       ${replyHtml}
       ${innerContent}
@@ -3837,7 +3850,8 @@ function renderMessages(options = {}) {
     lastRenderedDay = currentDay || lastRenderedDay;
     previousMessage = message;
     const priorityClass = isMensagemPrioritaria(message.id) ? 'message-priority-row' : '';
-    return `${dividerHtml}<div class="message-row ${ehOutro ? '' : 'own'} ${compact ? 'compact' : ''} ${priorityClass}" data-message-id="${Number(message.id)}" data-usuario-id="${Number(message.usuarioId || 0)}">${renderMessageRow(message)}</div>`;
+    const mentionClass = isMessageMentioningMe(message) ? 'message-mention-row' : '';
+    return `${dividerHtml}<div class="message-row ${ehOutro ? '' : 'own'} ${compact ? 'compact' : ''} ${priorityClass} ${mentionClass}" data-message-id="${Number(message.id)}" data-usuario-id="${Number(message.usuarioId || 0)}">${renderMessageRow(message)}</div>`;
   }).join('');
   hydrateSecureAttachments(container);
   if (scrollToBottom) scrollMessagesToBottom({ stabilize: stabilizeBottom });

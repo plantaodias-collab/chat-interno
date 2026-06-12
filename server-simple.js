@@ -614,6 +614,9 @@ function enrichMessage(m) {
   return {
     ...m,
     usuario_nome: db.usuarios.find((u) => u.id === m.usuario_id)?.nome || 'Desconhecido',
+    mencoes_usuario_ids: Array.isArray(m.mencoes_usuario_ids)
+      ? m.mencoes_usuario_ids.map(Number).filter(Boolean)
+      : [],
     leituras_grupo: leiturasGrupo.map((item) => ({
       ...item,
       usuario_nome: db.usuarios.find((u) => u.id === item.usuario_id)?.nome || 'Desconhecido'
@@ -1316,6 +1319,7 @@ function emitScheduledMessage(entry) {
   }
 
   if (tipo === 'grupo') {
+    const mencionados = getMentionedUsersInGroup(conteudo, chatId, usuario.id);
     const msg = {
       id: gerarIdMensagem(),
       usuario_id: Number(usuario.id),
@@ -1327,6 +1331,7 @@ function emitScheduledMessage(entry) {
       reacoes: {},
       lido: 0,
       leituras_grupo: [],
+      mencoes_usuario_ids: mencionados.map((user) => Number(user.id)),
       agendada_id: entry.id,
       criado_em: new Date().toISOString()
     };
@@ -1335,7 +1340,6 @@ function emitScheduledMessage(entry) {
     const msgEnriquecida = { ...enrichMessage(msg), usuarioNome: usuario.nome, usuarioId: Number(usuario.id), grupoId: chatId };
     io.to(`grupo-${chatId}`).emit('nova-mensagem-grupo', msgEnriquecida);
 
-    const mencionados = getMentionedUsersInGroup(conteudo, chatId, usuario.id);
     mencionados.forEach((mencionado) => {
       io.to(`usuario-${mencionado.id}`).emit('mencao-recebida', {
         tipoChat: 'grupo',
@@ -2972,6 +2976,7 @@ io.on('connection', (socket) => {
       return;
     }
 
+    const mencionados = getMentionedUsersInGroup(data.conteudo, data.grupoId, data.usuarioId);
     const msg = {
       id: gerarIdMensagem(),
       usuario_id: Number(data.usuarioId),
@@ -2983,6 +2988,7 @@ io.on('connection', (socket) => {
       reacoes: {},
       lido: 0,
       leituras_grupo: [],
+      mencoes_usuario_ids: mencionados.map((user) => Number(user.id)),
       criado_em: new Date().toISOString()
     };
 
@@ -2994,7 +3000,6 @@ io.on('connection', (socket) => {
     const msgEnriquecida = { ...enrichMessage(msg), usuarioNome: data.usuarioNome, usuarioId: Number(data.usuarioId), grupoId: Number(data.grupoId) };
     io.to(`grupo-${data.grupoId}`).emit('nova-mensagem-grupo', msgEnriquecida);
 
-    const mencionados = getMentionedUsersInGroup(data.conteudo, data.grupoId, data.usuarioId);
     mencionados.forEach((user) => {
       const payload = {
         tipoChat: 'grupo',

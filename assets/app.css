@@ -1175,6 +1175,53 @@ button, input { font: inherit; }
   font-size: 10px;
 }
 
+.message-mention-row {
+  position: relative;
+}
+
+.message-mention-row .message,
+.message-mention-row .message.own,
+.message-mention-row .message.other {
+  border-color: rgba(37,99,235,.68);
+  box-shadow: 0 14px 32px rgba(37,99,235,.16);
+}
+
+.message-mention-row .message.other {
+  background: linear-gradient(180deg, #eff6ff, #ffffff);
+}
+
+.message-mention-row .message.own {
+  background: linear-gradient(180deg, #dbeafe, #eff6ff);
+}
+
+.message-mention-badge {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(37,99,235,.14);
+  border: 1px solid rgba(37,99,235,.30);
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.message-mention-badge::before {
+  content: '@';
+  width: 15px;
+  height: 15px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 10px;
+}
+
 .message-status {
   font-size: 11px;
   opacity: .95;
