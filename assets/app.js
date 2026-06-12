@@ -85,35 +85,35 @@ const ATTENDANCE_STATUS_LABELS = {
 const MESSAGE_PAGE_SIZE = 50;
 const DAILY_MOTIVATION_MESSAGES = [
   'Cada ato que fazemos transforma vidas, vamos fazer sempre o nosso melhor.',
-  'Cada atendimento carrega uma historia; que hoje a nossa entrega seja cuidadosa e humana.',
-  'Nos detalhes do nosso trabalho nascem seguranca, confianca e tranquilidade para muitas pessoas.',
-  'Que cada conversa de hoje seja conduzida com atencao, respeito e vontade de resolver.',
-  'Fazer bem o simples tambem transforma vidas. Hoje e mais um dia para entregar o nosso melhor.',
+  'Cada atendimento carrega uma história; que hoje a nossa entrega seja cuidadosa e humana.',
+  'Nos detalhes do nosso trabalho nascem segurança, confiança e tranquilidade para muitas pessoas.',
+  'Que cada conversa de hoje seja conduzida com atenção, respeito e vontade de resolver.',
+  'Fazer bem o simples também transforma vidas. Hoje é mais um dia para entregar o nosso melhor.',
   'Quando trabalhamos com cuidado, cada documento vira parte de uma conquista importante.',
-  'Que o nosso atendimento seja claro, gentil e eficiente do primeiro contato ao ultimo retorno.',
+  'Que o nosso atendimento seja claro, gentil e eficiente do primeiro contato ao último retorno.',
   'Cada pessoa atendida merece sentir que seu pedido foi tratado com seriedade e respeito.',
-  'Nosso trabalho ganha valor quando unimos agilidade, precisao e empatia.',
-  'Hoje e um bom dia para transformar responsabilidade em confianca.',
+  'Nosso trabalho ganha valor quando unimos agilidade, precisão e empatia.',
+  'Hoje é um bom dia para transformar responsabilidade em confiança.',
   'Pequenas atitudes de cuidado deixam grandes marcas no atendimento.',
-  'Que cada resposta enviada hoje aproxime alguem da solucao que precisa.',
-  'Excelencia tambem esta na forma como acolhemos, orientamos e finalizamos cada demanda.',
+  'Que cada resposta enviada hoje aproxime alguém da solução que precisa.',
+  'Excelência também está na forma como acolhemos, orientamos e finalizamos cada demanda.',
   'Cada ato feito com atenção reforça a confiança que as pessoas depositam em nosso trabalho.',
-  'Vamos cuidar de cada detalhe, porque por tras de cada pedido existe uma vida em movimento.',
+  'Vamos cuidar de cada detalhe, porque por trás de cada pedido existe uma vida em movimento.',
   'Que hoje a equipe trabalhe com foco, leveza e orgulho pelo que entrega.',
-  'Ser melhor a cada dia tambem e ouvir com calma, responder com clareza e agir com compromisso.',
+  'Ser melhor a cada dia também é ouvir com calma, responder com clareza e agir com compromisso.',
   'Cada atendimento bem conduzido mostra que qualidade e cuidado caminham juntos.',
-  'Que a nossa rotina seja feita de colaboracao, respeito e vontade de fazer bem feito.',
-  'O melhor resultado nasce quando cada um faz sua parte com atencao e responsabilidade.',
-  'Hoje, mais uma vez, temos a chance de facilitar caminhos e entregar seguranca.',
-  'Que cada mensagem respondida leve clareza, tranquilidade e confianca.',
-  'Transformar vidas tambem esta em cumprir cada etapa com carinho, criterio e dedicacao.',
-  'Vamos fazer do atendimento de hoje uma experiencia mais simples, humana e eficiente.',
-  'Cada detalhe importa quando o objetivo e servir bem.',
-  'Nossa melhor entrega e aquela que une precisao tecnica e cuidado com as pessoas.',
-  'Que a dedicacao de hoje vire tranquilidade para quem espera uma resposta.',
-  'Atender bem e transformar uma necessidade em confianca.',
+  'Que a nossa rotina seja feita de colaboração, respeito e vontade de fazer bem feito.',
+  'O melhor resultado nasce quando cada um faz sua parte com atenção e responsabilidade.',
+  'Hoje, mais uma vez, temos a chance de facilitar caminhos e entregar segurança.',
+  'Que cada mensagem respondida leve clareza, tranquilidade e confiança.',
+  'Transformar vidas também está em cumprir cada etapa com carinho, critério e dedicação.',
+  'Vamos fazer do atendimento de hoje uma experiência mais simples, humana e eficiente.',
+  'Cada detalhe importa quando o objetivo é servir bem.',
+  'Nossa melhor entrega é aquela que une precisão técnica e cuidado com as pessoas.',
+  'Que a dedicação de hoje vire tranquilidade para quem espera uma resposta.',
+  'Atender bem é transformar uma necessidade em confiança.',
   'Que cada ato de hoje tenha a marca do nosso compromisso com o melhor.',
-  'Trabalhar com excelencia e lembrar que cada processo tem alguem contando conosco.'
+  'Trabalhar com excelência é lembrar que cada processo tem alguém contando conosco.'
 ];
 const EMOJI_OPTIONS = [
   '😀','😃','😄','😁','😆','😅','😂','🤣','🙂',
@@ -956,13 +956,13 @@ function getCachedAttachmentObjectUrl(rawUrl = '') {
 
 async function fetchProtectedAttachmentBlob(rawUrl = '') {
   const protectedUrl = getProtectedAttachmentUrl(rawUrl);
-  if (!protectedUrl) throw new Error('Arquivo invalido');
+  if (!protectedUrl) throw new Error('Arquivo inválido');
   if (secureAttachmentBlobCache.has(protectedUrl)) return secureAttachmentBlobCache.get(protectedUrl);
   if (secureAttachmentPending.has(protectedUrl)) return secureAttachmentPending.get(protectedUrl);
 
   const pending = fetch(protectedUrl, { headers: authHeaders() })
     .then((response) => {
-      if (!response.ok) throw new Error('Arquivo indisponivel ou sem permissao');
+      if (!response.ok) throw new Error('Arquivo indisponível ou sem permissão');
       return response.blob();
     })
     .then((blob) => {
@@ -1042,7 +1042,7 @@ function setAttachmentViewerLoading(message) {
 async function abrirVisualizadorArquivo(messageId) {
   const message = getMessageByIdFromCache(messageId);
   if (!message?.arquivo_url) {
-    mostrarNotificacao('Arquivo indisponivel', 'error');
+    mostrarNotificacao('Arquivo indisponível', 'error');
     return;
   }
 
@@ -1133,7 +1133,7 @@ async function imprimirArquivoVisualizado() {
       return;
     }
 
-    mostrarNotificacao('Impressao disponivel para PDF e imagens', 'info');
+    mostrarNotificacao('Impressão disponível para PDF e imagens', 'info');
   } catch (err) {
     mostrarNotificacao(err.message || 'Erro ao imprimir arquivo', 'error');
   }
@@ -1243,7 +1243,7 @@ function renderStickerPicker() {
 async function fetchStickerBlob(sticker) {
   if (isBundledSticker(sticker)) {
     const response = await fetch(sticker.url);
-    if (!response.ok) throw new Error('Figurinha indisponivel');
+    if (!response.ok) throw new Error('Figurinha indisponível');
     return response.blob();
   }
   return fetchProtectedAttachmentBlob(sticker.url);
@@ -2025,7 +2025,7 @@ async function registrarServiceWorkerNotificacoes() {
   try {
     return await navigator.serviceWorker.register('/sw.js');
   } catch (err) {
-    console.warn('Service worker indisponivel', err);
+    console.warn('Service worker indisponível', err);
     return null;
   }
 }
@@ -2244,11 +2244,11 @@ function getWelcomeStateHtml() {
         </div>
       </div>
       <div class="welcome-stats dashboard-stats">
-        <div class="welcome-stat-card">
+        <div class="welcome-stat-card ${totalOnline > 0 ? 'is-active' : 'is-zero'}">
           <strong>${totalOnline}</strong>
           <span>online agora</span>
         </div>
-        <div class="welcome-stat-card">
+        <div class="welcome-stat-card ${totalNaoLidas > 0 ? 'is-active' : 'is-zero'}">
           <strong>${totalNaoLidas}</strong>
           <span>não lidas</span>
         </div>
@@ -2256,11 +2256,11 @@ function getWelcomeStateHtml() {
           <strong>${totalGrupos}</strong>
           <span>grupos</span>
         </div>
-        <div class="welcome-stat-card priority">
+        <div class="welcome-stat-card priority ${totalPendentes > 0 ? 'is-active' : 'is-zero'}">
           <strong>${totalPendentes}</strong>
           <span>pendentes</span>
         </div>
-        <div class="welcome-stat-card urgent">
+        <div class="welcome-stat-card urgent ${totalUrgentes > 0 ? 'is-active' : 'is-zero'}">
           <strong>${totalUrgentes}</strong>
           <span>urgentes</span>
         </div>

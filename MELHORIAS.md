@@ -20,11 +20,11 @@ Ordem sugerida: de cima para baixo.
 
 ## Fase 1 — Polimento visual (baixo risco, alto retorno) 🟢
 
-- [ ] **Acentuação no resto do app** — varrer mensagens, botões, modais e avisos que ainda estão sem acento (a tela inicial já foi). Risco baixo: são só strings de exibição. Cuidado para não tocar em identificadores de código (ex.: filtro `'nao-lidas'`).
-- [ ] **Reduzir o espaço vazio no topo** da tela inicial — o painel "Boa tarde" flutua embaixo com uma faixa grande vazia acima. Ajustar o alinhamento vertical do `welcome-state`.
-- [ ] **Unificar a saudação** — hoje aparece 3× ("Bem-vindo ao Chat...", a frase em verde, e "Boa tarde, Régis"). Manter só o card do dashboard.
-- [ ] **Cards de estatística com hierarquia** — quando "urgentes"/"não lidas" forem > 0, destacar com cor de alerta; quando 0, deixar neutro/apagado, para o olho ir direto ao que importa.
-- [ ] **Logo real do cartório** no avatar "DC" e uma cor de marca, no lugar do azul genérico.
+- [x] **Acentuação** — frases do dia (caixa verde), abas do admin (Usuários, Métricas), Painel Público, toasts ("Arquivo inválido", "indisponível", "Impressão"...) e tela inicial. Commit `<fase1>`. *(Resta uma varredura fina de strings menos visíveis, que dá para fazer aos poucos.)*
+- [x] **Cards de estatística com hierarquia** — contagem 0 fica apagada; "não lidas/pendentes/urgentes" > 0 ganham cor de alerta (azul/âmbar/vermelho). Commit `<fase1>`.
+- [ ] **Reduzir o espaço vazio no topo** da tela inicial — ⚠️ requer ajuste visual com o app rodando para acertar sem quebrar o layout (CSS bem duplicado). Fazer iterando com o render.
+- [ ] **Unificar a saudação** — hoje a marca "Cartório Dias de Castro" aparece no cabeçalho e no card. ⚠️ decisão visual; fazer vendo o resultado.
+- [ ] **Logo real do cartório** no avatar e cor de marca — ⏳ depende de receber o arquivo do logo (hoje há só o monograma "DC" em SVG).
 
 ## Fase 2 — Experiência de uso (médio risco) 🟡
 

@@ -8916,3 +8916,39 @@ body.theme-dark .header-more-panel .header-btn[aria-disabled="true"] {
   transition: none !important;
   animation: none !important;
 }
+
+/* Hierarquia dos cards de estatistica da tela inicial.
+   Cards com contagem 0 ficam apagados; com contagem > 0 ganham destaque,
+   especialmente os acionaveis (nao lidas, pendentes, urgentes), para o olho
+   ir direto ao que precisa de atencao. Aditivo: nao altera o layout. */
+.welcome-stat-card.is-zero {
+  opacity: .5;
+}
+.welcome-stat-card.is-active {
+  opacity: 1;
+}
+.welcome-stat-card.is-active:not(.priority):not(.urgent) strong {
+  color: #2563eb;
+}
+.welcome-stat-card.priority.is-active {
+  border-color: rgba(217, 119, 6, .55);
+}
+.welcome-stat-card.priority.is-active strong {
+  color: #d97706;
+}
+.welcome-stat-card.urgent.is-active {
+  border-color: rgba(220, 38, 38, .6);
+  box-shadow: 0 10px 24px rgba(220, 38, 38, .14);
+}
+.welcome-stat-card.urgent.is-active strong {
+  color: #dc2626;
+}
+body.theme-dark .welcome-stat-card.is-active:not(.priority):not(.urgent) strong {
+  color: #7dd3fc;
+}
+body.theme-dark .welcome-stat-card.priority.is-active strong {
+  color: #fbbf24;
+}
+body.theme-dark .welcome-stat-card.urgent.is-active strong {
+  color: #fca5a5;
+}
