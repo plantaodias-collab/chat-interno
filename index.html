@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chat Interno - Equipe</title>
   <link rel="icon" id="appFavicon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Cpath d='M18 22c0-4.4 3.6-8 8-8h12c4.4 0 8 3.6 8 8v9c0 4.4-3.6 8-8 8H31l-8 7v-7h-1c-4.4 0-8-3.6-8-8V22Z' fill='white'/%3E%3Ccircle cx='27' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='33' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='39' cy='27' r='3' fill='%232563eb'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="/assets/app.css?v=20260612-home-polish-2" />
+  <link rel="stylesheet" href="/assets/app.css?v=20260612-workflow-all" />
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
 </head>
@@ -218,6 +218,31 @@
         <button class="pinned-message-close" type="button" onclick="desfixarMensagemAtual()" aria-label="Desfixar mensagem">×</button>
       </div>
 
+      <section class="conversation-workflow-panel hidden" id="conversationWorkflowPanel" aria-label="Atendimento da conversa">
+        <div class="workflow-row">
+          <div class="workflow-group">
+            <span class="workflow-label">Etiquetas</span>
+            <div class="workflow-tags" id="conversationTagsList"></div>
+          </div>
+          <div class="workflow-actions">
+            <select class="workflow-input workflow-select" id="conversationResponsibleSelect" onchange="salvarResponsavelAtual()" aria-label="Responsável pelo atendimento">
+              <option value="">Sem responsável</option>
+            </select>
+            <input class="workflow-input" id="conversationTagsInput" type="text" maxlength="180" placeholder="serviço, setor, prioridade" aria-label="Etiquetas da conversa" />
+            <button class="workflow-btn" type="button" onclick="salvarEtiquetasAtual()">Salvar</button>
+            <button class="workflow-btn" type="button" onclick="alternarNotasConversa()">Notas <span id="conversationNotesCount"></span></button>
+          </div>
+        </div>
+        <div class="workflow-sla-row" id="conversationSlaRow"></div>
+        <div class="conversation-notes-panel hidden" id="conversationNotesPanel">
+          <div class="notes-list" id="conversationNotesList"></div>
+          <div class="notes-form">
+            <textarea id="conversationNoteInput" rows="2" maxlength="1200" placeholder="Nota interna visível só para a equipe"></textarea>
+            <button class="workflow-btn primary" type="button" onclick="adicionarNotaAtual()">Adicionar nota</button>
+          </div>
+        </div>
+      </section>
+
       <div class="drop-hint">Solte o arquivo para enviar nesta conversa</div>
 
       <section class="plantao-panel hidden" id="plantaoPanel" aria-label="Escala de plantao">
@@ -341,15 +366,20 @@
           <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Anexar" aria-label="Anexar arquivo">&#128206;</button>
           <button class="attach-btn" id="templateToggleBtn" onclick="alternarTemplates(event)" title="Templates de resposta" aria-label="Templates de resposta">&#9741;</button>
           <div class="template-picker hidden" id="templatePicker"></div>
+          <button class="attach-btn" id="scheduleToggleBtn" onclick="alternarAgendamentoMensagem(event)" title="Agendar mensagem" aria-label="Agendar mensagem">&#9202;</button>
           <textarea
             id="messageInput"
             placeholder="Digite uma mensagem..."
             aria-label="Digite uma mensagem"
             rows="1"
             onkeydown="enviarSeEnter(event)"
-            oninput="autoResizeComposer(); emitirDigitando()"
+            oninput="autoResizeComposer(); emitirDigitando(); salvarRascunhoAtual()"
           ></textarea>
           <button class="send-btn" onclick="enviarMensagem()" title="Enviar" aria-label="Enviar mensagem">&#10148;</button>
+        </div>
+        <div class="schedule-panel hidden" id="schedulePanel">
+          <input class="field" id="scheduleDateTimeInput" type="datetime-local" aria-label="Data e hora do agendamento" />
+          <button class="workflow-btn primary" type="button" onclick="agendarMensagemAtual()">Agendar envio</button>
         </div>
         <div class="upload-status" id="uploadStatus"></div>
       </div>
@@ -681,6 +711,6 @@
   <div id="notificationContainer" class="notification-container"></div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.js?v=20260612-home-polish-2"></script>
+  <script src="/assets/app.js?v=20260612-workflow-all"></script>
 </body>
 </html>

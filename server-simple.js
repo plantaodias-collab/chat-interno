@@ -1277,6 +1277,133 @@ function marcarMensagensGrupoComoLidas(grupoId, usuarioId) {
   return alterou;
 }
 
+function getMentionHandlesForUser(user) {
+  const nome = normalizeSearchText(user?.nome || '');
+  const emailLocal = normalizeSearchText(String(user?.email || '').split('@')[0]);
+  const handles = new Set();
+  if (nome) {
+    const parts = nome.split(/\s+/).filter(Boolean);
+    if (parts[0]) handles.add(parts[0]);
+    if (parts.length > 1) handles.add(parts.slice(0, 2).join(' '));
+    handles.add(nome);
+  }
+  if (emailLocal) handles.add(emailLocal);
+  return [...handles].filter((item) => item.length >= 2);
+}
+
+function getMentionedUsersInGroup(conteudo, grupoId, senderId) {
+  const normalized = normalizeSearchText(conteudo);
+  if (!normalized.includes('@')) return [];
+  const memberIds = new Set((db.membros_grupo || [])
+    .filter((m) => Number(m.grupo_id) === Number(grupoId))
+    .map((m) => Number(m.usuario_id)));
+
+  return db.usuarios
+    .filter((user) => user.ativo !== 0 && Number(user.id) !== Number(senderId) && memberIds.has(Number(user.id)))
+    .filter((user) => getMentionHandlesForUser(user).some((handle) => normalized.includes(`@${handle}`)))
+    .map((user) => ({ id: Number(user.id), nome: user.nome, email: user.email }));
+}
+
+function emitScheduledMessage(entry) {
+  const usuario = findActiveUserById(entry.usuario_id);
+  if (!usuario) throw new Error('Usuário do agendamento não encontrado');
+  const conteudo = sanitizeText(entry.conteudo).slice(0, 4000);
+  if (!conteudo) throw new Error('Mensagem agendada vazia');
+  const tipo = normalizeConversationType(entry.tipoChat);
+  const chatId = Number(entry.chatId);
+  if (!canUserAccessConversation(entry.usuario_id, tipo, chatId)) {
+    throw new Error('Usuário sem acesso à conversa agendada');
+  }
+
+  if (tipo === 'grupo') {
+    const msg = {
+      id: gerarIdMensagem(),
+      usuario_id: Number(usuario.id),
+      grupo_id: chatId,
+      usuario_destino_id: null,
+      conteudo,
+      tipo: 'texto',
+      reply_to_id: null,
+      reacoes: {},
+      lido: 0,
+      leituras_grupo: [],
+      agendada_id: entry.id,
+      criado_em: new Date().toISOString()
+    };
+    db.mensagens.push(msg);
+    registrarAuditoria({ acao: 'enviada', usuarioId: usuario.id, usuarioNome: usuario.nome, mensagemId: msg.id, detalhe: `agendada-grupo:${chatId}` });
+    const msgEnriquecida = { ...enrichMessage(msg), usuarioNome: usuario.nome, usuarioId: Number(usuario.id), grupoId: chatId };
+    io.to(`grupo-${chatId}`).emit('nova-mensagem-grupo', msgEnriquecida);
+
+    const mencionados = getMentionedUsersInGroup(conteudo, chatId, usuario.id);
+    mencionados.forEach((mencionado) => {
+      io.to(`usuario-${mencionado.id}`).emit('mencao-recebida', {
+        tipoChat: 'grupo',
+        chatId,
+        messageId: Number(msg.id),
+        title: `${usuario.nome || 'Equipe'} mencionou você`,
+        body: conteudo.slice(0, 120),
+        usuarioNome: usuario.nome || 'Equipe'
+      });
+      enviarPushParaUsuario(mencionado.id, { title: `${usuario.nome || 'Equipe'} mencionou você`, body: conteudo.slice(0, 120), tag: `mencao-grupo-${chatId}` });
+    });
+
+    const membrosGrupo = (db.membros_grupo || []).filter((m) => Number(m.grupo_id) === chatId && Number(m.usuario_id) !== Number(usuario.id));
+    membrosGrupo.forEach((m) => {
+      if (!isUsuarioOnline(m.usuario_id)) {
+        enviarPushParaUsuario(m.usuario_id, { title: usuario.nome || 'Nova mensagem', body: conteudo.slice(0, 80), tag: `grupo-${chatId}` });
+      }
+    });
+    return msg;
+  }
+
+  const msg = {
+    id: gerarIdMensagem(),
+    usuario_id: Number(usuario.id),
+    grupo_id: null,
+    usuario_destino_id: chatId,
+    conteudo,
+    tipo: 'texto',
+    reply_to_id: null,
+    reacoes: {},
+    lido: 0,
+    leituras_grupo: null,
+    agendada_id: entry.id,
+    criado_em: new Date().toISOString()
+  };
+  db.mensagens.push(msg);
+  registrarAuditoria({ acao: 'enviada', usuarioId: usuario.id, usuarioNome: usuario.nome, mensagemId: msg.id, detalhe: `agendada-privado:${chatId}` });
+  const msgEnriquecida = { ...enrichMessage(msg), remetenteNome: usuario.nome, remetente_id: Number(usuario.id), destinatario_id: chatId };
+  io.to(`usuario-${chatId}`).emit('nova-mensagem-privada', msgEnriquecida);
+  io.to(`usuario-${usuario.id}`).emit('mensagem-enviada-confirmacao', msgEnriquecida);
+  if (!isUsuarioOnline(chatId)) {
+    enviarPushParaUsuario(chatId, { title: usuario.nome || 'Nova mensagem', body: conteudo.slice(0, 80), tag: `privado-${usuario.id}` });
+  }
+  return msg;
+}
+
+function processScheduledMessages() {
+  const now = Date.now();
+  let changed = false;
+  db.mensagens_agendadas.forEach((entry) => {
+    if (entry.status !== 'pendente') return;
+    if (new Date(entry.enviar_em).getTime() > now) return;
+    entry.status = 'enviando';
+    changed = true;
+    try {
+      const msg = emitScheduledMessage(entry);
+      entry.status = 'enviada';
+      entry.enviada_em = new Date().toISOString();
+      entry.mensagem_id = Number(msg.id);
+    } catch (err) {
+      entry.status = 'erro';
+      entry.erro = err.message;
+      entry.erro_em = new Date().toISOString();
+    }
+  });
+  if (changed) db.save();
+}
+
 function getPendingConversationIndex(usuarioId, contatoId) {
   return db.conversas_pendentes.findIndex((item) =>
     Number(item?.usuario_id) === Number(usuarioId) &&
@@ -2348,6 +2475,81 @@ app.delete('/api/conversas/:tipo/:id/notas/:notaId', verificarToken, (req, res) 
   }
 });
 
+app.put('/api/conversas/:tipo/:id/responsavel', verificarToken, (req, res) => {
+  try {
+    const { tipo, chatId, key, clientKey } = resolverConversa(req);
+    if (!key) return res.status(400).json({ erro: 'Conversa inválida' });
+    if (!canUserAccessConversation(req.userId, tipo, chatId)) {
+      return res.status(403).json({ erro: 'Acesso negado a esta conversa' });
+    }
+
+    const responsavelId = Number(req.body?.usuarioId || 0);
+    if (!responsavelId) {
+      delete db.responsavel_conversa[key];
+      db.save();
+      const payload = { tipoChat: tipo, chatId, key: clientKey, usuarioId: Number(req.userId), tipoEvento: 'responsavel', responsavel: null };
+      emitConversationWorkflow(tipo, chatId, payload);
+      return res.json(payload);
+    }
+
+    const responsavelUsuario = findActiveUserById(responsavelId);
+    if (!responsavelUsuario) return res.status(404).json({ erro: 'Usuário responsável não encontrado' });
+    if (tipo === 'grupo' && !usuarioPodeAcessarGrupo(responsavelId, chatId)) {
+      return res.status(400).json({ erro: 'Responsável precisa participar deste grupo' });
+    }
+
+    const responsavel = {
+      usuario_id: Number(responsavelUsuario.id),
+      usuario_nome: responsavelUsuario.nome,
+      atribuido_por: Number(req.userId),
+      atribuido_por_nome: findActiveUserById(req.userId)?.nome || 'Equipe',
+      atribuido_em: new Date().toISOString()
+    };
+    db.responsavel_conversa[key] = responsavel;
+    db.save();
+
+    const payload = { tipoChat: tipo, chatId, key: clientKey, usuarioId: Number(req.userId), tipoEvento: 'responsavel', responsavel };
+    emitConversationWorkflow(tipo, chatId, payload);
+    res.json(payload);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.post('/api/conversas/:tipo/:id/agendar', verificarToken, (req, res) => {
+  try {
+    const { tipo, chatId, key } = resolverConversa(req);
+    if (!key) return res.status(400).json({ erro: 'Conversa inválida' });
+    if (!canUserAccessConversation(req.userId, tipo, chatId)) {
+      return res.status(403).json({ erro: 'Acesso negado a esta conversa' });
+    }
+    const conteudo = sanitizeText(req.body?.conteudo).slice(0, 4000);
+    const enviarEm = new Date(req.body?.enviarEm || req.body?.enviar_em || '');
+    if (!conteudo) return res.status(400).json({ erro: 'Digite uma mensagem para agendar' });
+    if (Number.isNaN(enviarEm.getTime()) || enviarEm.getTime() <= Date.now() + 30000) {
+      return res.status(400).json({ erro: 'Escolha uma data e hora futura' });
+    }
+    const usuario = findActiveUserById(req.userId);
+    const agendamento = {
+      id: gerarIdMensagem(),
+      tipoChat: tipo,
+      chatId: Number(chatId),
+      conversa_key: key,
+      usuario_id: Number(req.userId),
+      usuario_nome: usuario?.nome || 'Equipe',
+      conteudo,
+      enviar_em: enviarEm.toISOString(),
+      status: 'pendente',
+      criado_em: new Date().toISOString()
+    };
+    db.mensagens_agendadas.push(agendamento);
+    db.saveFile('mensagens-agendadas.json', db.mensagens_agendadas);
+    res.json({ agendamento });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.get('/api/busca-conversas', verificarToken, (req, res) => {
   try {
     const query = normalizeSearchText(req.query?.q);
@@ -2792,6 +2994,20 @@ io.on('connection', (socket) => {
     const msgEnriquecida = { ...enrichMessage(msg), usuarioNome: data.usuarioNome, usuarioId: Number(data.usuarioId), grupoId: Number(data.grupoId) };
     io.to(`grupo-${data.grupoId}`).emit('nova-mensagem-grupo', msgEnriquecida);
 
+    const mencionados = getMentionedUsersInGroup(data.conteudo, data.grupoId, data.usuarioId);
+    mencionados.forEach((user) => {
+      const payload = {
+        tipoChat: 'grupo',
+        chatId: Number(data.grupoId),
+        messageId: Number(msg.id),
+        title: `${data.usuarioNome || 'Equipe'} mencionou você`,
+        body: String(data.conteudo || '').slice(0, 120),
+        usuarioNome: data.usuarioNome || 'Equipe'
+      };
+      io.to(`usuario-${user.id}`).emit('mencao-recebida', payload);
+      enviarPushParaUsuario(user.id, { title: payload.title, body: payload.body, tag: `mencao-grupo-${data.grupoId}` });
+    });
+
     // Push para membros do grupo que estão offline
     const membrosGrupo = (db.membros_grupo || []).filter((m) => Number(m.grupo_id) === Number(data.grupoId) && Number(m.usuario_id) !== Number(data.usuarioId));
     membrosGrupo.forEach((m) => {
@@ -3058,11 +3274,61 @@ app.get('/api/admin/metricas', verificarToken, (req, res) => {
   // Totais
   const totalMsgs = msgs.length;
   const totalUrgentes = msgs.filter((m) => m.prioridade === 'urgente').length;
-  const totalGrupo = msgs.filter((m) => m.tipo === 'grupo').length;
-  const totalPrivado = msgs.filter((m) => m.tipo === 'privado').length;
+  const totalGrupo = msgs.filter((m) => Number(m.grupo_id)).length;
+  const totalPrivado = msgs.filter((m) => Number(m.usuario_destino_id)).length;
   const totalApagadas = (db.mensagens_apagadas || []).length;
+  const totalAgendadasPendentes = (db.mensagens_agendadas || []).filter((m) => m.status === 'pendente').length;
 
-  res.json({ porDia, topUsuarios, porHora, totalMsgs, totalUrgentes, totalGrupo, totalPrivado, totalApagadas });
+  const responseTimes = [];
+  const conversations = new Map();
+  msgs
+    .slice()
+    .sort((a, b) => new Date(a.criado_em || 0) - new Date(b.criado_em || 0))
+    .forEach((m) => {
+      const key = getStoredKeyForMessage(m);
+      if (!key) return;
+      const previous = conversations.get(key);
+      if (previous && Number(previous.usuario_id) !== Number(m.usuario_id)) {
+        const diff = new Date(m.criado_em || 0).getTime() - new Date(previous.criado_em || 0).getTime();
+        if (diff > 0 && diff < 7 * 24 * 60 * 60 * 1000) responseTimes.push(diff);
+      }
+      conversations.set(key, m);
+    });
+  const tempoMedioRespostaMin = responseTimes.length
+    ? Math.round(responseTimes.reduce((sum, value) => sum + value, 0) / responseTimes.length / 60000)
+    : 0;
+
+  const statusConversas = Object.values(db.status_atendimento || {}).reduce((acc, status) => {
+    if (status) acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const etiquetasUso = {};
+  Object.values(db.etiquetas_conversa || {}).forEach((tags) => {
+    if (!Array.isArray(tags)) return;
+    tags.forEach((tag) => {
+      etiquetasUso[tag] = (etiquetasUso[tag] || 0) + 1;
+    });
+  });
+  const topEtiquetas = Object.entries(etiquetasUso)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([nome, total]) => ({ nome, total }));
+
+  res.json({
+    porDia,
+    topUsuarios,
+    porHora,
+    totalMsgs,
+    totalUrgentes,
+    totalGrupo,
+    totalPrivado,
+    totalApagadas,
+    totalAgendadasPendentes,
+    tempoMedioRespostaMin,
+    statusConversas,
+    topEtiquetas
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3152,6 +3418,14 @@ setInterval(() => {
     console.error('Erro ao executar backup automatico:', err);
   }
 }, 30000);
+
+setInterval(() => {
+  try {
+    processScheduledMessages();
+  } catch (err) {
+    console.error('Erro ao processar mensagens agendadas:', err);
+  }
+}, 15000);
 
 try {
   const result = cleanupExpiredPdfAttachments();

@@ -5920,6 +5920,267 @@ body.theme-dark .attendance-chip.urgente {
   color: #fecaca;
 }
 
+.conversation-workflow-panel {
+  margin: 0 18px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .88);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .06);
+}
+
+.workflow-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workflow-group {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workflow-label {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 900;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.workflow-tags {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.workflow-tag {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, .22);
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.workflow-empty {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.workflow-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workflow-input {
+  width: min(260px, 34vw);
+  min-height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 7px 10px;
+  color: #142033;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.workflow-select {
+  width: min(220px, 28vw);
+}
+
+.workflow-sla-row {
+  margin-top: 8px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.workflow-sla-row:empty {
+  display: none;
+}
+
+.sla-overdue {
+  color: #b91c1c;
+}
+
+.sla-watch {
+  color: #c2410c;
+}
+
+.workflow-btn {
+  min-height: 34px;
+  border: 1px solid rgba(111, 145, 188, .26);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #142033;
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.workflow-btn.primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, #1668ff, #00a7c8);
+  color: #ffffff;
+}
+
+.conversation-notes-panel {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.notes-list {
+  display: grid;
+  gap: 8px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.note-item {
+  display: grid;
+  gap: 5px;
+  padding: 9px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.note-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #475569;
+  font-size: 11px;
+}
+
+.note-text {
+  white-space: pre-wrap;
+  color: #142033;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.note-delete {
+  justify-self: end;
+  border: none;
+  background: transparent;
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.notes-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.notes-form textarea {
+  min-width: 0;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.schedule-panel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.schedule-panel.hidden {
+  display: none;
+}
+
+.schedule-panel .field {
+  max-width: 230px;
+  min-height: 34px;
+  font-size: 12px;
+}
+
+body.theme-dark .conversation-workflow-panel {
+  background: rgba(23, 36, 58, .88);
+  border-color: rgba(148, 163, 184, .18);
+}
+
+body.theme-dark .workflow-label,
+body.theme-dark .workflow-empty,
+body.theme-dark .note-meta {
+  color: #b7c6dc;
+}
+
+body.theme-dark .workflow-input,
+body.theme-dark .workflow-select,
+body.theme-dark .workflow-btn,
+body.theme-dark .notes-form textarea,
+body.theme-dark .note-item {
+  background: #172033;
+  border-color: rgba(148, 163, 184, .24);
+  color: #edf6ff;
+}
+
+body.theme-dark .note-text {
+  color: #edf6ff;
+}
+
+@media (max-width: 760px) {
+  .conversation-workflow-panel {
+    margin-left: 10px;
+    margin-right: 10px;
+  }
+
+  .workflow-row,
+  .workflow-group,
+  .workflow-actions {
+    display: grid;
+    align-items: stretch;
+  }
+
+  .notes-form {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-input {
+    width: 100%;
+  }
+
+  .workflow-select {
+    width: 100%;
+  }
+
+  .schedule-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .schedule-panel .field {
+    max-width: none;
+    width: 100%;
+  }
+}
+
 @keyframes modalPanelIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }

@@ -52,21 +52,21 @@ Implementação em blocos isolados, cada um = 1 commit testado.
 - [x] **Galeria de mídia da conversa** — grid de imagens/vídeos/PDFs (botão "Galeria" no menu Mais).
 - [x] **Exportar conversa em PDF** — via impressão do navegador (botão "Exportar PDF"). Mantido o TXT.
 
-**Bloco C — Atendimento (notas + etiquetas)** ⏳
-- [ ] **Notas internas** numa conversa (visíveis só p/ equipe).
-- [ ] **Etiquetas por tipo de serviço** (registro civil, PJ, protesto, certidão...).
+**Bloco C — Atendimento (notas + etiquetas)** ✅
+- [x] **Notas internas** numa conversa (visíveis só p/ equipe). Commit `<workflow-all>`.
+- [x] **Etiquetas por tipo de serviço** (registro civil, PJ, protesto, certidão...). Commit `<workflow-all>`.
 
-**Bloco D — Atendimento (responsável + SLA)** ⏳
-- [ ] **Atribuir responsável** ao atendimento.
-- [ ] **Alerta de pendência/SLA** (pendente sem resposta há X horas).
+**Bloco D — Atendimento (responsável + SLA)** ✅
+- [x] **Atribuir responsável** ao atendimento. Commit `<workflow-all>`.
+- [x] **Alerta de pendência/SLA** (pendente/aguardando/urgente sem atualização recente). Commit `<workflow-all>`.
 
-**Bloco E — Comunicação** ⏳
-- [ ] **@menções** com notificação.
-- [ ] **"Visto por" em grupo** (expor `leituras_grupo`).
+**Bloco E — Comunicação** ✅
+- [x] **@menções** com notificação. Commit `<workflow-all>`.
+- [x] **"Visto por" em grupo** (expor `leituras_grupo`). Commit `<workflow-all>`.
 
-**Bloco F — Agendamento + métricas** ⏳
-- [ ] **Mensagens agendadas / rascunho**.
-- [ ] **Métricas avançadas** — tempo médio de resposta, volume por dia, ranking.
+**Bloco F — Agendamento + métricas** ✅
+- [x] **Mensagens agendadas / rascunho**. Commit `<workflow-all>`.
+- [x] **Métricas avançadas** — tempo médio de resposta, volume por dia, ranking e etiquetas mais usadas. Commit `<workflow-all>`.
 
 **Para o futuro (a combinar):** busca melhor, resumo por e-mail / "não perturbe", som por tipo, 2FA, retenção/expiração e exportação LGPD, número de protocolo na conversa, mensagens de voz.
 

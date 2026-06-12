@@ -42,6 +42,10 @@ let priorityMessages = new Set();
 let savedStickers = [];
 let pinnedMessagesByConversation = {};
 let attendanceStatusState = {};
+let conversationTagsState = {};
+let conversationNotesCountState = {};
+let conversationNotesCache = {};
+let conversationAssigneeState = {};
 let forwardMessageId = null;
 let globalSearchTimer = null;
 let titleBlinkInterval = null;
@@ -72,6 +76,7 @@ const PRIORITY_KEY = 'chatinterno.priorityChats';
 const MESSAGE_PRIORITY_KEY = 'chatinterno.priorityMessages';
 const STICKERS_KEY = 'chatinterno.savedStickers';
 const ATTENDANCE_STATUS_KEY = 'chatinterno.attendanceStatus';
+const DRAFTS_KEY = 'chatinterno.messageDrafts';
 const SIDEBAR_KEY = 'chatinterno.sidebarCollapsed';
 const DENSITY_KEY = 'chatinterno.messageDensity';
 const MESSAGE_RENDER_LIMIT = 220;
@@ -82,6 +87,7 @@ const ATTENDANCE_STATUS_LABELS = {
   resolvido: 'Resolvido',
   urgente: 'Urgente'
 };
+const SLA_ALERT_HOURS = 4;
 const MESSAGE_PAGE_SIZE = 50;
 const DAILY_MOTIVATION_MESSAGES = [
   'Cada ato que fazemos transforma vidas, vamos fazer sempre o nosso melhor.',
@@ -349,6 +355,289 @@ function getAttendanceChipHtml(key) {
   const status = getAttendanceStatus(key);
   if (!status) return '';
   return `<div class="attendance-chip ${escapeHtml(status)}">${escapeHtml(getAttendanceLabel(status))}</div>`;
+}
+
+function getCurrentChatKey() {
+  return tipoChat && chatIdAtual ? getChatKey(tipoChat, chatIdAtual) : '';
+}
+
+function getConversationTags(key = getCurrentChatKey()) {
+  return Array.isArray(conversationTagsState[key]) ? conversationTagsState[key] : [];
+}
+
+function getConversationAssignee(key = getCurrentChatKey()) {
+  const value = conversationAssigneeState[key];
+  return value && Number(value.usuario_id) ? value : null;
+}
+
+function getAssignableUsersForCurrentChat() {
+  if (!tipoChat || !chatIdAtual) return [];
+  if (tipoChat === 'privado') {
+    const ids = [usuarioAtual, contatosCache.find((u) => Number(u.id) === Number(chatIdAtual))]
+      .filter(Boolean)
+      .map((u) => ({ id: Number(u.id), nome: u.nome || u.email || `#${u.id}` }));
+    return ids.filter((u, index, arr) => arr.findIndex((item) => item.id === u.id) === index);
+  }
+  const grupo = gruposCache.find((item) => Number(item.id) === Number(chatIdAtual));
+  const membros = Array.isArray(grupo?.membros) ? grupo.membros.map(Number) : [];
+  return contatosCache
+    .filter((u) => !membros.length || membros.includes(Number(u.id)) || Number(u.id) === Number(usuarioAtual?.id))
+    .concat(usuarioAtual ? [{ id: Number(usuarioAtual.id), nome: usuarioAtual.nome || usuarioAtual.email }] : [])
+    .filter((u, index, arr) => arr.findIndex((item) => Number(item.id) === Number(u.id)) === index)
+    .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+}
+
+function formatDurationFromNow(iso) {
+  const ts = toTimestamp(iso);
+  if (!ts) return '';
+  const minutes = Math.max(0, Math.floor((Date.now() - ts) / 60000));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours} h`;
+  return `${Math.floor(hours / 24)} d`;
+}
+
+function getCurrentSlaInfo(key = getCurrentChatKey()) {
+  const status = getAttendanceStatus(key);
+  if (!['pendente', 'aguardando', 'urgente'].includes(status)) return null;
+  const lastTs = Number(lastTimestampState[key] || 0);
+  if (!lastTs) return null;
+  const ageHours = (Date.now() - lastTs) / 36e5;
+  if (ageHours < SLA_ALERT_HOURS && status !== 'urgente') return null;
+  return {
+    status,
+    overdue: ageHours >= SLA_ALERT_HOURS,
+    label: ageHours >= SLA_ALERT_HOURS
+      ? `SLA: sem atualização há ${formatDurationFromNow(new Date(lastTs).toISOString())}`
+      : 'SLA: acompanhar urgente'
+  };
+}
+
+function parseTagsInput(value) {
+  return [...new Set(String(value || '')
+    .split(',')
+    .map((item) => item.trim().slice(0, 40))
+    .filter(Boolean))]
+    .slice(0, 8);
+}
+
+function renderWorkflowPanel() {
+  const panel = document.getElementById('conversationWorkflowPanel');
+  if (!panel) return;
+  const hasChat = Boolean(tipoChat && chatIdAtual);
+  panel.classList.toggle('hidden', !hasChat);
+  if (!hasChat) {
+    document.getElementById('conversationNotesPanel')?.classList.add('hidden');
+    return;
+  }
+
+  const key = getCurrentChatKey();
+  const tags = getConversationTags(key);
+  const tagsList = document.getElementById('conversationTagsList');
+  const tagsInput = document.getElementById('conversationTagsInput');
+  const notesCount = document.getElementById('conversationNotesCount');
+  const responsibleSelect = document.getElementById('conversationResponsibleSelect');
+  const slaRow = document.getElementById('conversationSlaRow');
+
+  if (tagsList) {
+    tagsList.innerHTML = tags.length
+      ? tags.map((tag) => `<span class="workflow-tag">${escapeHtml(tag)}</span>`).join('')
+      : '<span class="workflow-empty">Sem etiquetas</span>';
+  }
+  if (tagsInput && document.activeElement !== tagsInput) tagsInput.value = tags.join(', ');
+  if (notesCount) {
+    const count = Number(conversationNotesCountState[key] || 0);
+    notesCount.textContent = count ? `(${count})` : '';
+  }
+  if (responsibleSelect) {
+    const assignee = getConversationAssignee(key);
+    const users = getAssignableUsersForCurrentChat();
+    if (assignee && !users.some((user) => Number(user.id) === Number(assignee.usuario_id))) {
+      users.push({ id: Number(assignee.usuario_id), nome: assignee.usuario_nome || `#${assignee.usuario_id}` });
+    }
+    const currentValue = assignee ? String(assignee.usuario_id) : '';
+    responsibleSelect.innerHTML = '<option value="">Sem responsável</option>' + users
+      .map((user) => `<option value="${Number(user.id)}">${escapeHtml(user.nome)}</option>`)
+      .join('');
+    responsibleSelect.value = currentValue;
+  }
+  if (slaRow) {
+    const assignee = getConversationAssignee(key);
+    const sla = getCurrentSlaInfo(key);
+    const parts = [];
+    if (assignee) parts.push(`Responsável: ${escapeHtml(assignee.usuario_nome || 'Equipe')}`);
+    if (sla) parts.push(`<span class="${sla.overdue ? 'sla-overdue' : 'sla-watch'}">${escapeHtml(sla.label)}</span>`);
+    slaRow.innerHTML = parts.length ? parts.join(' · ') : '';
+    slaRow.classList.toggle('hidden', !parts.length);
+  }
+}
+
+async function salvarEtiquetasAtual() {
+  if (!tipoChat || !chatIdAtual) return;
+  const input = document.getElementById('conversationTagsInput');
+  const key = getCurrentChatKey();
+  const previous = getConversationTags(key);
+  const etiquetas = parseTagsInput(input?.value || '');
+  conversationTagsState[key] = etiquetas;
+  renderWorkflowPanel();
+  scheduleSidebarRender({ groups: true, contacts: true });
+
+  try {
+    const response = await fetch(`/api/conversas/${tipoChat}/${chatIdAtual}/etiquetas`, {
+      method: 'PUT',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ etiquetas })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.erro || 'Erro ao salvar etiquetas');
+    mostrarNotificacao('Etiquetas salvas', 'success');
+  } catch (err) {
+    conversationTagsState[key] = previous;
+    renderWorkflowPanel();
+    mostrarNotificacao(err.message, 'error');
+  }
+}
+
+async function salvarResponsavelAtual() {
+  if (!tipoChat || !chatIdAtual) return;
+  const select = document.getElementById('conversationResponsibleSelect');
+  const key = getCurrentChatKey();
+  const previous = getConversationAssignee(key);
+  const usuarioId = Number(select?.value || 0);
+  if (usuarioId) {
+    const user = getAssignableUsersForCurrentChat().find((item) => Number(item.id) === usuarioId);
+    conversationAssigneeState[key] = {
+      usuario_id: usuarioId,
+      usuario_nome: user?.nome || `#${usuarioId}`,
+      atribuido_em: new Date().toISOString()
+    };
+  } else {
+    delete conversationAssigneeState[key];
+  }
+  renderWorkflowPanel();
+  scheduleSidebarRender({ groups: true, contacts: true });
+
+  try {
+    const response = await fetch(`/api/conversas/${tipoChat}/${chatIdAtual}/responsavel`, {
+      method: 'PUT',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ usuarioId })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.erro || 'Erro ao salvar responsável');
+    if (data.responsavel) conversationAssigneeState[key] = data.responsavel;
+    else delete conversationAssigneeState[key];
+    renderWorkflowPanel();
+    mostrarNotificacao(usuarioId ? 'Responsável atribuído' : 'Responsável removido', 'success');
+  } catch (err) {
+    if (previous) conversationAssigneeState[key] = previous;
+    else delete conversationAssigneeState[key];
+    renderWorkflowPanel();
+    mostrarNotificacao(err.message, 'error');
+  }
+}
+
+function renderNotasConversa(notas = null) {
+  const key = getCurrentChatKey();
+  const list = document.getElementById('conversationNotesList');
+  if (!list) return;
+  const items = Array.isArray(notas) ? notas : (conversationNotesCache[key] || []);
+  conversationNotesCache[key] = items;
+  conversationNotesCountState[key] = items.length;
+
+  if (!items.length) {
+    list.innerHTML = '<div class="workflow-empty note-empty">Nenhuma nota interna.</div>';
+    renderWorkflowPanel();
+    return;
+  }
+
+  list.innerHTML = items
+    .slice()
+    .reverse()
+    .map((nota) => {
+      const canDelete = Number(nota.autor_id) === Number(usuarioAtual?.id) || Boolean(usuarioAtual?.admin);
+      return `
+        <div class="note-item">
+          <div class="note-meta">
+            <strong>${escapeHtml(nota.autor_nome || 'Equipe')}</strong>
+            <span>${escapeHtml(formatMessageTimestamp(nota.criado_em))}</span>
+          </div>
+          <div class="note-text">${escapeHtml(nota.texto || '')}</div>
+          ${canDelete ? `<button class="note-delete" type="button" onclick="excluirNotaAtual(${Number(nota.id)})">Remover</button>` : ''}
+        </div>
+      `;
+    })
+    .join('');
+  renderWorkflowPanel();
+}
+
+async function carregarNotasAtual() {
+  if (!tipoChat || !chatIdAtual) return;
+  const key = getCurrentChatKey();
+  const list = document.getElementById('conversationNotesList');
+  if (list) list.innerHTML = '<div class="workflow-empty note-empty">Carregando notas...</div>';
+  try {
+    const response = await fetch(`/api/conversas/${tipoChat}/${chatIdAtual}/notas`, { headers: authHeaders() });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.erro || 'Erro ao carregar notas');
+    conversationNotesCache[key] = Array.isArray(data.notas) ? data.notas : [];
+    renderNotasConversa(conversationNotesCache[key]);
+  } catch (err) {
+    if (list) list.innerHTML = `<div class="workflow-empty note-empty">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function alternarNotasConversa() {
+  if (!tipoChat || !chatIdAtual) return;
+  const panel = document.getElementById('conversationNotesPanel');
+  if (!panel) return;
+  const willOpen = panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', !willOpen);
+  if (willOpen) await carregarNotasAtual();
+}
+
+async function adicionarNotaAtual() {
+  if (!tipoChat || !chatIdAtual) return;
+  const input = document.getElementById('conversationNoteInput');
+  const texto = String(input?.value || '').trim();
+  if (!texto) {
+    mostrarNotificacao('Escreva a nota antes de adicionar', 'error');
+    return;
+  }
+  try {
+    const response = await fetch(`/api/conversas/${tipoChat}/${chatIdAtual}/notas`, {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ texto })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.erro || 'Erro ao salvar nota');
+    const key = getCurrentChatKey();
+    conversationNotesCache[key] = [...(conversationNotesCache[key] || []), data.nota].slice(-200);
+    if (input) input.value = '';
+    renderNotasConversa(conversationNotesCache[key]);
+    mostrarNotificacao('Nota interna adicionada', 'success');
+  } catch (err) {
+    mostrarNotificacao(err.message, 'error');
+  }
+}
+
+async function excluirNotaAtual(notaId) {
+  if (!tipoChat || !chatIdAtual || !notaId) return;
+  try {
+    const response = await fetch(`/api/conversas/${tipoChat}/${chatIdAtual}/notas/${Number(notaId)}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.erro || 'Erro ao remover nota');
+    const key = getCurrentChatKey();
+    conversationNotesCache[key] = (conversationNotesCache[key] || []).filter((nota) => Number(nota.id) !== Number(notaId));
+    renderNotasConversa(conversationNotesCache[key]);
+    mostrarNotificacao('Nota removida', 'success');
+  } catch (err) {
+    mostrarNotificacao(err.message, 'error');
+  }
 }
 
 async function alterarStatusAtendimentoAtual(status) {
@@ -843,8 +1132,8 @@ function getLeiturasGrupo(message) {
   if (!leituras.length) {
     return {
       status: '\u2713',
-      detalhe: 'Ninguem do grupo leu ainda',
-      tooltip: 'Ninguem do grupo leu ainda'
+      detalhe: 'Ninguém do grupo viu ainda',
+      tooltip: 'Ninguém do grupo viu ainda'
     };
   }
 
@@ -2106,11 +2395,21 @@ async function carregarWorkflow() {
     attendanceStatusState = data.statusAtendimento && typeof data.statusAtendimento === 'object'
       ? data.statusAtendimento
       : {};
+    conversationTagsState = data.etiquetas && typeof data.etiquetas === 'object'
+      ? data.etiquetas
+      : {};
+    conversationNotesCountState = data.notasCount && typeof data.notasCount === 'object'
+      ? data.notasCount
+      : {};
+    conversationAssigneeState = data.responsaveis && typeof data.responsaveis === 'object'
+      ? data.responsaveis
+      : {};
     priorityMessages = new Set((Array.isArray(data.mensagensPrioritarias) ? data.mensagensPrioritarias : []).map((id) => String(Number(id))));
     pinnedMessagesByConversation = data.mensagensFixadas && typeof data.mensagensFixadas === 'object'
       ? data.mensagensFixadas
       : {};
     salvarStatusAtendimento();
+    renderWorkflowPanel();
     salvarMensagensPrioritarias();
   } catch (err) {
     console.error(err);
@@ -2313,6 +2612,7 @@ function voltarTelaInicial() {
   atualizarBarraContexto();
   updateHeaderIcon(null);
   updateHeaderStatus();
+  renderWorkflowPanel();
   renderPinnedNotice();
   renderPinnedMessageBar();
   atualizarVisibilidadePlantaoPanel();
@@ -2562,6 +2862,19 @@ function conectarSocket() {
     processarMensagemPrivada(data);
   });
 
+  socket.on('mencao-recebida', (data) => {
+    mostrarNotificacao(data?.title || 'Você foi mencionado', 'info');
+    mostrarNotificacaoNavegador(data?.title || 'Você foi mencionado', {
+      body: data?.body || 'Abra o chat para ver a mensagem.',
+      tag: `mencao-${data?.tipoChat || 'chat'}-${data?.chatId || 'atual'}`
+    });
+    if (data?.tipoChat === 'grupo') {
+      unreadState[getChatKey('grupo', data.chatId)] = Math.max(Number(unreadState[getChatKey('grupo', data.chatId)] || 0), 1);
+      scheduleSidebarRender({ groups: true });
+      updateBrowserTitle();
+    }
+  });
+
   socket.on('novo-arquivo-grupo', (data) => {
     processarMensagemGrupo(data);
   });
@@ -2637,11 +2950,25 @@ function conectarSocket() {
 
   socket.on('workflow-conversa-atualizado', (data) => {
     if (!data?.key) return;
-    if (data.status) attendanceStatusState[data.key] = data.status;
-    else delete attendanceStatusState[data.key];
-    salvarStatusAtendimento();
+    if (data.tipoEvento === 'etiquetas') {
+      conversationTagsState[data.key] = Array.isArray(data.etiquetas) ? data.etiquetas : [];
+    } else if (data.tipoEvento === 'notas') {
+      conversationNotesCountState[data.key] = Number(data.notasCount || 0);
+      delete conversationNotesCache[data.key];
+      if (data.key === getCurrentChatKey() && !document.getElementById('conversationNotesPanel')?.classList.contains('hidden')) {
+        carregarNotasAtual();
+      }
+    } else if (data.tipoEvento === 'responsavel') {
+      if (data.responsavel) conversationAssigneeState[data.key] = data.responsavel;
+      else delete conversationAssigneeState[data.key];
+    } else {
+      if (data.status) attendanceStatusState[data.key] = data.status;
+      else delete attendanceStatusState[data.key];
+      salvarStatusAtendimento();
+    }
     atualizarBotaoFavorito();
     updateHeaderStatus();
+    renderWorkflowPanel();
     scheduleSidebarRender({ groups: true, contacts: true });
     atualizarPainelInicialSeAberto();
   });
@@ -3229,6 +3556,8 @@ async function carregarChat(tipo, id, nome) {
   editingMessageId = null;
   document.getElementById('messageSearchInput').value = '';
   document.getElementById('messageInput').value = '';
+  document.getElementById('schedulePanel')?.classList.add('hidden');
+  restaurarRascunhoAtual();
   autoResizeComposer();
   atualizarBarraContexto();
 
@@ -3243,6 +3572,7 @@ async function carregarChat(tipo, id, nome) {
   document.getElementById('headerTitle').textContent = (tipo === 'grupo' ? '# ' : '') + nome;
   updateHeaderIcon(tipo, nome);
   updateHeaderStatus();
+  renderWorkflowPanel();
   renderPinnedNotice();
   renderPinnedMessageBar();
   atualizarBotaoFavorito();
@@ -3411,7 +3741,7 @@ function renderMessageRow(message) {
     ? (getLeiturasGrupo(message).length ? SVG_CHECK_DOUBLE : SVG_CHECK_SINGLE)
     : (message.lido ? SVG_CHECK_DOUBLE : SVG_CHECK_SINGLE);
   const resumoHtml = tipoChat === 'grupo'
-    ? `<div class="message-read-summary ${resumoLeituraGrupo?.total ? 'has-readers' : ''}" title="${escapeHtml(resumoLeituraGrupo?.tooltip || '')}"><strong>Leitura:</strong> ${escapeHtml(resumoLeituraGrupo?.detalhe || 'Ninguem do grupo leu ainda')}</div>`
+    ? `<div class="message-read-summary ${resumoLeituraGrupo?.total ? 'has-readers' : ''}" title="${escapeHtml(resumoLeituraGrupo?.tooltip || '')}"><strong>Visto por:</strong> ${escapeHtml(resumoLeituraGrupo?.detalhe || 'Ninguém do grupo viu ainda')}</div>`
     : '';
 
   return `
@@ -3926,6 +4256,90 @@ function emitirDigitando() {
   });
 }
 
+function getDraftsStore() {
+  try {
+    return JSON.parse(localStorage.getItem(DRAFTS_KEY) || '{}') || {};
+  } catch (_err) {
+    return {};
+  }
+}
+
+function setDraftForKey(key, value) {
+  if (!key) return;
+  const drafts = getDraftsStore();
+  const text = String(value || '');
+  if (text.trim()) drafts[key] = text;
+  else delete drafts[key];
+  localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
+}
+
+function salvarRascunhoAtual() {
+  const key = getCurrentChatKey();
+  if (!key || editingMessageId) return;
+  setDraftForKey(key, document.getElementById('messageInput')?.value || '');
+}
+
+function restaurarRascunhoAtual() {
+  const key = getCurrentChatKey();
+  const input = document.getElementById('messageInput');
+  if (!key || !input) return;
+  input.value = getDraftsStore()[key] || '';
+  autoResizeComposer();
+}
+
+function limparRascunhoAtual() {
+  setDraftForKey(getCurrentChatKey(), '');
+}
+
+function alternarAgendamentoMensagem(event) {
+  event?.stopPropagation?.();
+  if (!tipoChat || !chatIdAtual) {
+    mostrarNotificacao('Abra uma conversa para agendar mensagem', 'error');
+    return;
+  }
+  const panel = document.getElementById('schedulePanel');
+  if (!panel) return;
+  panel.classList.toggle('hidden');
+  const input = document.getElementById('scheduleDateTimeInput');
+  if (input && !input.value) {
+    const date = new Date(Date.now() + 60 * 60 * 1000);
+    date.setMinutes(Math.ceil(date.getMinutes() / 5) * 5, 0, 0);
+    input.value = date.toISOString().slice(0, 16);
+  }
+}
+
+async function agendarMensagemAtual() {
+  if (!tipoChat || !chatIdAtual) return;
+  const messageInput = document.getElementById('messageInput');
+  const dateInput = document.getElementById('scheduleDateTimeInput');
+  const conteudo = String(messageInput?.value || '').trim();
+  const enviarEm = dateInput?.value ? new Date(dateInput.value).toISOString() : '';
+  if (!conteudo) {
+    mostrarNotificacao('Escreva a mensagem antes de agendar', 'error');
+    return;
+  }
+  if (!enviarEm || Number.isNaN(new Date(enviarEm).getTime()) || new Date(enviarEm).getTime() <= Date.now() + 30000) {
+    mostrarNotificacao('Escolha uma data e hora futura', 'error');
+    return;
+  }
+  try {
+    const response = await fetch(`/api/conversas/${tipoChat}/${chatIdAtual}/agendar`, {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ conteudo, enviarEm })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.erro || 'Erro ao agendar mensagem');
+    if (messageInput) messageInput.value = '';
+    limparRascunhoAtual();
+    autoResizeComposer();
+    document.getElementById('schedulePanel')?.classList.add('hidden');
+    mostrarNotificacao('Mensagem agendada', 'success');
+  } catch (err) {
+    mostrarNotificacao(err.message, 'error');
+  }
+}
+
 function enviarMensagem() {
   const input = document.getElementById('messageInput');
   const conteudo = input.value.trim();
@@ -3985,6 +4399,7 @@ function enviarMensagem() {
 
   updateBrowserTitle();
   input.value = '';
+  limparRascunhoAtual();
   autoResizeComposer();
   input.focus();
   fecharEmojiPicker();
@@ -4990,6 +5405,7 @@ async function carregarMetricasAdmin() {
     const r = await fetch('/api/admin/metricas', { headers: authHeaders() });
     if (!r.ok) throw new Error();
     const d = await r.json();
+    document.getElementById('adminMetricasExtra')?.remove();
 
     // Cards de resumo
     const cards = [
@@ -4998,6 +5414,9 @@ async function carregarMetricasAdmin() {
       { label: 'Em grupos',          val: d.totalGrupo, cor: '#8b5cf6' },
       { label: 'Privadas',           val: d.totalPrivado, cor: '#06b6d4' },
       { label: 'Apagadas',           val: d.totalApagadas, cor: '#f59e0b' },
+      { label: 'Tempo médio resposta', val: d.tempoMedioRespostaMin ? `${d.tempoMedioRespostaMin} min` : '-', cor: '#16a34a' },
+      { label: 'Agendadas pendentes', val: d.totalAgendadasPendentes || 0, cor: '#0f766e' },
+      { label: 'Pendentes/SLA', val: (d.statusConversas?.pendente || 0) + (d.statusConversas?.urgente || 0), cor: '#dc2626' },
     ];
     summaryEl.innerHTML = cards.map((c) => `
       <div style="background:rgba(148,163,184,.08);border-radius:10px;padding:14px;text-align:center;">
@@ -5032,6 +5451,10 @@ async function carregarMetricasAdmin() {
         options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
       });
     }
+    const etiquetas = Array.isArray(d.topEtiquetas) && d.topEtiquetas.length
+      ? `<div style="margin-top:12px;font-size:12px;color:#64748b;"><strong>Etiquetas mais usadas:</strong> ${d.topEtiquetas.map((t) => `${escapeHtml(t.nome)} (${t.total})`).join(', ')}</div>`
+      : '';
+    summaryEl.insertAdjacentHTML('afterend', `<div id="adminMetricasExtra">${etiquetas}</div>`);
   } catch (_e) { summaryEl.innerHTML = '<p style="color:#ef4444;">Erro ao carregar métricas.</p>'; }
 }
 
