@@ -410,8 +410,8 @@ function getCurrentSlaInfo(key = getCurrentChatKey()) {
     status,
     overdue: ageHours >= SLA_ALERT_HOURS,
     label: ageHours >= SLA_ALERT_HOURS
-      ? `SLA: sem atualização há ${formatDurationFromNow(new Date(lastTs).toISOString())}`
-      : 'SLA: acompanhar urgente'
+      ? `Sem resposta ha ${formatDurationFromNow(new Date(lastTs).toISOString())}`
+      : 'Acompanhar'
   };
 }
 
@@ -480,9 +480,8 @@ function getOperationalChatItems() {
 function getOperationsCount() {
   const items = getOperationalChatItems();
   const mentions = mentionsInbox.filter((item) => !item.visto).length;
-  const mine = items.filter((item) => Number(item.assignee?.usuario_id) === Number(usuarioAtual?.id) && item.status !== 'resolvido').length;
-  const sla = items.filter((item) => item.sla?.overdue).length;
-  return mentions + mine + sla;
+  const unread = items.reduce((sum, item) => sum + (Number(item.unread) || 0), 0);
+  return mentions + unread;
 }
 
 function atualizarBadgeOperacional() {
@@ -510,8 +509,6 @@ function renderCentralOperacional() {
   const body = document.getElementById('operationsPanelBody');
   if (!body) return;
   const items = getOperationalChatItems();
-  const minhas = items.filter((item) => Number(item.assignee?.usuario_id) === Number(usuarioAtual?.id) && item.status !== 'resolvido').slice(0, 8);
-  const sla = items.filter((item) => item.sla?.overdue).slice(0, 8);
   const naoLidas = items.filter((item) => item.unread > 0).slice(0, 8);
   const mencoes = mentionsInbox.slice(0, 8);
 
@@ -532,14 +529,6 @@ function renderCentralOperacional() {
     <section class="operation-section">
       <div class="operation-section-title">Menções</div>
       ${mentionsHtml}
-    </section>
-    <section class="operation-section">
-      <div class="operation-section-title">Meus atendimentos</div>
-      ${minhas.length ? minhas.map((item) => getOperationItemHtml(item, `${getAttendanceLabel(item.status) || 'Sem status'} - ${item.preview || 'Sem mensagem recente'}`, 'mine')).join('') : '<div class="operation-empty">Nenhum atendimento atribuido a voce.</div>'}
-    </section>
-    <section class="operation-section">
-      <div class="operation-section-title">SLA vencido</div>
-      ${sla.length ? sla.map((item) => getOperationItemHtml(item, item.sla.label, 'sla')).join('') : '<div class="operation-empty">Nenhum SLA vencido agora.</div>'}
     </section>
     <section class="operation-section">
       <div class="operation-section-title">Não lidas</div>
@@ -1126,15 +1115,11 @@ function conversationMatchesFilter(key, options = {}) {
   const online = Boolean(options.online);
   const isGroup = options.tipo === 'grupo';
   const attendanceStatus = getAttendanceStatus(key);
-  const assignee = getConversationAssignee(key);
-  const sla = getCurrentSlaInfo(key);
 
   if (conversationFilter === 'online') return !isGroup && online;
   if (conversationFilter === 'grupos') return isGroup;
   if (conversationFilter === 'nao-lidas') return unread > 0;
-  if (conversationFilter === 'meus') return Number(assignee?.usuario_id) === Number(usuarioAtual?.id) && attendanceStatus !== 'resolvido';
   if (conversationFilter === 'pendentes') return attendanceStatus === 'pendente';
-  if (conversationFilter === 'sla') return Boolean(sla?.overdue);
   if (conversationFilter === 'urgentes') return attendanceStatus === 'urgente';
   return true;
 }
@@ -2625,8 +2610,6 @@ function getDashboardChatItems(filter, limit = 4) {
   if (filter === 'online') items = items.filter((item) => item.online);
   if (filter === 'pending') items = items.filter((item) => item.attendanceStatus === 'pendente');
   if (filter === 'urgent') items = items.filter((item) => item.attendanceStatus === 'urgente');
-  if (filter === 'mine') items = items.filter((item) => Number(getConversationAssignee(getChatKey(item.tipo, item.id))?.usuario_id) === Number(usuarioAtual?.id) && item.attendanceStatus !== 'resolvido');
-  if (filter === 'sla') items = items.filter((item) => getCurrentSlaInfo(getChatKey(item.tipo, item.id))?.overdue);
 
   return items
     .sort((a, b) => {
@@ -2687,9 +2670,6 @@ function getWelcomeStateHtml() {
   const totalNaoLidas = Object.values(unreadState).reduce((sum, value) => sum + (Number(value) || 0), 0);
   const totalPendentes = Object.values(attendanceStatusState).filter((status) => status === 'pendente').length;
   const totalUrgentes = Object.values(attendanceStatusState).filter((status) => status === 'urgente').length;
-  const operationalItems = getOperationalChatItems();
-  const totalMeus = operationalItems.filter((item) => Number(item.assignee?.usuario_id) === Number(usuarioAtual?.id) && item.status !== 'resolvido').length;
-  const totalSla = operationalItems.filter((item) => item.sla?.overdue).length;
   const nomeUsuario = String(usuarioAtual?.nome || '').trim();
   const emailUsuario = String(usuarioAtual?.email || '').trim();
   const firstNameRaw = /^\(?usu[aá]rio/i.test(nomeUsuario)
@@ -2698,8 +2678,6 @@ function getWelcomeStateHtml() {
   const firstName = firstNameRaw.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, '') || 'equipe';
   const urgentItems = getDashboardChatItems('urgent', 4);
   const unreadItems = getDashboardChatItems('unread', 4);
-  const mineItems = getDashboardChatItems('mine', 4);
-  const slaItems = getDashboardChatItems('sla', 4);
   return `
     <div class="empty-state welcome-state dashboard-home">
       <div class="dashboard-hero">
@@ -2723,12 +2701,10 @@ function getWelcomeStateHtml() {
         <div class="dashboard-title-group">
           <div class="welcome-eyebrow">Painel inicial</div>
           <div class="welcome-title">${getGreeting()}, ${escapeHtml(firstName)}</div>
-          <div class="welcome-copy">Um painel rápido para abrir prioridades, acompanhar não lidas e continuar atendimentos sem procurar demais.</div>
+          <div class="welcome-copy">Um painel rápido para abrir prioridades, acompanhar não lidas e continuar conversas sem procurar demais.</div>
           <div class="dashboard-actions">
             <button class="dashboard-action-btn primary" type="button" onclick="aplicarFiltroDashboard('nao-lidas')">Ver não lidas</button>
             <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('pendentes')">Pendentes</button>
-            <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('meus')">Meus atendimentos</button>
-            <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('sla')">SLA</button>
             <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('urgentes')">Urgentes</button>
             <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('online')">Equipe online</button>
             <button class="dashboard-action-btn" type="button" onclick="abrirBuscaGlobal()">Busca global</button>
@@ -2756,18 +2732,8 @@ function getWelcomeStateHtml() {
           <strong>${totalUrgentes}</strong>
           <span>urgentes</span>
         </div>
-        <div class="welcome-stat-card ${totalMeus > 0 ? 'is-active' : 'is-zero'}">
-          <strong>${totalMeus}</strong>
-          <span>meus atendimentos</span>
-        </div>
-        <div class="welcome-stat-card urgent ${totalSla > 0 ? 'is-active' : 'is-zero'}">
-          <strong>${totalSla}</strong>
-          <span>SLA vencido</span>
-        </div>
       </div>
       <div class="dashboard-grid">
-        ${getDashboardListHtml('Meus atendimentos', 'sob sua responsabilidade', mineItems, 'Nada atribuido a voce agora.')}
-        ${getDashboardListHtml('SLA', 'precisam de retorno', slaItems, 'Nenhum SLA vencido.')}
         ${getDashboardListHtml('Urgentes', 'atenção agora', urgentItems, 'Nenhuma conversa urgente.')}
         ${getDashboardListHtml('Não lidas', 'pendências', unreadItems, 'Tudo em dia por aqui.')}
       </div>
