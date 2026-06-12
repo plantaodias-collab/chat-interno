@@ -399,6 +399,10 @@ function atualizarBotaoFavorito() {
   const attendanceSelect = document.getElementById('attendanceStatusSelect');
   if (!btn || !priorityBtn || !exportBtn || !homeBtn || !attendanceSelect) return;
   const hasChat = Boolean(tipoChat && chatIdAtual);
+  const galleryBtn = document.getElementById('galleryChatBtn');
+  const exportPdfBtn = document.getElementById('exportPdfBtn');
+  if (galleryBtn) galleryBtn.classList.toggle('hidden', !hasChat);
+  if (exportPdfBtn) exportPdfBtn.classList.toggle('hidden', !hasChat);
   homeBtn.classList.toggle('hidden', !hasChat);
   btn.classList.toggle('hidden', !hasChat);
   priorityBtn.classList.toggle('hidden', !hasChat);
@@ -3627,6 +3631,120 @@ function exportarConversaTxt() {
   URL.revokeObjectURL(url);
 }
 
+// Busca TODAS as mensagens da conversa aberta (sem paginacao). Usado pela
+// galeria de midia e pela exportacao em PDF, que precisam do historico completo.
+async function fetchTodasMensagensConversa() {
+  const endpoint = tipoChat === 'grupo'
+    ? `/api/mensagens/grupo/${chatIdAtual}`
+    : `/api/mensagens/privadas/${chatIdAtual}`;
+  const resp = await fetch(endpoint, { headers: authHeaders() });
+  if (!resp.ok) throw new Error('Falha ao carregar mensagens');
+  const payload = await resp.json();
+  const arr = Array.isArray(payload) ? payload : (payload.mensagens || []);
+  return arr.map((m) => normalizeMessage({ ...m, usuarioNome: m.usuario_nome, usuarioId: m.usuario_id }));
+}
+
+// Exporta a conversa aberta em PDF usando a impressao do navegador (sem
+// dependencias): abre uma janela com o conteudo formatado e dispara o print,
+// onde o usuario escolhe "Salvar como PDF".
+async function exportarConversaPdf() {
+  if (!tipoChat || !chatIdAtual) {
+    mostrarNotificacao('Abra uma conversa para exportar', 'error');
+    return;
+  }
+  const title = document.getElementById('headerTitle').textContent || 'Conversa';
+  let mensagens;
+  try {
+    mensagens = await fetchTodasMensagensConversa();
+  } catch (_e) {
+    mostrarNotificacao('Não foi possível carregar a conversa', 'error');
+    return;
+  }
+  if (!mensagens.length) {
+    mostrarNotificacao('Conversa sem mensagens para exportar', 'error');
+    return;
+  }
+  const linhas = mensagens.map((m) => {
+    const autor = escapeHtml(m.usuarioNome || m.usuario_nome || 'Usuário');
+    const hora = escapeHtml(formatMessageTimestamp(m.criado_em));
+    const texto = escapeHtml(getMessageCopyText(m) || '').replace(/\n/g, '<br>');
+    return `<div class="msg"><div class="meta"><span class="autor">${autor}</span><span class="hora">${hora}</span></div><div class="texto">${texto}</div></div>`;
+  }).join('');
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
+    <style>
+      body{font-family:Arial,Helvetica,sans-serif;color:#142033;margin:32px;}
+      h1{font-size:18px;margin:0 0 4px;}
+      .sub{color:#64748b;font-size:12px;margin-bottom:20px;}
+      .msg{padding:8px 0;border-bottom:1px solid #eef1f4;}
+      .meta{font-size:11px;margin-bottom:2px;}
+      .autor{font-weight:700;color:#1668ff;}
+      .hora{color:#94a3b8;margin-left:8px;}
+      .texto{font-size:13px;white-space:pre-wrap;}
+    </style></head><body>
+    <h1>${escapeHtml(title)}</h1>
+    <div class="sub">Cartório Dias de Castro — exportado em ${escapeHtml(formatMessageTimestamp(new Date()))} · ${mensagens.length} mensagens</div>
+    ${linhas}
+    <script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script>
+    </body></html>`;
+  const win = window.open('', '_blank');
+  if (!win) {
+    mostrarNotificacao('Permita pop-ups para exportar em PDF', 'error');
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+}
+
+function fecharGaleriaConversa() {
+  const overlay = document.getElementById('mediaGalleryOverlay');
+  if (overlay) overlay.remove();
+}
+
+// Galeria de midia: reune imagens, videos e PDFs da conversa aberta num grid.
+async function abrirGaleriaConversa() {
+  if (!tipoChat || !chatIdAtual) {
+    mostrarNotificacao('Abra uma conversa para ver a galeria', 'error');
+    return;
+  }
+  fecharGaleriaConversa();
+  const title = document.getElementById('headerTitle').textContent || 'Conversa';
+  let mensagens;
+  try {
+    mensagens = await fetchTodasMensagensConversa();
+  } catch (_e) {
+    mostrarNotificacao('Não foi possível carregar a galeria', 'error');
+    return;
+  }
+  const midias = mensagens.filter((m) => m.tipo === 'arquivo' && !m.arquivo_expirado_em
+    && (isImageAttachment(m) || isVideoAttachment(m) || isPdfAttachment(m)));
+  const itensHtml = midias.length
+    ? midias.map((m) => {
+        const url = escapeHtml(m.arquivo_url || '');
+        const nome = escapeHtml(m.arquivo_nome_original || 'arquivo');
+        let thumb;
+        if (isImageAttachment(m)) thumb = `<img src="${url}" alt="${nome}" loading="lazy">`;
+        else if (isVideoAttachment(m)) thumb = `<video src="${url}" muted preload="metadata"></video><span class="media-badge">Vídeo</span>`;
+        else thumb = `<span class="media-pdf">PDF</span>`;
+        return `<a class="media-item" href="${url}" target="_blank" rel="noopener" title="${nome}">${thumb}<span class="media-name">${nome}</span></a>`;
+      }).join('')
+    : '<div class="media-empty">Nenhuma mídia nesta conversa.</div>';
+  const overlay = document.createElement('div');
+  overlay.id = 'mediaGalleryOverlay';
+  overlay.className = 'media-gallery-overlay';
+  overlay.innerHTML = `
+    <div class="media-gallery">
+      <div class="media-gallery-head">
+        <strong>Galeria — ${escapeHtml(title)}</strong>
+        <button type="button" class="media-close" aria-label="Fechar galeria">&times;</button>
+      </div>
+      <div class="media-grid">${itensHtml}</div>
+    </div>`;
+  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) fecharGaleriaConversa(); });
+  overlay.querySelector('.media-close').addEventListener('click', fecharGaleriaConversa);
+  document.body.appendChild(overlay);
+}
+
 function upsertMessageInCache(message) {
   const normalized = normalizeMessage(message);
   const index = currentMessagesCache.findIndex((item) => Number(item.id) === Number(normalized.id));
@@ -4475,6 +4593,9 @@ function fazerLogout() {
   document.getElementById('favoriteChatBtn').classList.add('hidden');
   document.getElementById('priorityChatBtn').classList.add('hidden');
   document.getElementById('exportChatBtn').classList.add('hidden');
+  document.getElementById('galleryChatBtn')?.classList.add('hidden');
+  document.getElementById('exportPdfBtn')?.classList.add('hidden');
+  fecharGaleriaConversa();
   document.getElementById('messagesContainer').innerHTML = '';
   document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat do Cartório Dias de Castro';
   document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
@@ -4521,7 +4642,10 @@ Object.assign(window, {
   fecharVisualizadorArquivo,
   baixarArquivoMensagem,
   baixarArquivoVisualizado,
-  imprimirArquivoVisualizado
+  imprimirArquivoVisualizado,
+  abrirGaleriaConversa,
+  fecharGaleriaConversa,
+  exportarConversaPdf
 });
 
 carregarFavoritos();

@@ -41,12 +41,34 @@ Ordem sugerida: de cima para baixo.
 - [ ] **IDs únicos também para usuários/grupos** (mesmo padrão crescente) — colisão é rara, mas vale padronizar.
 - [ ] **Confirmar `SECRET_KEY` forte e fixa no Railway** — o servidor avisa no boot se não estiver setada (tokens JWT ficam previsíveis sem ela).
 
-## Fase 4 — Recursos novos (quando o básico estiver redondo) 🟡
+## Fase 4 — Recursos novos (em blocos pequenos)
 
-- [ ] **Busca melhor** — diferenciar visualmente "Buscar na conversa" de "Global".
-- [ ] **Notificações push** — já há `web-push` no projeto; configurar as chaves VAPID (hoje o boot avisa "Push desativado").
-- [ ] **Histórico/exportação** de conversas para fins de registro.
-- [ ] **Métricas simples** — quem está mais ativo, tempo de resposta médio, para gestão.
+Implementação em blocos isolados, cada um = 1 commit testado.
+
+**Bloco A — Push** ✅ (código já estava pronto)
+- [x] **Push real** — gerar chaves VAPID. Falta apenas configurar `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` no Railway e redeployar.
+
+**Bloco B — Mídia & exportação** ✅
+- [x] **Galeria de mídia da conversa** — grid de imagens/vídeos/PDFs (botão "Galeria" no menu Mais).
+- [x] **Exportar conversa em PDF** — via impressão do navegador (botão "Exportar PDF"). Mantido o TXT.
+
+**Bloco C — Atendimento (notas + etiquetas)** ⏳
+- [ ] **Notas internas** numa conversa (visíveis só p/ equipe).
+- [ ] **Etiquetas por tipo de serviço** (registro civil, PJ, protesto, certidão...).
+
+**Bloco D — Atendimento (responsável + SLA)** ⏳
+- [ ] **Atribuir responsável** ao atendimento.
+- [ ] **Alerta de pendência/SLA** (pendente sem resposta há X horas).
+
+**Bloco E — Comunicação** ⏳
+- [ ] **@menções** com notificação.
+- [ ] **"Visto por" em grupo** (expor `leituras_grupo`).
+
+**Bloco F — Agendamento + métricas** ⏳
+- [ ] **Mensagens agendadas / rascunho**.
+- [ ] **Métricas avançadas** — tempo médio de resposta, volume por dia, ranking.
+
+**Para o futuro (a combinar):** busca melhor, resumo por e-mail / "não perturbe", som por tipo, 2FA, retenção/expiração e exportação LGPD, número de protocolo na conversa, mensagens de voz.
 
 ---
 

@@ -176,9 +176,17 @@
                 <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z"/></svg></span>
                 <span class="action-text">Fixar</span>
               </button>
-              <button class="header-btn action-icon-btn hidden" id="exportChatBtn" onclick="exportarConversaTxt()" title="Exportar conversa" aria-label="Exportar conversa">
+              <button class="header-btn action-icon-btn hidden" id="exportChatBtn" onclick="exportarConversaTxt()" title="Exportar conversa em TXT" aria-label="Exportar conversa em TXT">
                 <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></span>
-                <span class="action-text">Exportar</span>
+                <span class="action-text">Exportar TXT</span>
+              </button>
+              <button class="header-btn action-icon-btn hidden" id="exportPdfBtn" onclick="exportarConversaPdf()" title="Exportar conversa em PDF" aria-label="Exportar conversa em PDF">
+                <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15a0 0 0 0 1 0 0H6a0 0 0 0 1 0 0Z"/><path d="M15 2v5h5"/><path d="M9 13h6M9 17h6"/></svg></span>
+                <span class="action-text">Exportar PDF</span>
+              </button>
+              <button class="header-btn action-icon-btn hidden" id="galleryChatBtn" onclick="abrirGaleriaConversa()" title="Galeria de mídia da conversa" aria-label="Galeria de mídia da conversa">
+                <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></span>
+                <span class="action-text">Galeria</span>
               </button>
               <button class="header-btn action-icon-btn" id="themeToggleBtn" onclick="alternarTemaRapido()" title="Alternar tema claro ou escuro" aria-label="Alternar tema claro ou escuro" aria-pressed="false">
                 <span class="action-icon" id="themeToggleIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z"/></svg></span>
