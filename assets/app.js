@@ -241,6 +241,12 @@ function getCurrentConversationKey() {
   return tipoChat && chatIdAtual ? getChatKey(tipoChat, chatIdAtual) : '';
 }
 
+function atualizarModoTelaInicial() {
+  const main = document.querySelector('.main-content');
+  if (!main) return;
+  main.classList.toggle('home-mode', !(tipoChat && chatIdAtual));
+}
+
 function getPinnedMessagesForCurrentChat() {
   const key = getCurrentConversationKey();
   return key ? (pinnedMessagesByConversation[key] || []) : [];
@@ -2235,7 +2241,7 @@ function getWelcomeStateHtml() {
           </svg>
         </div>
         <div class="dashboard-title-group">
-          <div class="welcome-eyebrow">Cartório Dias de Castro</div>
+          <div class="welcome-eyebrow">Painel inicial</div>
           <div class="welcome-title">${getGreeting()}, ${escapeHtml(firstName)}</div>
           <div class="welcome-copy">Um painel rápido para abrir prioridades, acompanhar não lidas e continuar atendimentos sem procurar demais.</div>
           <div class="dashboard-actions">
@@ -2278,6 +2284,7 @@ function getWelcomeStateHtml() {
 }
 
 function renderWelcomeState() {
+  atualizarModoTelaInicial();
   document.getElementById('messagesContainer').innerHTML = getWelcomeStateHtml();
   atualizarBotaoTema();
 }
@@ -2299,7 +2306,7 @@ function voltarTelaInicial() {
 
   document.getElementById('messageSearchInput').value = '';
   document.getElementById('messageInput').value = '';
-  document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat do Cartório Dias de Castro';
+  document.getElementById('headerTitle').textContent = 'Central de conversas';
   document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
   document.getElementById('typingIndicator').textContent = '';
   autoResizeComposer();
@@ -3212,6 +3219,7 @@ async function carregarChat(tipo, id, nome) {
   tipoChat = tipo;
   chatIdAtual = id;
   nomeChatAtual = nome;
+  atualizarModoTelaInicial();
   currentMessageSearch = '';
   currentMessagesCache = [];
   currentMessagesHasMore = false;
@@ -4597,7 +4605,7 @@ function fazerLogout() {
   document.getElementById('exportPdfBtn')?.classList.add('hidden');
   fecharGaleriaConversa();
   document.getElementById('messagesContainer').innerHTML = '';
-  document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat do Cartório Dias de Castro';
+  document.getElementById('headerTitle').textContent = 'Central de conversas';
   document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
   updateDailyMotivation();
   document.getElementById('headerMotivation').classList.remove('hidden');

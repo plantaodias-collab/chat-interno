@@ -22,13 +22,13 @@ Ordem sugerida: de cima para baixo.
 
 - [x] **Acentuação** — frases do dia (caixa verde), abas do admin (Usuários, Métricas), Painel Público, toasts ("Arquivo inválido", "indisponível", "Impressão"...) e tela inicial. Commit `<fase1>`. *(Resta uma varredura fina de strings menos visíveis, que dá para fazer aos poucos.)*
 - [x] **Cards de estatística com hierarquia** — contagem 0 fica apagada; "não lidas/pendentes/urgentes" > 0 ganham cor de alerta (azul/âmbar/vermelho). Commit `<fase1>`.
-- [ ] **Reduzir o espaço vazio no topo** da tela inicial — ⚠️ requer ajuste visual com o app rodando para acertar sem quebrar o layout (CSS bem duplicado). Fazer iterando com o render.
-- [ ] **Unificar a saudação** — hoje a marca "Cartório Dias de Castro" aparece no cabeçalho e no card. ⚠️ decisão visual; fazer vendo o resultado.
+- [x] **Reduzir o espaço vazio no topo** da tela inicial — painel inicial compactado, composer oculto quando não há conversa aberta e ajuste validado em desktop/mobile. Commit `<fase1-home-polish>`.
+- [x] **Unificar a saudação** — cabeçalho fica como "Central de conversas" e o card inicial usa "Painel inicial", evitando repetir a marca do menu lateral. Commit `<fase1-home-polish>`.
 - [ ] **Logo real do cartório** no avatar e cor de marca — ⏳ depende de receber o arquivo do logo (hoje há só o monograma "DC" em SVG).
 
 ## Fase 2 — Experiência de uso (médio risco) 🟡
 
-- [ ] **Validar layout no celular (PWA)** — o plantão provavelmente usa no celular. Testar a sidebar e o composer em telas pequenas; já existe `manifest.json` + `sw.js`.
+- [ ] **Validar layout no celular (PWA)** — primeira passada feita na tela inicial: menu e painel não estouram largura, e o composer some sem conversa aberta. Resta compactar a tela de conversa no celular, porque cabeçalho + composer ainda deixam pouca área para mensagens.
 - [ ] **Indicador de status da conexão** — um aviso discreto ("Reconectando...") quando o socket cai, para o usuário saber que mensagens podem estar atrasadas.
 - [ ] **Confirmação de entrega/leitura** mais clara nas mensagens (checks).
 - [ ] **Atalhos de teclado** para as respostas rápidas (Verificando / Pedir detalhes / Resolvido).
