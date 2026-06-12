@@ -3,6 +3,8 @@ let token = null;
 let usuarioAtual = null;
 let tipoChat = null;
 let chatIdAtual = null;
+let nomeChatAtual = '';
+let jaConectouSocket = false;
 
 let gruposCache = [];
 let contatosCache = [];
@@ -2471,6 +2473,15 @@ function conectarSocket() {
 
   socket.on('connect', () => {
     socket.emit('conectar-usuario', usuarioAtual.id);
+
+    // Em reconexoes (queda de rede, proxy do Railway derrubando conexao ociosa),
+    // recarrega a conversa aberta para trazer mensagens que chegaram durante a
+    // queda. Sem isso, mensagens enviadas enquanto o socket estava desconectado
+    // nao apareciam ate dar reload na pagina.
+    if (jaConectouSocket && chatIdAtual != null && tipoChat) {
+      carregarChat(tipoChat, chatIdAtual, nomeChatAtual);
+    }
+    jaConectouSocket = true;
   });
 
   socket.on('presenca-atualizada', (data) => {
@@ -3196,6 +3207,7 @@ async function carregarChat(tipo, id, nome) {
   const loadSeq = ++currentChatLoadSeq;
   tipoChat = tipo;
   chatIdAtual = id;
+  nomeChatAtual = nome;
   currentMessageSearch = '';
   currentMessagesCache = [];
   currentMessagesHasMore = false;

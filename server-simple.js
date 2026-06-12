@@ -28,6 +28,9 @@ const UPLOAD_DIR = path.join(STORAGE_ROOT, 'uploads');
 const BACKUP_DIR = path.join(STORAGE_ROOT, 'backups');
 const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
+// Janela de agrupamento das gravacoes em disco (debounce). Mudancas em rajada
+// sao persistidas em uma unica escrita assincrona dentro deste intervalo.
+const SAVE_DEBOUNCE_MS = 1000;
 const PDF_ATTACHMENT_RETENTION_DAYS = 30;
 const PDF_ATTACHMENT_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.avi']);
@@ -156,26 +159,91 @@ class SimpleDB {
   }
 
   saveFile(name, data) {
+    // Gravacao atomica sincrona: escreve em arquivo temporario e renomeia,
+    // evitando JSON corrompido se o processo cair no meio da escrita.
     const filePath = path.join(DATA_DIR, name);
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    const tmpPath = `${filePath}.tmp`;
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
+    fs.renameSync(tmpPath, filePath);
   }
 
-  save() {
-    this.saveFile('usuarios.json', this.usuarios);
-    this.saveFile('grupos.json', this.grupos);
-    this.saveFile('membros.json', this.membros_grupo);
-    this.saveFile('mensagens.json', this.mensagens);
-    this.saveFile('mensagens-apagadas.json', this.mensagens_apagadas);
-    this.saveFile('conversas-pendentes.json', this.conversas_pendentes);
-    this.saveFile('status-atendimento.json', this.status_atendimento);
-    this.saveFile('mensagens-prioritarias.json', this.mensagens_prioritarias);
-    this.saveFile('mensagens-fixadas.json', this.mensagens_fixadas);
-    this.saveFile('painel-senhas.json', this.painel_senhas);
-    this.saveFile('backup-agendamento.json', this.backup_agendamento);
-    this.saveFile('templates.json', this.templates);
-    this.saveFile('push-subscriptions.json', this.push_subscriptions);
-    this.saveFile('escala-plantao.json', this.escala_plantao);
+  async saveFileAsync(name, data) {
+    const filePath = path.join(DATA_DIR, name);
+    const tmpPath = `${filePath}.tmp-${process.pid}`;
+    await fs.promises.writeFile(tmpPath, JSON.stringify(data, null, 2));
+    await fs.promises.rename(tmpPath, filePath);
+  }
+
+  // Lista [nomeDoArquivo, dados] usada tanto na escrita sincrona quanto na assincrona.
+  _fileEntries() {
+    return [
+      ['usuarios.json', this.usuarios],
+      ['grupos.json', this.grupos],
+      ['membros.json', this.membros_grupo],
+      ['mensagens.json', this.mensagens],
+      ['mensagens-apagadas.json', this.mensagens_apagadas],
+      ['conversas-pendentes.json', this.conversas_pendentes],
+      ['status-atendimento.json', this.status_atendimento],
+      ['mensagens-prioritarias.json', this.mensagens_prioritarias],
+      ['mensagens-fixadas.json', this.mensagens_fixadas],
+      ['painel-senhas.json', this.painel_senhas],
+      ['backup-agendamento.json', this.backup_agendamento],
+      ['templates.json', this.templates],
+      ['push-subscriptions.json', this.push_subscriptions],
+      ['escala-plantao.json', this.escala_plantao]
+    ];
     // auditoria is saved immediately on each append for safety
+  }
+
+  // Agenda uma gravacao assincrona com debounce. Varias mudancas em sequencia
+  // (ex.: rajada de mensagens) sao agrupadas em uma unica escrita, em vez de
+  // reescrever todos os JSONs de forma sincrona a cada mensagem (o que travava
+  // o event loop e causava atraso crescente entre as mensagens).
+  save() {
+    this._pendingSave = true;
+    if (this._saveTimer) return;
+    this._saveTimer = setTimeout(() => this._runScheduledSave(), SAVE_DEBOUNCE_MS);
+  }
+
+  async _runScheduledSave() {
+    this._saveTimer = null;
+    if (this._saving) {
+      this._saveAgain = true;
+      return;
+    }
+    this._saving = true;
+    this._pendingSave = false;
+    try {
+      for (const [name, data] of this._fileEntries()) {
+        await this.saveFileAsync(name, data);
+      }
+    } catch (err) {
+      console.error('Erro ao salvar dados (async):', err);
+      this._pendingSave = true; // tenta de novo na proxima janela
+    } finally {
+      this._saving = false;
+      if (this._saveAgain || this._pendingSave) {
+        this._saveAgain = false;
+        this.save();
+      }
+    }
+  }
+
+  // Gravacao sincrona imediata de tudo. Usada em pontos criticos onde os dados
+  // precisam estar no disco JA: antes de um backup e no encerramento do processo.
+  flush() {
+    if (this._saveTimer) {
+      clearTimeout(this._saveTimer);
+      this._saveTimer = null;
+    }
+    this._pendingSave = false;
+    try {
+      for (const [name, data] of this._fileEntries()) {
+        this.saveFile(name, data);
+      }
+    } catch (err) {
+      console.error('Erro ao salvar dados (flush):', err);
+    }
   }
 }
 
@@ -385,6 +453,8 @@ function listBackups() {
 }
 
 function createBackup({ nome = '', criadoPor = '', tipo = 'manual' } = {}) {
+  // Garante que o estado em memoria esteja no disco antes de copiar os arquivos.
+  db.flush();
   const stamp = formatBackupStamp();
   const safeName = sanitizeBackupName(nome);
   const backupId = safeName ? `${stamp}-${safeName}` : stamp;
@@ -2931,3 +3001,22 @@ setInterval(() => {
 }, PDF_ATTACHMENT_CLEANUP_INTERVAL_MS);
 
 pruneAutomaticBackups(AUTOMATIC_BACKUP_RETENTION);
+
+// Persistencia segura no encerramento. O Railway envia SIGTERM ao redeployar/
+// reiniciar o container; como as gravacoes agora sao assincronas e com debounce,
+// fazemos um flush sincrono para nao perder mensagens que ainda nao foram ao disco.
+let encerrando = false;
+function encerrarComFlush(sinal) {
+  if (encerrando) return;
+  encerrando = true;
+  console.log(`Recebido ${sinal}, salvando dados antes de encerrar...`);
+  try {
+    db.flush();
+  } catch (err) {
+    console.error('Erro no flush de encerramento:', err);
+  }
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => encerrarComFlush('SIGTERM'));
+process.on('SIGINT', () => encerrarComFlush('SIGINT'));
