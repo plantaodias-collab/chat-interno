@@ -250,13 +250,27 @@ class SimpleDB {
 const db = new SimpleDB();
 ensurePlantaoGroup();
 ensureDefaultPlantaoJuneSchedule();
+
+// Gerador de ID de mensagem estritamente crescente. Antes usava Date.now()
+// direto: duas mensagens no mesmo milissegundo recebiam o MESMO id, fazendo
+// reacoes/edicoes/exclusoes atingirem a mensagem errada. Inicia a partir do
+// maior id ja existente para nunca colidir com mensagens antigas.
+let _ultimoIdMensagem = (db.mensagens || []).reduce(
+  (max, m) => Math.max(max, Number(m.id) || 0),
+  0
+);
+function gerarIdMensagem() {
+  const agora = Date.now();
+  _ultimoIdMensagem = agora > _ultimoIdMensagem ? agora : _ultimoIdMensagem + 1;
+  return _ultimoIdMensagem;
+}
 const onlineUsers = new Map();
 const socketUsers = new Map();
 const typingTimeouts = new Map();
 
 function verificarToken(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ erro: 'Token n�o fornecido' });
+  if (!token) return res.status(401).json({ erro: 'Token não fornecido' });
 
   try {
     const decoded = jwt.verify(token, SECRET_KEY);
@@ -264,7 +278,7 @@ function verificarToken(req, res, next) {
     req.userEmail = decoded.email;
     next();
   } catch (err) {
-    res.status(401).json({ erro: 'Token inv�lido' });
+    res.status(401).json({ erro: 'Token inválido' });
   }
 }
 
@@ -297,7 +311,7 @@ const upload = multer({
   fileFilter: (_req, file, cb) => {
     const ext = getUploadExtension(file);
     if (!ALLOWED_EXTENSIONS.has(ext)) {
-      return cb(new Error('Tipo de arquivo n�o permitido'));
+      return cb(new Error('Tipo de arquivo não permitido'));
     }
     cb(null, true);
   }
@@ -1394,10 +1408,10 @@ app.post('/api/login', async (req, res) => {
 
     const usuario = db.usuarios.find((u) => normalizeEmail(u.email) === email && u.ativo);
 
-    if (!usuario) return res.status(401).json({ erro: 'Usu�rio ou senha inv�lidos' });
+    if (!usuario) return res.status(401).json({ erro: 'Usuário ou senha inválidos' });
 
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
-    if (!senhaValida) return res.status(401).json({ erro: 'Usu�rio ou senha inv�lidos' });
+    if (!senhaValida) return res.status(401).json({ erro: 'Usuário ou senha inválidos' });
 
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email, admin: usuario.admin },
@@ -1522,7 +1536,7 @@ app.post('/api/admin/criar-usuario', verificarToken, async (req, res) => {
     }
 
     if (db.usuarios.find((u) => normalizeEmail(u.email) === email)) {
-      return res.status(400).json({ erro: 'Email j� cadastrado' });
+      return res.status(400).json({ erro: 'Email já cadastrado' });
     }
 
     const senhaHash = await bcrypt.hash(senha, 10);
@@ -1596,7 +1610,7 @@ app.delete('/api/admin/usuarios/:id', verificarToken, (req, res) => {
       usuario.ativo = 0;
       db.save();
     }
-    res.json({ mensagem: 'Usu�rio desativado' });
+    res.json({ mensagem: 'Usuário desativado' });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -2344,9 +2358,9 @@ app.put('/api/mensagens/:id', verificarToken, (req, res) => {
   try {
     const messageId = parseInt(req.params.id, 10);
     const mensagem = getMessageById(messageId);
-    if (!mensagem) return res.status(404).json({ erro: 'Mensagem n�o encontrada' });
+    if (!mensagem) return res.status(404).json({ erro: 'Mensagem não encontrada' });
     if (Number(mensagem.usuario_id) !== Number(req.userId)) {
-      return res.status(403).json({ erro: 'Voc� s� pode editar mensagens enviadas por voc�' });
+      return res.status(403).json({ erro: 'Você só pode editar mensagens enviadas por você' });
     }
     if (mensagem.tipo && mensagem.tipo !== 'texto') {
       return res.status(400).json({ erro: 'Somente mensagens de texto podem ser editadas' });
@@ -2372,12 +2386,12 @@ app.post('/api/mensagens/:id/reacoes', verificarToken, (req, res) => {
     const emoji = String(req.body?.emoji || '').trim();
     const mensagem = getMessageById(messageId);
 
-    if (!mensagem) return res.status(404).json({ erro: 'Mensagem n�o encontrada' });
+    if (!mensagem) return res.status(404).json({ erro: 'Mensagem não encontrada' });
     if (!canUserAccessMessage(req.userId, mensagem)) {
       return res.status(403).json({ erro: 'Acesso negado a esta mensagem' });
     }
     if (!emoji || emoji.length > 8) {
-      return res.status(400).json({ erro: 'Emoji inv�lido' });
+      return res.status(400).json({ erro: 'Emoji inválido' });
     }
 
     if (!mensagem.reacoes || typeof mensagem.reacoes !== 'object') {
@@ -2399,7 +2413,7 @@ app.post('/api/mensagens/:id/reacoes', verificarToken, (req, res) => {
 
     db.save();
     emitMessageUpdated(mensagem, { acao: 'reacao' });
-    res.json({ mensagem: 'Rea��o atualizada com sucesso', message: enrichMessage(mensagem) });
+    res.json({ mensagem: 'Reação atualizada com sucesso', message: enrichMessage(mensagem) });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -2458,8 +2472,8 @@ app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => 
     const tipoChat = sanitizeText(req.body?.tipoChat);
     const chatId = Number(req.body?.chatId);
     const replyToId = Number(req.body?.replyToId || 0);
-    if (!req.file) return res.status(400).json({ erro: 'Arquivo n�o enviado' });
-    if (!tipoChat || !chatId) return res.status(400).json({ erro: 'Destino do arquivo n�o informado' });
+    if (!req.file) return res.status(400).json({ erro: 'Arquivo não enviado' });
+    if (!tipoChat || !chatId) return res.status(400).json({ erro: 'Destino do arquivo não informado' });
 
     if (!['grupo', 'privado'].includes(tipoChat)) {
       return res.status(400).json({ erro: 'Tipo de chat inválido' });
@@ -2478,7 +2492,7 @@ app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => 
     }
 
     const msg = {
-      id: Date.now(),
+      id: gerarIdMensagem(),
       usuario_id: Number(req.userId),
       grupo_id: tipoChat === 'grupo' ? chatId : null,
       usuario_destino_id: tipoChat === 'privado' ? chatId : null,
@@ -2598,7 +2612,7 @@ io.on('connection', (socket) => {
     }
 
     const msg = {
-      id: Date.now(),
+      id: gerarIdMensagem(),
       usuario_id: Number(data.usuarioId),
       grupo_id: Number(data.grupoId),
       usuario_destino_id: null,
@@ -2634,7 +2648,7 @@ io.on('connection', (socket) => {
     }
 
     const msg = {
-      id: Date.now(),
+      id: gerarIdMensagem(),
       usuario_id: Number(data.remetente_id),
       grupo_id: null,
       usuario_destino_id: Number(data.destinatario_id),

@@ -97,7 +97,7 @@ const DAILY_MOTIVATION_MESSAGES = [
   'Pequenas atitudes de cuidado deixam grandes marcas no atendimento.',
   'Que cada resposta enviada hoje aproxime alguem da solucao que precisa.',
   'Excelencia tambem esta na forma como acolhemos, orientamos e finalizamos cada demanda.',
-  'Cada ato feito com atencao reforca a confianca que as pessoas depositam em nosso trabalho.',
+  'Cada ato feito com atenção reforça a confiança que as pessoas depositam em nosso trabalho.',
   'Vamos cuidar de cada detalhe, porque por tras de cada pedido existe uma vida em movimento.',
   'Que hoje a equipe trabalhe com foco, leveza e orgulho pelo que entrega.',
   'Ser melhor a cada dia tambem e ouvir com calma, responder com clareza e agir com compromisso.',
@@ -2231,11 +2231,11 @@ function getWelcomeStateHtml() {
           </svg>
         </div>
         <div class="dashboard-title-group">
-          <div class="welcome-eyebrow">Cartorio Dias de Castro</div>
+          <div class="welcome-eyebrow">Cartório Dias de Castro</div>
           <div class="welcome-title">${getGreeting()}, ${escapeHtml(firstName)}</div>
-          <div class="welcome-copy">Um painel rapido para abrir prioridades, acompanhar nao lidas e continuar atendimentos sem procurar demais.</div>
+          <div class="welcome-copy">Um painel rápido para abrir prioridades, acompanhar não lidas e continuar atendimentos sem procurar demais.</div>
           <div class="dashboard-actions">
-            <button class="dashboard-action-btn primary" type="button" onclick="aplicarFiltroDashboard('nao-lidas')">Ver nao lidas</button>
+            <button class="dashboard-action-btn primary" type="button" onclick="aplicarFiltroDashboard('nao-lidas')">Ver não lidas</button>
             <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('pendentes')">Pendentes</button>
             <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('urgentes')">Urgentes</button>
             <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('online')">Equipe online</button>
@@ -2250,7 +2250,7 @@ function getWelcomeStateHtml() {
         </div>
         <div class="welcome-stat-card">
           <strong>${totalNaoLidas}</strong>
-          <span>nao lidas</span>
+          <span>não lidas</span>
         </div>
         <div class="welcome-stat-card">
           <strong>${totalGrupos}</strong>
@@ -2266,8 +2266,8 @@ function getWelcomeStateHtml() {
         </div>
       </div>
       <div class="dashboard-grid">
-        ${getDashboardListHtml('Urgentes', 'atencao agora', urgentItems, 'Nenhuma conversa urgente.')}
-        ${getDashboardListHtml('Nao lidas', 'pendencias', unreadItems, 'Tudo em dia por aqui.')}
+        ${getDashboardListHtml('Urgentes', 'atenção agora', urgentItems, 'Nenhuma conversa urgente.')}
+        ${getDashboardListHtml('Não lidas', 'pendências', unreadItems, 'Tudo em dia por aqui.')}
       </div>
     </div>
   `;
@@ -2295,7 +2295,7 @@ function voltarTelaInicial() {
 
   document.getElementById('messageSearchInput').value = '';
   document.getElementById('messageInput').value = '';
-  document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat do Cartorio Dias de Castro';
+  document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat do Cartório Dias de Castro';
   document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
   document.getElementById('typingIndicator').textContent = '';
   autoResizeComposer();
@@ -4476,7 +4476,7 @@ function fazerLogout() {
   document.getElementById('priorityChatBtn').classList.add('hidden');
   document.getElementById('exportChatBtn').classList.add('hidden');
   document.getElementById('messagesContainer').innerHTML = '';
-  document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat do Cartorio Dias de Castro';
+  document.getElementById('headerTitle').textContent = 'Bem-vindo ao Chat do Cartório Dias de Castro';
   document.getElementById('headerSubtitle').textContent = 'Selecione um grupo ou contato para iniciar';
   updateDailyMotivation();
   document.getElementById('headerMotivation').classList.remove('hidden');
