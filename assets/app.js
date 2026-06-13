@@ -91,6 +91,7 @@ const SIDEBAR_KEY = 'chatinterno.sidebarCollapsed';
 const DENSITY_KEY = 'chatinterno.messageDensity';
 const MESSAGE_RENDER_LIMIT = 220;
 const ATTACHMENT_PLACEHOLDER_SRC = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+const NOTIFICATION_PROMPT_KEY = 'chatinterno.notificationPromptDismissed';
 const ATTENDANCE_STATUS_LABELS = {
   pendente: 'Pendente',
   aguardando: 'Aguardando',
@@ -1380,12 +1381,35 @@ function isStickerAttachment(message) {
 
 function getAttachmentKindLabel(message) {
   if (!message || message.tipo !== 'arquivo') return '';
-  if (message.arquivo_expirado_em) return 'PDF removido';
+  if (message.arquivo_expirado_em) return 'Arquivo removido';
   if (isStickerAttachment(message)) return 'Figurinha';
   if (isImageAttachment(message)) return 'Imagem';
   if (isVideoAttachment(message)) return 'Video';
   if (isPdfAttachment(message)) return 'PDF';
   return 'Arquivo';
+}
+
+function getAttachmentExtension(message) {
+  const name = String(message?.arquivo_nome_original || message?.arquivo_url || '');
+  const match = name.match(/\.([a-z0-9]{2,6})(?:$|\?)/i);
+  return match ? match[1].toUpperCase() : '';
+}
+
+function getAttachmentTags(message) {
+  if (!message || message.tipo !== 'arquivo') return [];
+  const tags = [getAttachmentKindLabel(message)].filter(Boolean);
+  const extension = getAttachmentExtension(message);
+  if (extension && !tags.some((tag) => tag.toUpperCase() === extension)) tags.push(extension);
+  if (Number(message.arquivo_tamanho || 0) > 0) tags.push(formatFileSize(message.arquivo_tamanho));
+  if (message.arquivo_expirado_em || !message.arquivo_url) tags.push('Indisponivel');
+  else tags.push('Anexo seguro');
+  return tags.slice(0, 4);
+}
+
+function getAttachmentTagsHtml(message) {
+  const tags = getAttachmentTags(message);
+  if (!tags.length) return '';
+  return `<div class="attachment-tags">${tags.map((tag) => `<span class="attachment-tag">${escapeHtml(tag)}</span>`).join('')}</div>`;
 }
 
 function isOfficeAttachment(message) {
@@ -1456,12 +1480,29 @@ function hydrateSecureAttachments(root = document) {
     try {
       const objectUrl = await getProtectedAttachmentObjectUrl(rawUrl);
       if (!objectUrl) return;
-      if (element.tagName === 'IMG' || element.tagName === 'VIDEO') {
+      if (element.tagName === 'IMG' || element.tagName === 'VIDEO' || element.tagName === 'IFRAME') {
         element.src = objectUrl;
         element.dataset.secureLoaded = 'true';
       }
     } catch (_err) {
       element.classList.add('attachment-load-error');
+    }
+  });
+
+  root.querySelectorAll('[data-secure-pdf-placeholder]').forEach(async (element) => {
+    const rawUrl = element.getAttribute('data-secure-pdf-placeholder');
+    if (!rawUrl || element.dataset.secureLoaded === 'true') return;
+    try {
+      const objectUrl = await getProtectedAttachmentObjectUrl(rawUrl);
+      if (!objectUrl) return;
+      const iframe = document.createElement('iframe');
+      iframe.src = `${objectUrl}#toolbar=0&navpanes=0`;
+      iframe.title = 'Previa do PDF anexado';
+      iframe.loading = 'lazy';
+      element.replaceWith(iframe);
+    } catch (_err) {
+      element.classList.add('attachment-load-error');
+      element.innerHTML = '<span>PDF</span><small>Abra para visualizar</small>';
     }
   });
 }
@@ -1943,6 +1984,11 @@ function getUnreadTitle(total = getTotalUnread()) {
     : DEFAULT_TITLE;
 }
 
+function getUnreadBadgeTitle(total) {
+  const count = Number(total) || 0;
+  return `${count} ${count === 1 ? 'mensagem nao lida' : 'mensagens nao lidas'}`;
+}
+
 function getFaviconElement() {
   return document.getElementById('appFavicon');
 }
@@ -2074,10 +2120,14 @@ document.addEventListener('drop', async (event) => {
 function updateHeaderIcon(tipo, nome = '') {
   const icon = document.getElementById('chatHeaderAvatar');
   icon.classList.toggle('brand-avatar', !tipo);
+  icon.classList.toggle('header-avatar-private', tipo === 'privado');
+  icon.classList.toggle('header-avatar-group', tipo === 'grupo');
   icon.removeAttribute('style');
   if (tipo === 'grupo') icon.textContent = '#';
   else if (tipo === 'privado') {
-    icon.textContent = initials(nome);
+    const online = onlineState.has(Number(chatIdAtual));
+    const status = getUserStatus(chatIdAtual);
+    icon.innerHTML = `${escapeHtml(initials(nome))}<span class="presence-dot ${online ? 'online' : ''} status-${escapeHtml(status)}" title="${escapeHtml(online ? getStatusLabel(status) : 'Offline')}"></span>`;
     icon.setAttribute('style', `background:${avatarGradient(nome)}`);
   }
   else icon.innerHTML = getMiniBrandMarkup();
@@ -2518,6 +2568,52 @@ async function mostrarNotificacaoNavegador(title, options = {}) {
   new Notification(title, payload);
 }
 
+function atualizarBotaoNotificacoes() {
+  const button = document.getElementById('notificationPermissionBtn');
+  if (!button) return;
+
+  if (!('Notification' in window)) {
+    button.classList.add('hidden');
+    return;
+  }
+
+  const permission = Notification.permission;
+  button.classList.toggle('hidden', permission === 'denied');
+  button.classList.toggle('is-enabled', permission === 'granted');
+  button.disabled = permission === 'granted';
+  button.textContent = permission === 'granted' ? 'Notificacoes ativas' : 'Ativar notificacoes';
+  button.title = permission === 'granted'
+    ? 'Este navegador ja avisa quando chegam mensagens'
+    : 'Receber avisos mesmo quando o chat estiver em segundo plano';
+}
+
+async function ativarNotificacoesNavegador() {
+  if (!('Notification' in window)) {
+    mostrarNotificacao('Este navegador nao oferece notificacoes.', 'warning');
+    return;
+  }
+
+  try {
+    await registrarServiceWorkerNotificacoes();
+    const permission = Notification.permission === 'default'
+      ? await Notification.requestPermission()
+      : Notification.permission;
+    atualizarBotaoNotificacoes();
+
+    if (permission === 'granted') {
+      await inicializarWebPush();
+      localStorage.removeItem(NOTIFICATION_PROMPT_KEY);
+      mostrarNotificacao('Notificacoes do navegador ativadas', 'success');
+      return;
+    }
+
+    localStorage.setItem(NOTIFICATION_PROMPT_KEY, '1');
+    mostrarNotificacao('Notificacoes nao foram ativadas neste navegador.', 'warning');
+  } catch (err) {
+    mostrarNotificacao('Nao foi possivel ativar notificacoes: ' + err.message, 'error');
+  }
+}
+
 async function carregarDadosIniciais() {
   await carregarWorkflow();
   await carregarGrupos();
@@ -2525,11 +2621,9 @@ async function carregarDadosIniciais() {
   await carregarResumoConversas();
   await registrarServiceWorkerNotificacoes();
   updateBrowserTitle();
+  atualizarBotaoNotificacoes();
   atualizarPainelInicialSeAberto();
-
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
-  }
+  if ('Notification' in window && Notification.permission === 'granted') inicializarWebPush();
 }
 
 function aplicarSessaoUsuario() {
@@ -2549,6 +2643,7 @@ function aplicarSessaoUsuario() {
   document.getElementById('ajustesBtn').classList.remove('hidden');
   carregarMencoesInbox();
   atualizarBadgeOperacional();
+  atualizarBotaoNotificacoes();
   updateDailyMotivation();
   if (!tipoChat || !chatIdAtual) renderWelcomeState();
 }
@@ -2857,7 +2952,7 @@ function processarMensagemGrupo(data) {
 
   if (Number(data.usuarioId) !== Number(usuarioAtual.id)) {
     mostrarNotificacao(`${data.usuarioNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem'} no grupo`, 'success');
-    mostrarNotificacaoNavegador('Nova mensagem em grupo', {
+    if (!isAppVisibleAndFocused()) mostrarNotificacaoNavegador('Nova mensagem em grupo', {
       body: data.tipo === 'arquivo'
         ? `${data.usuarioNome}: Arquivo ${data.arquivo_nome_original}`
         : `${data.usuarioNome}: ${data.conteudo}`,
@@ -2902,7 +2997,7 @@ function processarMensagemPrivada(data) {
 
   mostrarNotificacao(`${data.remetenteNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem privada'}`, 'success');
 
-  mostrarNotificacaoNavegador('Nova mensagem privada', {
+  if (!isAppVisibleAndFocused()) mostrarNotificacaoNavegador('Nova mensagem privada', {
     body: data.tipo === 'arquivo'
       ? `${data.remetenteNome}: Arquivo ${data.arquivo_nome_original}`
       : `${data.remetenteNome}: ${data.conteudo}`,
@@ -2967,6 +3062,7 @@ function conectarSocket() {
     onlineState = new Set((data.online || []).map(Number));
     userStatusState = data.status || userStatusState || {};
     scheduleSidebarRender({ contacts: true });
+    updateHeaderIcon(tipoChat, nomeChatAtual);
     updateHeaderStatus();
     atualizarPainelInicialSeAberto();
   });
@@ -3582,7 +3678,9 @@ function renderGrupos() {
   });
 
   if (!gruposFiltrados.length) {
-    gruposList.innerHTML = `<div class="empty-list">Nenhum grupo encontrado</div>`;
+    gruposList.innerHTML = conversationSearchTerm
+      ? `<div class="empty-list"><strong>Nenhum grupo encontrado</strong><span>Tente outro nome ou limpe a busca.</span></div>`
+      : `<div class="empty-list"><strong>Sem grupos para mostrar</strong><span>Quando houver grupos ativos, eles aparecem aqui.</span></div>`;
     return;
   }
 
@@ -3605,7 +3703,7 @@ function renderGrupos() {
         </div>
         <div class="chat-preview-row">
           <div class="chat-preview">${typingPreviewHtml || escapeHtml(lastPreviewState[key] || grupo.descricao || 'Sem mensagens recentes')}</div>
-          ${unread > 0 ? `<span class="notification-badge">${unread > 99 ? '99+' : unread}</span>` : ''}
+          ${unread > 0 ? `<span class="notification-badge" title="${escapeHtml(getUnreadBadgeTitle(unread))}">${unread > 99 ? '99+' : unread}</span>` : ''}
         </div>
         ${getAttendanceChipHtml(key)}
         ${isPriority ? '<div class="priority-chip">Prioridade</div>' : ''}
@@ -3674,7 +3772,7 @@ function renderContatos() {
     item.innerHTML = `
       <div class="chat-icon private" ${avatarStyle(usuario.nome || usuario.email)}>
         ${escapeHtml(initials(usuario.nome))}
-        <span class="presence-dot ${online ? 'online' : ''}"></span>
+        <span class="presence-dot ${online ? 'online' : ''} status-${escapeHtml(status)}" title="${escapeHtml(online ? getStatusLabel(status) : 'Offline')}"></span>
       </div>
       <div class="chat-details">
         <div class="chat-top">
@@ -3683,7 +3781,7 @@ function renderContatos() {
         </div>
         <div class="chat-preview-row">
           <div class="chat-preview">${typingPreviewHtml || escapeHtml(preview)}</div>
-          ${unread > 0 ? `<span class="notification-badge">${unread > 99 ? '99+' : unread}</span>` : ''}
+          ${unread > 0 ? `<span class="notification-badge" title="${escapeHtml(getUnreadBadgeTitle(unread))}">${unread > 99 ? '99+' : unread}</span>` : ''}
         </div>
         ${atendimentoHtml}
         ${getAttendanceChipHtml(key)}
@@ -3708,7 +3806,9 @@ function renderContatos() {
   contatosList.appendChild(gruposContatos);
 
   if (!contatosOrdenados.length) {
-    contatosList.innerHTML = `<div class="empty-list">Nenhum contato encontrado</div>`;
+    contatosList.innerHTML = conversationSearchTerm
+      ? `<div class="empty-list"><strong>Nenhum contato encontrado</strong><span>Confira o nome digitado ou veja todos os contatos.</span></div>`
+      : `<div class="empty-list"><strong>Sem contatos neste filtro</strong><span>Altere o filtro para ver mais pessoas da equipe.</span></div>`;
   }
 }
 
@@ -3815,25 +3915,32 @@ function renderMessageRow(message) {
   const editedHtml = message.editado_em ? `<span class="message-edited">(editada)</span>` : '';
   const stickerAttachment = isStickerAttachment(message);
   const attachmentLabel = getAttachmentKindLabel(message);
+  const attachmentTagsHtml = getAttachmentTagsHtml(message);
   const attachmentExpired = message.tipo === 'arquivo' && Boolean(message.arquivo_expirado_em || !message.arquivo_url);
   const secureAttachmentSrc = getCachedAttachmentObjectUrl(message.arquivo_url);
   const filePreviewHtml = attachmentExpired
-    ? `<div class="file-preview pdf expired"><span>&#128196;</span><span>Arquivo removido automaticamente apos 30 dias</span></div>`
+    ? `<div class="file-preview pdf expired"><span>&#128196;</span><span>Anexo removido automaticamente apos 30 dias</span></div>`
     : message.tipo === 'arquivo' && isImageAttachment(message)
-    ? `<div class="file-preview ${stickerAttachment ? 'sticker' : ''}"><img src="${escapeHtml(secureAttachmentSrc || ATTACHMENT_PLACEHOLDER_SRC)}" data-secure-attachment="${escapeHtml(message.arquivo_url)}" alt="${escapeHtml(message.arquivo_nome_original || 'Imagem anexada')}" loading="lazy" /></div>`
+    ? `<div class="file-preview image ${stickerAttachment ? 'sticker' : ''}"><img src="${escapeHtml(secureAttachmentSrc || ATTACHMENT_PLACEHOLDER_SRC)}" data-secure-attachment="${escapeHtml(message.arquivo_url)}" alt="${escapeHtml(message.arquivo_nome_original || 'Imagem anexada')}" loading="lazy" /></div>`
     : message.tipo === 'arquivo' && isPdfAttachment(message)
-      ? `<div class="file-preview pdf"><span>&#128196;</span><span>Previa de PDF disponivel ao abrir o arquivo</span></div>`
+      ? `<div class="file-preview pdf inline-pdf">
+          ${secureAttachmentSrc
+            ? `<iframe src="${escapeHtml(secureAttachmentSrc)}#toolbar=0&navpanes=0" title="${escapeHtml(message.arquivo_nome_original || 'PDF anexado')}" loading="lazy"></iframe>`
+            : `<div class="pdf-loading-preview" data-secure-pdf-placeholder="${escapeHtml(message.arquivo_url)}"><span>PDF</span><small>Preparando previa...</small></div>`}
+        </div>`
       : message.tipo === 'arquivo' && isVideoAttachment(message)
         ? `<div class="file-preview video"><video src="${escapeHtml(secureAttachmentSrc)}" data-secure-attachment="${escapeHtml(message.arquivo_url)}" controls preload="metadata"></video></div>`
       : '';
   const innerContent = message.tipo === 'arquivo'
     ? attachmentExpired
       ? `<div class="file-card expired-file ${stickerAttachment ? 'sticker-card' : ''}">
-         <strong>&#128196; ${escapeHtml(attachmentLabel)}: ${highlightText(message.arquivo_nome_original || 'PDF', query)}</strong>
+         <strong>&#128196; ${escapeHtml(attachmentLabel)}: ${highlightText(message.arquivo_nome_original || 'arquivo', query)}</strong>
+         ${attachmentTagsHtml}
          <small>Removido automaticamente apos 30 dias</small>
        </div>${filePreviewHtml}`
       : `<a class="file-card ${stickerAttachment ? 'sticker-card' : ''}" href="#" onclick="abrirVisualizadorArquivo(${Number(message.id)}); return false;">
          <strong>${stickerAttachment ? '&#128444;' : '&#128206;'} ${escapeHtml(attachmentLabel)}: ${highlightText(message.arquivo_nome_original, query)}</strong>
+         ${attachmentTagsHtml}
          <small>${escapeHtml(formatFileSize(message.arquivo_tamanho))}</small>
          <div class="file-card-actions">
            <span class="file-inline-action">Visualizar</span>
@@ -3978,15 +4085,15 @@ function renderMessages(options = {}) {
       ? `
         <div class="empty-state">
           <span class="emoji">&#128269;</span>
-          <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Nenhum resultado</div>
-          <div>Tente buscar por outro termo nesta conversa.</div>
+          <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Nada encontrado nesta conversa</div>
+          <div>Revise o termo ou busque por nome de arquivo, pessoa ou trecho da mensagem.</div>
         </div>
       `
       : `
         <div class="empty-state">
           <span class="emoji">&#128172;</span>
-          <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Nenhuma mensagem ainda</div>
-          <div>Envie a primeira mensagem desta conversa.</div>
+          <div style="font-weight:800; margin-bottom:8px; color:#e5e7eb;">Conversa pronta para comecar</div>
+          <div>Envie uma mensagem, cole uma imagem ou arraste um arquivo para registrar o atendimento.</div>
         </div>
       `;
     container.classList.remove('preparing-scroll');

@@ -9750,6 +9750,194 @@ body:not(.theme-dark) .welcome-stat-card {
   }
 }
 
+/* Final upgrade overrides */
+.notification-permission-btn {
+  margin-top: 7px;
+  width: 100%;
+  border: 1px solid rgba(96,165,250,.34);
+  border-radius: 999px;
+  background: rgba(37,99,235,.14);
+  color: #bfdbfe;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.notification-permission-btn.is-enabled {
+  border-color: rgba(34,197,94,.34);
+  background: rgba(34,197,94,.13);
+  color: #bbf7d0;
+  cursor: default;
+}
+
+.presence-dot.status-ocupado,
+.status-chip.ocupado::before {
+  background: #f59e0b;
+}
+
+.presence-dot.status-ausente,
+.status-chip.ausente::before {
+  background: #94a3b8;
+}
+
+.chat-icon.private .presence-dot,
+.avatar .presence-dot {
+  width: 14px;
+  height: 14px;
+  right: -1px;
+  bottom: -1px;
+  border-width: 3px;
+  box-shadow: 0 0 0 2px rgba(15,23,42,.16);
+}
+
+.chat-icon.private:has(.presence-dot.online),
+.header-avatar-private:has(.presence-dot.online) {
+  box-shadow: 0 0 0 3px rgba(34,197,94,.16), 0 10px 20px rgba(15,23,42,.18);
+}
+
+.chat-item .status-chip {
+  width: fit-content;
+  margin-top: 6px;
+  border: 1px solid rgba(148,163,184,.18);
+  background: rgba(15,23,42,.24);
+}
+
+.notification-badge {
+  min-width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255,255,255,.72);
+  font-size: 11px;
+  font-weight: 950;
+  box-shadow: 0 8px 20px rgba(220,38,38,.34);
+}
+
+.chat-item.unread .chat-preview-row {
+  align-items: center;
+}
+
+.empty-list {
+  display: grid;
+  gap: 4px;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.empty-list strong {
+  color: #e2e8f0;
+  font-size: 13px;
+}
+
+.empty-list span {
+  font-size: 12px;
+}
+
+.attachment-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 7px 0 3px;
+}
+
+.attachment-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  border-radius: 999px;
+  padding: 2px 7px;
+  border: 1px solid rgba(148,163,184,.28);
+  background: rgba(15,23,42,.10);
+  color: inherit;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.message.own .attachment-tag {
+  border-color: rgba(255,255,255,.28);
+  background: rgba(255,255,255,.12);
+}
+
+.file-preview.image {
+  background:
+    linear-gradient(45deg, rgba(148,163,184,.12) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(148,163,184,.12) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(148,163,184,.12) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(148,163,184,.12) 75%);
+  background-size: 18px 18px;
+  background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+}
+
+.file-preview.inline-pdf {
+  display: block;
+  padding: 0;
+  height: clamp(180px, 32vh, 360px);
+  background: #111827;
+}
+
+.file-preview.inline-pdf iframe {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 0;
+  background: #ffffff;
+}
+
+.pdf-loading-preview {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  color: #cbd5e1;
+  background: linear-gradient(135deg, rgba(15,23,42,.92), rgba(30,41,59,.92));
+}
+
+.pdf-loading-preview span {
+  display: inline-grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  background: rgba(239,68,68,.18);
+  color: #fecaca;
+  font-weight: 950;
+}
+
+.pdf-loading-preview small {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+body:not(.theme-dark) .empty-list strong {
+  color: #0f172a;
+}
+
+body:not(.theme-dark) .notification-permission-btn {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+body:not(.theme-dark) .notification-permission-btn.is-enabled {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #047857;
+}
+
+body:not(.theme-dark) .chat-item .status-chip {
+  background: #ffffff;
+  border-color: #dbe3ef;
+}
+
+body:not(.theme-dark) .attachment-tag {
+  background: #f8fafc;
+  border-color: #dbe3ef;
+}
+
 @media (max-width: 980px) {
   .container,
   body:not(.theme-dark) .container,
