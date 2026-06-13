@@ -5617,7 +5617,7 @@ function renderAdminMsgBubble(m, refUid) {
 
   let conteudo = '';
   if (m.tipo === 'arquivo') {
-    conteudo = `📎 <a href="/uploads/${escapeHtml(m.arquivo_nome_salvo)}" target="_blank" style="color:#60a5fa;">${escapeHtml(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo')}</a>`;
+    conteudo = `📎 <button type="button" onclick="baixarArquivoAdminProtegido('${escapeHtml(m.arquivo_nome_salvo || '').replace(/'/g, '&#039;')}', '${escapeHtml(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo').replace(/'/g, '&#039;')}')" style="border:0;background:transparent;padding:0;color:#60a5fa;cursor:pointer;text-decoration:underline;">${escapeHtml(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo')}</button>`;
   } else {
     conteudo = escapeHtml(String(m.conteudo || ''));
     // destaque da busca
@@ -5636,6 +5636,25 @@ function renderAdminMsgBubble(m, refUid) {
       <div class="admin-msg-time">${hora}</div>
     </div>
   </div>`;
+}
+
+async function baixarArquivoAdminProtegido(fileName, originalName = 'arquivo') {
+  if (!fileName) return;
+  try {
+    const response = await fetch(`/api/uploads/${encodeURIComponent(fileName)}`, { headers: authHeaders() });
+    if (!response.ok) throw new Error('Arquivo indisponivel');
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = originalName || fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (err) {
+    mostrarNotificacao(err.message || 'Erro ao baixar arquivo', 'error');
+  }
 }
 
 function renderPaginacaoAdmin() {

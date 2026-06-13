@@ -9783,6 +9783,33 @@ body:not(.theme-dark) .welcome-stat-card {
   }
 }
 
+/* Restore the daily phrase on the home screen without enlarging the header. */
+.main-content.home-mode .header-motivation,
+body:not(.theme-dark) .main-content.home-mode .header-motivation,
+body.theme-dark .main-content.home-mode .header-motivation {
+  display: block !important;
+  max-width: min(520px, 100%) !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 981px) {
+  .main-content.home-mode .header {
+    position: relative;
+  }
+
+  .main-content.home-mode .header-motivation,
+  body:not(.theme-dark) .main-content.home-mode .header-motivation,
+  body.theme-dark .main-content.home-mode .header-motivation {
+    position: absolute;
+    left: 74px;
+    bottom: 12px;
+    max-width: min(520px, calc(100% - 700px)) !important;
+    min-width: 240px;
+  }
+}
+
 /* Final upgrade overrides */
 .notification-permission-btn {
   margin-top: 7px;
@@ -10424,4 +10451,14 @@ body.theme-dark .dashboard-empty {
   .dashboard-grid {
     display: none;
   }
+}
+
+/* Audit fix: keep the daily phrase visible on every home breakpoint. */
+.main-content.home-mode .header-motivation,
+body:not(.theme-dark) .main-content.home-mode .header-motivation,
+body.theme-dark .main-content.home-mode .header-motivation {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

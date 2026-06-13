@@ -435,6 +435,21 @@ async function apiFetch(url, opts = {}) {
   return r;
 }
 
+async function baixarArquivoAdmin(fileName, originalName = 'arquivo') {
+  if (!fileName) return;
+  const r = await apiFetch(`/api/uploads/${encodeURIComponent(fileName)}`);
+  if (!r.ok) { toast('Arquivo indisponivel.', 'erro'); return; }
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = originalName || fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // ── Startup ────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   const s = getSession();
@@ -628,7 +643,7 @@ function renderMsgBubble(m, refUid) {
       ? `Arquivo apagado: ${esc(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo')}`
       : `Mensagem apagada: ${esc(String(m.conteudo || 'sem conteudo'))}`;
   } else if (m.tipo === 'arquivo') {
-    txt = `📎 <a href="/uploads/${esc(m.arquivo_nome_salvo)}" target="_blank" style="color:#60a5fa;">${esc(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo')}</a>`;
+    txt = `📎 <button type="button" onclick="baixarArquivoAdmin('${esc(m.arquivo_nome_salvo || '').replace(/'/g, '&#039;')}', '${esc(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo').replace(/'/g, '&#039;')}')" style="border:0;background:transparent;padding:0;color:#60a5fa;cursor:pointer;text-decoration:underline;">${esc(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo')}</button>`;
   } else {
     txt = esc(String(m.conteudo || ''));
     if (_conv.busca) {
@@ -699,12 +714,12 @@ async function criarGrupo() {
 async function salvarAviso() {
   const grupoId = document.getElementById('avisoGrupoSel').value;
   const aviso = document.getElementById('avisoTexto').value.trim();
-  const r = await apiFetch('/api/admin/grupos/aviso', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ grupoId, aviso }) });
+  const r = await apiFetch(`/api/admin/grupos/${grupoId}/aviso`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ aviso }) });
   toast(r.ok ? 'Aviso salvo!' : 'Erro ao salvar.', r.ok ? 'ok' : 'erro');
 }
 async function limparAviso() {
   const grupoId = document.getElementById('avisoGrupoSel').value;
-  await apiFetch('/api/admin/grupos/aviso', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ grupoId, aviso: '' }) });
+  await apiFetch(`/api/admin/grupos/${grupoId}/aviso`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ aviso: '' }) });
   document.getElementById('avisoTexto').value = ''; toast('Aviso limpo.');
 }
 
@@ -832,7 +847,7 @@ async function carregarAgendamentoBackup() {
 async function salvarAgendamento() {
   const ativo = document.getElementById('backupAuto').checked;
   const horario = document.getElementById('backupHorario').value;
-  const r = await apiFetch('/api/admin/backups/agendamento', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ativo, horario }) });
+  const r = await apiFetch('/api/admin/backups/agendamento', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ativo, horario }) });
   if (r.ok) { toast('Agendamento salvo!'); carregarAgendamentoBackup(); }
   else toast('Erro.', 'erro');
 }
