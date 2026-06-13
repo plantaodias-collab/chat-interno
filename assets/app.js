@@ -2136,6 +2136,7 @@ function updateHeaderIcon(tipo, nome = '') {
 function updateHeaderStatus() {
   const subtitle = document.getElementById('headerSubtitle');
   const motivation = document.getElementById('headerMotivation');
+  if (!subtitle || !motivation) return;
   updateDailyMotivation();
   if (tipoChat === 'grupo') {
     const status = getAttendanceStatus(getChatKey('grupo', chatIdAtual));
