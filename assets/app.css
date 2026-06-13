@@ -9783,33 +9783,6 @@ body:not(.theme-dark) .welcome-stat-card {
   }
 }
 
-/* Restore the daily phrase on the home screen without enlarging the header. */
-.main-content.home-mode .header-motivation,
-body:not(.theme-dark) .main-content.home-mode .header-motivation,
-body.theme-dark .main-content.home-mode .header-motivation {
-  display: block !important;
-  max-width: min(520px, 100%) !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (min-width: 981px) {
-  .main-content.home-mode .header {
-    position: relative;
-  }
-
-  .main-content.home-mode .header-motivation,
-  body:not(.theme-dark) .main-content.home-mode .header-motivation,
-  body.theme-dark .main-content.home-mode .header-motivation {
-    position: absolute;
-    left: 74px;
-    bottom: 12px;
-    max-width: min(520px, calc(100% - 700px)) !important;
-    min-width: 240px;
-  }
-}
-
 /* Final upgrade overrides */
 .notification-permission-btn {
   margin-top: 7px;
@@ -10196,10 +10169,6 @@ body.theme-dark .header-motivation {
   width: clamp(180px, 18vw, 280px);
 }
 
-.main-content.home-mode .header-motivation {
-  display: none !important;
-}
-
 .welcome-state.dashboard-home,
 body:not(.theme-dark) .welcome-state.dashboard-home,
 body.theme-dark .welcome-state.dashboard-home {
@@ -10411,10 +10380,6 @@ body.theme-dark .dashboard-empty {
     display: none;
   }
 
-  .main-content.home-mode .header-motivation {
-    display: none;
-  }
-
   .main-content.home-mode .messages-container,
   body:not(.theme-dark) .main-content.home-mode .messages-container,
   body.theme-dark .main-content.home-mode .messages-container {
@@ -10453,12 +10418,38 @@ body.theme-dark .dashboard-empty {
   }
 }
 
-/* Audit fix: keep the daily phrase visible on every home breakpoint. */
+/* Keep the daily phrase readable on the home screen. */
+.main-content.home-mode .header {
+  align-items: center;
+  row-gap: 8px;
+}
+
+.main-content.home-mode .header-main,
+.main-content.home-mode .header-title-wrap {
+  min-width: 0;
+}
+
 .main-content.home-mode .header-motivation,
 body:not(.theme-dark) .main-content.home-mode .header-motivation,
 body.theme-dark .main-content.home-mode .header-motivation {
   display: block !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  grid-column: 1 / -1;
+  justify-self: start;
+  position: static !important;
+  width: auto;
+  max-width: min(760px, calc(100% - 64px)) !important;
+  margin: -4px 0 0 62px;
+  overflow: visible !important;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: normal;
+}
+
+@media (max-width: 620px) {
+  .main-content.home-mode .header-motivation,
+  body:not(.theme-dark) .main-content.home-mode .header-motivation,
+  body.theme-dark .main-content.home-mode .header-motivation {
+    max-width: 100% !important;
+    margin-left: 0;
+  }
 }
