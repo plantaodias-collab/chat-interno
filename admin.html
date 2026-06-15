@@ -132,39 +132,64 @@
 
     /* ── Conversas viewer ── */
     #panel-conversas.active { height: 100%; min-height: 0; display: flex; flex-direction: column; }
-    #panel-conversas .panel-title { flex-shrink: 0; }
-    .conv-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); flex: 1; height: 0; min-height: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-    .conv-list-col { display: flex; flex-direction: column; height: 100%; min-height: 0; border-right: 1px solid var(--border); background: var(--surface); overflow: hidden; }
+    #panel-conversas .panel-title { margin-bottom: 2px; }
+    .conv-page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 14px; flex-shrink: 0; }
+    .conv-page-subtitle { color: var(--muted); font-size: 12px; }
+    .conv-count-badge { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px; padding: 6px 10px; color: #93c5fd; background: rgba(37,99,235,.10); font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .conv-layout { display: grid; grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); flex: 1; height: 0; min-height: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #08111d; }
+    .conv-list-col { display: flex; flex-direction: column; height: 100%; min-height: 0; border-right: 1px solid var(--border); background: #0f1726; overflow: hidden; }
+    .conv-list-tools { padding: 12px; border-bottom: 1px solid var(--border); background: rgba(15,23,42,.82); }
     .conv-list-items { flex: 1; height: 0; min-height: 0; overflow-y: scroll; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #334155 transparent; }
-    .conv-item { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid rgba(148,163,184,.07); transition: background .1s; }
-    .conv-item:hover  { background: var(--surface2); }
-    .conv-item.active { background: rgba(37,99,235,.18); }
-    .conv-item-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .conv-item-meta  { font-size: 11px; color: var(--muted); margin-top: 2px; }
-    .conv-msgs-col { display: flex; flex-direction: column; min-width: 0; height: 100%; min-height: 0; background: rgba(9,17,28,.5); overflow: hidden; }
-    .conv-msgs-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-    .conv-msgs-toolbar { padding: 8px 12px; border-bottom: 1px solid rgba(148,163,184,.07); display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-    .conv-msgs-body { flex: 1; height: 0; min-height: 0; overflow-y: scroll; overflow-x: hidden; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #334155 transparent; }
+    .conv-item { padding: 12px 14px; cursor: pointer; border-bottom: 1px solid rgba(148,163,184,.08); transition: background .1s, border-color .1s; }
+    .conv-item:hover  { background: rgba(30,42,58,.78); }
+    .conv-item.active { background: rgba(37,99,235,.18); border-left: 3px solid #60a5fa; padding-left: 11px; }
+    .conv-item-title { font-size: 13px; font-weight: 800; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .conv-item-meta  { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 11px; color: #94a3b8; margin-top: 6px; }
+    .conv-item-date { margin-left: auto; color: #64748b; }
+    .conv-msgs-col { display: flex; flex-direction: column; min-width: 0; height: 100%; min-height: 0; background: #07111d; overflow: hidden; }
+    .conv-msgs-header { min-height: 62px; padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; background: rgba(15,23,42,.72); }
+    .conv-header-title { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 15px; font-weight: 900; }
+    .conv-header-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .conv-header-sub { color: var(--muted); font-size: 11px; margin-top: 3px; }
+    .conv-msgs-toolbar { padding: 10px 14px; border-bottom: 1px solid rgba(148,163,184,.07); display: flex; gap: 10px; align-items: center; flex-shrink: 0; background: rgba(8,17,29,.86); }
+    .conv-msgs-toolbar .field { flex: 1; min-width: 180px; }
+    .conv-msgs-body { flex: 1; height: 0; min-height: 0; overflow-y: scroll; overflow-x: hidden; padding: 18px clamp(18px, 4vw, 56px); display: flex; flex-direction: column; gap: 10px; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #334155 transparent; }
     .conv-list-items::-webkit-scrollbar, .conv-msgs-body::-webkit-scrollbar { width: 10px; }
     .conv-list-items::-webkit-scrollbar-thumb, .conv-msgs-body::-webkit-scrollbar-thumb { background: #334155; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
-    .conv-msgs-footer { padding: 8px 12px; border-top: 1px solid var(--border); display: flex; justify-content: center; gap: 8px; flex-shrink: 0; }
-    .msg-bubble { display: flex; gap: 8px; max-width: 75%; }
-    .msg-bubble.own { align-self: flex-end; flex-direction: row-reverse; }
-    .msg-bubble.other { align-self: flex-start; }
-    .msg-av { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #fff; flex-shrink: 0; }
-    .msg-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-    .msg-name { font-size: 10.5px; color: var(--muted); font-weight: 700; }
-    .msg-bubble.own .msg-name { text-align: right; }
-    .msg-text { padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.45; word-break: break-word; white-space: pre-wrap; }
-    .msg-bubble.own   .msg-text { background: rgba(37,99,235,.35); color: #dbeafe; border-bottom-right-radius: 3px; }
-    .msg-bubble.other .msg-text { background: var(--surface2); color: var(--text); border-bottom-left-radius: 3px; }
+    .conv-msgs-footer { min-height: 44px; padding: 8px 12px; border-top: 1px solid var(--border); display: flex; justify-content: center; align-items: center; gap: 8px; flex-shrink: 0; background: rgba(15,23,42,.72); }
+    .conv-empty { color: var(--muted); border: 1px dashed rgba(148,163,184,.22); border-radius: 10px; padding: 18px; text-align: center; margin: auto; max-width: 420px; }
+    .msg-bubble { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; width: min(920px, 100%); max-width: none; align-self: center; }
+    .msg-bubble.own { align-self: center; flex-direction: initial; }
+    .msg-bubble.other { align-self: center; }
+    .msg-av { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; color: #fff; flex-shrink: 0; }
+    .msg-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .msg-name { font-size: 11px; color: #93a4ba; font-weight: 800; display: flex; justify-content: space-between; gap: 12px; }
+    .msg-bubble.own .msg-name { text-align: left; }
+    .msg-text { padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.55; word-break: break-word; white-space: pre-wrap; border: 1px solid rgba(148,163,184,.10); }
+    .msg-bubble.own   .msg-text { background: rgba(37,99,235,.18); color: #dbeafe; border-left: 3px solid #3b82f6; }
+    .msg-bubble.other .msg-text { background: rgba(30,42,58,.86); color: var(--text); border-left: 3px solid #475569; }
     .msg-bubble.deleted { opacity: .72; }
     .msg-bubble.deleted .msg-text { background: rgba(239,68,68,.10); color: #fca5a5; border: 1px dashed rgba(248,113,113,.35); font-style: italic; }
-    .msg-time { font-size: 10px; color: #475569; }
-    .msg-bubble.own .msg-time { text-align: right; }
+    .msg-time { font-size: 10px; color: #64748b; white-space: nowrap; font-weight: 700; }
+    .msg-bubble.own .msg-time { text-align: left; }
     .pag-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 4px 12px; font-size: 12px; cursor: pointer; transition: background .1s; }
     .pag-btn:hover { background: #2d3748; }
     .pag-btn:disabled { opacity: .35; cursor: default; }
+    .admin-file-link { border: 1px solid rgba(96,165,250,.24); background: rgba(37,99,235,.12); color: #93c5fd; padding: 7px 10px; border-radius: 8px; cursor: pointer; font-weight: 800; text-align: left; }
+
+    @media (max-width: 980px) {
+      body { overflow: auto; }
+      #appScreen { height: auto; min-height: 100vh; }
+      .main { flex-direction: column; overflow: visible; }
+      .sidebar { width: 100%; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+      .content { height: auto; min-height: calc(100vh - 56px); padding: 18px; }
+      #panel-conversas.active { min-height: 780px; }
+      .conv-layout { grid-template-columns: 1fr; }
+      .conv-list-col { max-height: 260px; border-right: 0; border-bottom: 1px solid var(--border); }
+      .conv-page-head { align-items: flex-start; flex-direction: column; }
+      .conv-msgs-toolbar { align-items: stretch; flex-direction: column; }
+      .conv-msgs-toolbar .field { min-width: 0; }
+    }
 
     /* ── Auditoria ── */
     .audit-row td { font-size: 12px; }
@@ -232,21 +257,27 @@
 
       <!-- CONVERSAS -->
       <div class="panel" id="panel-conversas">
-        <div class="panel-title">Conversas</div>
+        <div class="conv-page-head">
+          <div>
+            <div class="panel-title">Conversas</div>
+            <div class="conv-page-subtitle">Leitura rápida das conversas privadas e grupos, com busca no histórico.</div>
+          </div>
+          <div class="conv-count-badge" id="convCountBadge">Carregando conversas</div>
+        </div>
         <div class="conv-layout">
           <div class="conv-list-col">
-            <div style="padding:10px 12px;border-bottom:1px solid var(--border);">
-              <input class="field" id="convFiltro" placeholder="Filtrar..." oninput="filtrarConversas()" style="font-size:12px;padding:7px 10px;" />
+            <div class="conv-list-tools">
+              <input class="field" id="convFiltro" placeholder="Buscar conversa..." oninput="filtrarConversas()" />
             </div>
             <div class="conv-list-items" id="convLista"><p style="padding:14px;font-size:13px;color:var(--muted);">Carregando...</p></div>
           </div>
           <div class="conv-msgs-col">
             <div class="conv-msgs-header" id="convHeader"><span style="color:var(--muted);">Selecione uma conversa</span></div>
             <div class="conv-msgs-toolbar">
-              <input class="field" id="convBusca" placeholder="Buscar nas mensagens..." oninput="debounceBuscaConv()" style="font-size:12px;padding:7px 10px;flex:1;" />
-              <span id="convTotal" style="font-size:11px;color:var(--muted);white-space:nowrap;"></span>
+              <input class="field" id="convBusca" placeholder="Buscar texto dentro desta conversa..." oninput="debounceBuscaConv()" />
+              <span id="convTotal" class="conv-count-badge"></span>
             </div>
-            <div class="conv-msgs-body" id="convMsgs"><p style="color:var(--muted);">Nenhuma conversa selecionada.</p></div>
+            <div class="conv-msgs-body" id="convMsgs"><div class="conv-empty">Selecione uma conversa na lista para ler o histórico.</div></div>
             <div class="conv-msgs-footer" id="convPag"></div>
           </div>
         </div>
@@ -560,7 +591,7 @@ async function toggleUsuario(id, ativo) {
 }
 
 // ── CONVERSAS ──────────────────────────────────────────────────────────────
-const _conv = { lista: [], filtrada: [], sel: null, pagina: 1, porPag: 60, total: 0, busca: '' };
+const _conv = { lista: [], filtrada: [], sel: null, pagina: 1, porPag: 100, total: 0, busca: '' };
 
 async function carregarConversas() {
   const el = document.getElementById('convLista');
@@ -569,31 +600,55 @@ async function carregarConversas() {
     if (!r.ok) throw new Error();
     const { privados, grupos } = await r.json();
     _conv.lista = [
-      ...privados.map(p => ({ ...p, _label: `${p.usuario1_nome} ↔ ${p.usuario2_nome}` })),
+      ...privados.map(p => ({ ...p, _label: `${p.usuario1_nome} <-> ${p.usuario2_nome}` })),
       ...grupos.map(g => ({ ...g, _label: g.nome }))
     ];
     _conv.filtrada = _conv.lista;
+    atualizarResumoConversas();
     renderConvLista();
-  } catch { el.innerHTML = '<p style="padding:14px;font-size:13px;color:var(--danger);">Erro ao carregar.</p>'; }
+  } catch {
+    el.innerHTML = '<div class="conv-empty">Erro ao carregar conversas.</div>';
+  }
 }
 
 function filtrarConversas() {
   const q = document.getElementById('convFiltro').value.toLowerCase();
   _conv.filtrada = _conv.lista.filter(c => c._label.toLowerCase().includes(q));
+  atualizarResumoConversas();
   renderConvLista();
+}
+
+function atualizarResumoConversas() {
+  const badge = document.getElementById('convCountBadge');
+  if (!badge) return;
+  const total = _conv.lista.length;
+  const filtradas = _conv.filtrada.length;
+  badge.textContent = total === filtradas
+    ? `${total} conversa${total !== 1 ? 's' : ''}`
+    : `${filtradas} de ${total} conversa${total !== 1 ? 's' : ''}`;
 }
 
 function renderConvLista() {
   const el = document.getElementById('convLista');
-  if (!_conv.filtrada.length) { el.innerHTML = '<p style="padding:14px;font-size:13px;color:var(--muted);">Nenhuma conversa.</p>'; return; }
+  if (!_conv.filtrada.length) {
+    el.innerHTML = '<div class="conv-empty">Nenhuma conversa encontrada.</div>';
+    return;
+  }
   el.innerHTML = _conv.filtrada.map((c, i) => {
     const ativo = _conv.sel && (
-      (c.tipo==='privado' && _conv.sel.uid1===c.usuario1_id && _conv.sel.uid2===c.usuario2_id) ||
-      (c.tipo==='grupo' && _conv.sel.grupoId===c.grupo_id)
+      (c.tipo === 'privado' && _conv.sel.uid1 === c.usuario1_id && _conv.sel.uid2 === c.usuario2_id) ||
+      (c.tipo === 'grupo' && _conv.sel.grupoId === c.grupo_id)
     );
-    return `<div class="conv-item ${ativo?'active':''}" onclick="selecionarConv(${i})">
+    const total = Number(c.total || 0);
+    const data = c.ultima_em ? new Date(c.ultima_em).toLocaleDateString('pt-BR') : 'sem data';
+    const tipoLabel = c.tipo === 'privado' ? 'privado' : 'grupo';
+    return `<div class="conv-item ${ativo ? 'active' : ''}" onclick="selecionarConv(${i})" title="${esc(c._label)}">
       <div class="conv-item-title">${esc(c._label)}</div>
-      <div class="conv-item-meta"><span class="badge ${c.tipo==='privado'?'badge-blue':'badge-purple'}">${c.tipo}</span> ${c.total} msgs · ${c.ultima_em ? new Date(c.ultima_em).toLocaleDateString('pt-BR') : ''}</div>
+      <div class="conv-item-meta">
+        <span class="badge ${c.tipo === 'privado' ? 'badge-blue' : 'badge-purple'}">${tipoLabel}</span>
+        <span>${total} msg${total !== 1 ? 's' : ''}</span>
+        <span class="conv-item-date">${data}</span>
+      </div>
     </div>`;
   }).join('');
 }
@@ -601,7 +656,8 @@ function renderConvLista() {
 async function selecionarConv(i) {
   const c = _conv.filtrada[i];
   if (!c) return;
-  _conv.pagina = 1; _conv.busca = '';
+  _conv.pagina = 1;
+  _conv.busca = '';
   document.getElementById('convBusca').value = '';
   _conv.sel = c.tipo === 'privado'
     ? { tipo: 'privado', uid1: c.usuario1_id, uid2: c.usuario2_id, titulo: c._label }
@@ -611,8 +667,9 @@ async function selecionarConv(i) {
 }
 
 async function carregarMsgsConv() {
-  const s = _conv.sel; if (!s) return;
-  document.getElementById('convMsgs').innerHTML = '<p style="color:var(--muted);">Carregando...</p>';
+  const s = _conv.sel;
+  if (!s) return;
+  document.getElementById('convMsgs').innerHTML = '<div class="conv-empty">Carregando mensagens...</div>';
   const busca = encodeURIComponent(_conv.busca);
   const url = s.tipo === 'privado'
     ? `/api/admin/conversas/privadas/${s.uid1}/${s.uid2}?pagina=${_conv.pagina}&por_pagina=${_conv.porPag}&busca=${busca}`
@@ -620,22 +677,31 @@ async function carregarMsgsConv() {
   try {
     const r = await apiFetch(url);
     const { mensagens, total } = await r.json();
-    _conv.total = total;
-    document.getElementById('convHeader').innerHTML = `<span class="badge ${s.tipo==='privado'?'badge-blue':'badge-purple'}">${s.tipo}</span> ${esc(s.titulo)}`;
-    document.getElementById('convTotal').textContent = `${total} mensagem${total!==1?'s':''}`;
+    _conv.total = Number(total || 0);
+    const tipoLabel = s.tipo === 'privado' ? 'privado' : 'grupo';
+    document.getElementById('convHeader').innerHTML = `<div>
+      <div class="conv-header-title">
+        <span class="badge ${s.tipo === 'privado' ? 'badge-blue' : 'badge-purple'}">${tipoLabel}</span>
+        <span class="conv-header-title-text">${esc(s.titulo)}</span>
+      </div>
+      <div class="conv-header-sub">Pagina ${_conv.pagina} - ate ${_conv.porPag} mensagens por vez</div>
+    </div>`;
+    document.getElementById('convTotal').textContent = `${_conv.total} mensagem${_conv.total !== 1 ? 's' : ''}`;
     const body = document.getElementById('convMsgs');
     body.innerHTML = mensagens.length
-      ? mensagens.map(m => renderMsgBubble(m, s.tipo==='privado' ? s.uid1 : null)).join('')
-      : '<p style="color:var(--muted);">Nenhuma mensagem.</p>';
+      ? mensagens.map(m => renderMsgBubble(m, s.tipo === 'privado' ? s.uid1 : null)).join('')
+      : '<div class="conv-empty">Nenhuma mensagem encontrada nesta pagina.</div>';
     renderPagConv();
-  } catch { document.getElementById('convMsgs').innerHTML = '<p style="color:var(--danger);">Erro.</p>'; }
+  } catch {
+    document.getElementById('convMsgs').innerHTML = '<div class="conv-empty" style="color:var(--danger);">Erro ao carregar mensagens.</div>';
+  }
 }
 
 function renderMsgBubble(m, refUid) {
   const isOwn = refUid ? m.usuario_id === refUid : false;
   const nome = m.usuario_nome || 'Desconhecido';
   const hora = m.apagada
-    ? `${fmtDate(m.criado_em)} · apagada em ${fmtDate(m.apagada_em)} por ${esc(m.apagada_por_nome || 'Desconhecido')}`
+    ? `${fmtDate(m.criado_em)} - apagada em ${fmtDate(m.apagada_em)} por ${esc(m.apagada_por_nome || 'Desconhecido')}`
     : fmtDate(m.criado_em);
   let txt = '';
   if (m.apagada) {
@@ -643,7 +709,7 @@ function renderMsgBubble(m, refUid) {
       ? `Arquivo apagado: ${esc(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo')}`
       : `Mensagem apagada: ${esc(String(m.conteudo || 'sem conteudo'))}`;
   } else if (m.tipo === 'arquivo') {
-    txt = `📎 <button type="button" onclick="baixarArquivoAdmin('${esc(m.arquivo_nome_salvo || '').replace(/'/g, '&#039;')}', '${esc(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo').replace(/'/g, '&#039;')}')" style="border:0;background:transparent;padding:0;color:#60a5fa;cursor:pointer;text-decoration:underline;">${esc(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo')}</button>`;
+    txt = `<button class="admin-file-link" type="button" onclick="baixarArquivoAdmin('${esc(m.arquivo_nome_salvo || '').replace(/'/g, '&#039;')}', '${esc(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo').replace(/'/g, '&#039;')}')">Anexo: ${esc(m.arquivo_nome_original || m.arquivo_nome_salvo || 'arquivo')}</button>`;
   } else {
     txt = esc(String(m.conteudo || ''));
     if (_conv.busca) {
@@ -651,12 +717,11 @@ function renderMsgBubble(m, refUid) {
       txt = txt.replace(re, '<mark style="background:#fbbf24;color:#1e293b;border-radius:3px;padding:0 2px;">$1</mark>');
     }
   }
-  return `<div class="msg-bubble ${isOwn?'own':'other'} ${m.apagada?'deleted':''}">
+  return `<div class="msg-bubble ${isOwn ? 'own' : 'other'} ${m.apagada ? 'deleted' : ''}">
     <div class="msg-av" style="background:${gradient(nome)}">${initials(nome)}</div>
     <div class="msg-body">
-      <div class="msg-name">${esc(nome)}</div>
+      <div class="msg-name"><span>${esc(nome)}</span><span class="msg-time">${hora}</span></div>
       <div class="msg-text">${txt}</div>
-      <div class="msg-time">${hora}</div>
     </div>
   </div>`;
 }
@@ -666,21 +731,28 @@ function renderPagConv() {
   const tot = Math.ceil(_conv.total / _conv.porPag);
   if (tot <= 1) { el.innerHTML = ''; return; }
   const p = _conv.pagina;
-  el.innerHTML = `<button class="pag-btn" onclick="irPagConv(1)" ${p===1?'disabled':''}>«</button>
-    <button class="pag-btn" onclick="irPagConv(${p-1})" ${p===1?'disabled':''}>‹</button>
+  el.innerHTML = `<button class="pag-btn" onclick="irPagConv(1)" ${p === 1 ? 'disabled' : ''}>Primeira</button>
+    <button class="pag-btn" onclick="irPagConv(${p - 1})" ${p === 1 ? 'disabled' : ''}>Anterior</button>
     <span style="font-size:12px;color:var(--muted);padding:0 8px;">${p} / ${tot}</span>
-    <button class="pag-btn" onclick="irPagConv(${p+1})" ${p===tot?'disabled':''}>›</button>
-    <button class="pag-btn" onclick="irPagConv(${tot})" ${p===tot?'disabled':''}>»</button>`;
+    <button class="pag-btn" onclick="irPagConv(${p + 1})" ${p === tot ? 'disabled' : ''}>Proxima</button>
+    <button class="pag-btn" onclick="irPagConv(${tot})" ${p === tot ? 'disabled' : ''}>Ultima</button>`;
 }
 
-async function irPagConv(p) { _conv.pagina = p; await carregarMsgsConv(); document.getElementById('convMsgs').scrollTo({ top: 0 }); }
+async function irPagConv(p) {
+  _conv.pagina = p;
+  await carregarMsgsConv();
+  document.getElementById('convMsgs').scrollTo({ top: 0 });
+}
 
 let _convBuscaTimer;
 function debounceBuscaConv() {
   clearTimeout(_convBuscaTimer);
-  _convBuscaTimer = setTimeout(() => { _conv.busca = document.getElementById('convBusca').value; _conv.pagina = 1; carregarMsgsConv(); }, 350);
+  _convBuscaTimer = setTimeout(() => {
+    _conv.busca = document.getElementById('convBusca').value;
+    _conv.pagina = 1;
+    carregarMsgsConv();
+  }, 350);
 }
-
 // ── GRUPOS ─────────────────────────────────────────────────────────────────
 let _grupos = [];
 async function carregarGruposAdmin() {
