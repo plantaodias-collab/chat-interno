@@ -333,6 +333,7 @@ function getUsuarioPublico(usuario) {
     admin: usuario.admin,
     ativo: usuario.ativo,
     status: usuario.status || 'disponivel',
+    ultimo_visto_em: usuario.ultimo_visto_em || null,
     senha_painel: String(usuario.senha_painel || '')
   };
 }
@@ -588,7 +589,8 @@ function marcarComoLidas(remetenteId, destinatarioId) {
 function emitPresence() {
   io.emit('presenca-atualizada', {
     online: Array.from(onlineUsers.keys()),
-    status: Object.fromEntries(db.usuarios.map((usuario) => [usuario.id, usuario.status || 'disponivel']))
+    status: Object.fromEntries(db.usuarios.map((usuario) => [usuario.id, usuario.status || 'disponivel'])),
+    ultimoVisto: Object.fromEntries(db.usuarios.map((usuario) => [usuario.id, usuario.ultimo_visto_em || null]))
   });
 }
 
@@ -2017,6 +2019,7 @@ app.get('/api/usuarios', verificarToken, (req, res) => {
         nome: u.nome,
         email: u.email,
         online: isUsuarioOnline(u.id),
+        ultimo_visto_em: u.ultimo_visto_em || null,
         senha_painel: String(u.senha_painel || '')
       }));
 
@@ -3093,7 +3096,14 @@ io.on('connection', (socket) => {
       const set = onlineUsers.get(usuarioId);
       if (set) {
         set.delete(socket.id);
-        if (set.size === 0) onlineUsers.delete(usuarioId);
+        if (set.size === 0) {
+          onlineUsers.delete(usuarioId);
+          const usuario = db.usuarios.find((item) => Number(item.id) === Number(usuarioId));
+          if (usuario) {
+            usuario.ultimo_visto_em = new Date().toISOString();
+            db.save();
+          }
+        }
       }
     }
     socketUsers.delete(socket.id);

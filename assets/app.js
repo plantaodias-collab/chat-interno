@@ -14,6 +14,7 @@ let lastTimeState = {};
 let lastTimestampState = {};
 let onlineState = new Set();
 let userStatusState = {};
+let lastSeenState = {};
 let typingUsers = new Map();
 let adminUsuariosCache = [];
 let adminBackupsCache = [];
@@ -1179,6 +1180,33 @@ function getStatusLabel(status) {
   }[status] || 'Disponível';
 }
 
+function formatLastSeen(value) {
+  if (!value) return 'Offline';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Offline';
+
+  const time = date.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  const now = new Date();
+  const sameDay = date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth()
+    && date.getDate() === now.getDate();
+
+  if (sameDay) return `Visto por último às ${time}`;
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const wasYesterday = date.getFullYear() === yesterday.getFullYear()
+    && date.getMonth() === yesterday.getMonth()
+    && date.getDate() === yesterday.getDate();
+  if (wasYesterday) return `Visto por último ontem às ${time}`;
+
+  const day = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  return `Visto por último em ${day} às ${time}`;
+}
+
 function formatTime(date = new Date()) {
   return new Date(date).toLocaleTimeString('pt-BR', {
     hour: '2-digit',
@@ -2148,7 +2176,10 @@ function updateHeaderStatus() {
     const statusSuffix = status ? ` - ${getAttendanceLabel(status)}` : '';
     if (contato) {
       const online = onlineState.has(Number(contato.id));
-      subtitle.textContent = online ? `Online agora - ${getStatusLabel(getUserStatus(contato.id))}${statusSuffix}` : `Offline${statusSuffix}`;
+      const lastSeen = lastSeenState[Number(contato.id)] || contato.ultimo_visto_em;
+      subtitle.textContent = online
+        ? `Online agora - ${getStatusLabel(getUserStatus(contato.id))}${statusSuffix}`
+        : `${formatLastSeen(lastSeen)}${statusSuffix}`;
     } else {
       subtitle.textContent = `Conversa privada${statusSuffix}`;
     }
@@ -3062,6 +3093,11 @@ function conectarSocket() {
   socket.on('presenca-atualizada', (data) => {
     onlineState = new Set((data.online || []).map(Number));
     userStatusState = data.status || userStatusState || {};
+    lastSeenState = data.ultimoVisto || lastSeenState || {};
+    contatosCache = contatosCache.map((contato) => ({
+      ...contato,
+      ultimo_visto_em: lastSeenState[Number(contato.id)] || contato.ultimo_visto_em || null
+    }));
     scheduleSidebarRender({ contacts: true });
     updateHeaderIcon(tipoChat, nomeChatAtual);
     updateHeaderStatus();
@@ -3633,6 +3669,9 @@ async function carregarContatos() {
     contatosCache = await response.json();
     if (!Array.isArray(contatosCache)) contatosCache = [];
     contatosCache = contatosCache.filter(u => Number(u.id) !== Number(usuarioAtual.id));
+    contatosCache.forEach((contato) => {
+      lastSeenState[Number(contato.id)] = contato.ultimo_visto_em || null;
+    });
     renderContatos();
     atualizarPainelInicialSeAberto();
   } catch (err) {
