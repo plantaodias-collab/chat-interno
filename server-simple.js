@@ -2920,12 +2920,31 @@ app.use((err, _req, res, _next) => {
 io.on('connection', (socket) => {
   socket.on('conectar-usuario', (usuarioId) => {
     const id = Number(usuarioId);
+    const usuario = db.usuarios.find((item) => Number(item.id) === id);
     socket.join(`usuario-${id}`);
     socketUsers.set(socket.id, id);
 
     if (!onlineUsers.has(id)) onlineUsers.set(id, new Set());
     onlineUsers.get(id).add(socket.id);
+    if (usuario) {
+      usuario.ultimo_visto_em = new Date().toISOString();
+      db.save();
+    }
     emitPresence();
+  });
+
+  socket.on('atividade-usuario', () => {
+    const usuarioId = socketUsers.get(socket.id);
+    if (!usuarioId) return;
+    const usuario = db.usuarios.find((item) => Number(item.id) === Number(usuarioId));
+    if (!usuario) return;
+
+    usuario.ultimo_visto_em = new Date().toISOString();
+    db.save();
+    io.emit('atividade-usuario-atualizada', {
+      usuarioId: Number(usuarioId),
+      ultimoVistoEm: usuario.ultimo_visto_em
+    });
   });
 
   socket.on('entrar-grupo', (data) => {

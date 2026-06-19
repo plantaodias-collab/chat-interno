@@ -5,6 +5,10 @@ let tipoChat = null;
 let chatIdAtual = null;
 let nomeChatAtual = '';
 let jaConectouSocket = false;
+let lastLocalActivityAt = Date.now();
+let lastActivitySignalAt = 0;
+let activityHeartbeatInterval = null;
+let presenceRefreshInterval = null;
 
 let gruposCache = [];
 let contatosCache = [];
@@ -100,6 +104,8 @@ const ATTENDANCE_STATUS_LABELS = {
   urgente: 'Urgente'
 };
 const SLA_ALERT_HOURS = 4;
+const ONLINE_ACTIVITY_TIMEOUT_MS = 60 * 1000;
+const ACTIVITY_SIGNAL_INTERVAL_MS = 15 * 1000;
 const MESSAGE_PAGE_SIZE = 50;
 const DAILY_MOTIVATION_MESSAGES = [
   'Cada ato que fazemos transforma vidas, vamos fazer sempre o nosso melhor.',
@@ -1207,6 +1213,41 @@ function formatLastSeen(value) {
   return `Visto por último em ${day} às ${time}`;
 }
 
+function isRecentlyActive(value) {
+  const timestamp = new Date(value || 0).getTime();
+  return Number.isFinite(timestamp) && Date.now() - timestamp < ONLINE_ACTIVITY_TIMEOUT_MS;
+}
+
+function signalUserActivity(force = false, recordLocalActivity = true) {
+  if (recordLocalActivity) lastLocalActivityAt = Date.now();
+  if (!socket?.connected) return;
+  if (!force && Date.now() - lastActivitySignalAt < ACTIVITY_SIGNAL_INTERVAL_MS) return;
+  lastActivitySignalAt = Date.now();
+  socket.emit('atividade-usuario');
+}
+
+function startActivityTracking() {
+  if (activityHeartbeatInterval) return;
+
+  ['pointerdown', 'pointermove', 'keydown', 'touchstart'].forEach((eventName) => {
+    document.addEventListener(eventName, () => signalUserActivity(), { passive: true });
+  });
+  window.addEventListener('focus', () => signalUserActivity(true));
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) signalUserActivity(true);
+  });
+
+  activityHeartbeatInterval = setInterval(() => {
+    if (document.hidden || !document.hasFocus()) return;
+    if (Date.now() - lastLocalActivityAt >= ONLINE_ACTIVITY_TIMEOUT_MS) return;
+    signalUserActivity(true, false);
+  }, ACTIVITY_SIGNAL_INTERVAL_MS);
+
+  presenceRefreshInterval = setInterval(() => {
+    if (tipoChat === 'privado') updateHeaderStatus();
+  }, 10 * 1000);
+}
+
 function formatTime(date = new Date()) {
   return new Date(date).toLocaleTimeString('pt-BR', {
     hour: '2-digit',
@@ -2177,9 +2218,13 @@ function updateHeaderStatus() {
     if (contato) {
       const online = onlineState.has(Number(contato.id));
       const lastSeen = lastSeenState[Number(contato.id)] || contato.ultimo_visto_em;
-      subtitle.textContent = online
-        ? `Online agora - ${getStatusLabel(getUserStatus(contato.id))}${statusSuffix}`
-        : `${formatLastSeen(lastSeen)}${statusSuffix}`;
+      if (online && isRecentlyActive(lastSeen)) {
+        subtitle.textContent = `Online agora - ${getStatusLabel(getUserStatus(contato.id))}${statusSuffix}`;
+      } else if (online) {
+        subtitle.textContent = `Online, ${formatLastSeen(lastSeen).replace(/^Visto/, 'visto')}${statusSuffix}`;
+      } else {
+        subtitle.textContent = `${formatLastSeen(lastSeen)}${statusSuffix}`;
+      }
     } else {
       subtitle.textContent = `Conversa privada${statusSuffix}`;
     }
@@ -2666,6 +2711,7 @@ function aplicarSessaoUsuario() {
   document.getElementById('currentUserAvatar').textContent = initials(usuarioAtual.nome);
   document.getElementById('currentUserAvatar').parentElement.setAttribute('style', `background:${avatarGradient(usuarioAtual.nome || usuarioAtual.email)}`);
   userStatusState[Number(usuarioAtual.id)] = usuarioAtual.status || 'disponivel';
+  startActivityTracking();
   document.getElementById('userStatusSelect').value = usuarioAtual.status || 'disponivel';
 
   const isAdmin = Boolean(usuarioAtual.admin);
@@ -3079,6 +3125,7 @@ function conectarSocket() {
 
   socket.on('connect', () => {
     socket.emit('conectar-usuario', usuarioAtual.id);
+    signalUserActivity(true);
 
     // Em reconexoes (queda de rede, proxy do Railway derrubando conexao ociosa),
     // recarrega a conversa aberta para trazer mensagens que chegaram durante a
@@ -3102,6 +3149,18 @@ function conectarSocket() {
     updateHeaderIcon(tipoChat, nomeChatAtual);
     updateHeaderStatus();
     atualizarPainelInicialSeAberto();
+  });
+
+  socket.on('atividade-usuario-atualizada', (data) => {
+    const usuarioId = Number(data?.usuarioId);
+    if (!usuarioId || !data?.ultimoVistoEm) return;
+    lastSeenState[usuarioId] = data.ultimoVistoEm;
+    contatosCache = contatosCache.map((contato) => (
+      Number(contato.id) === usuarioId
+        ? { ...contato, ultimo_visto_em: data.ultimoVistoEm }
+        : contato
+    ));
+    if (tipoChat === 'privado' && Number(chatIdAtual) === usuarioId) updateHeaderStatus();
   });
 
   socket.on('painel-senhas-atualizado', (data) => {
