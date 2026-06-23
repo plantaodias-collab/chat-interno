@@ -368,14 +368,42 @@
         </div>
         <div class="composer">
           <input type="file" id="fileInput" class="hidden" onchange="enviarArquivo()" />
-          <button class="emoji-btn" id="emojiToggleBtn" onclick="alternarEmojis(event)" title="Emojis" aria-label="Abrir seletor de emojis" aria-expanded="false">&#128522;</button>
+          <button class="emoji-btn" id="emojiToggleBtn" onclick="alternarEmojis(event)" title="Emojis" aria-label="Abrir seletor de emojis" aria-expanded="false">
+            <svg class="composer-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M8.5 10h.01M15.5 10h.01" />
+              <path d="M8.5 14.2c1.9 2 5.1 2 7 0" />
+            </svg>
+          </button>
           <div class="emoji-picker hidden" id="emojiPicker"></div>
-          <button class="attach-btn" id="stickerToggleBtn" onclick="alternarFigurinhas(event)" title="Figurinhas" aria-label="Abrir figurinhas salvas" aria-expanded="false">&#128444;</button>
+          <button class="attach-btn" id="stickerToggleBtn" onclick="alternarFigurinhas(event)" title="Figurinhas" aria-label="Abrir figurinhas salvas" aria-expanded="false">
+            <svg class="composer-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="5" y="4" width="14" height="16" rx="3" />
+              <path d="M9 9h.01M15 9h.01" />
+              <path d="M9 14c1.7 1.4 4.3 1.4 6 0" />
+              <path d="M15 20c0-2.8 1.6-4.4 4-4.4" />
+            </svg>
+          </button>
           <div class="sticker-picker hidden" id="stickerPicker"></div>
-          <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Anexar" aria-label="Anexar arquivo">&#128206;</button>
-          <button class="attach-btn" id="templateToggleBtn" onclick="alternarTemplates(event)" title="Templates de resposta" aria-label="Templates de resposta">&#9741;</button>
+          <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Anexar" aria-label="Anexar arquivo">
+            <svg class="composer-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 11.5l-8.3 8.3a6 6 0 0 1-8.5-8.5l9.1-9.1a4 4 0 1 1 5.7 5.7L9.8 17a2 2 0 0 1-2.8-2.8l8.4-8.4" />
+            </svg>
+          </button>
+          <button class="attach-btn" id="templateToggleBtn" onclick="alternarTemplates(event)" title="Templates de resposta" aria-label="Templates de resposta">
+            <svg class="composer-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 3h7l4 4v14H7z" />
+              <path d="M14 3v5h5" />
+              <path d="M10 12h6M10 16h6" />
+            </svg>
+          </button>
           <div class="template-picker hidden" id="templatePicker"></div>
-          <button class="attach-btn" id="scheduleToggleBtn" onclick="alternarAgendamentoMensagem(event)" title="Agendar mensagem" aria-label="Agendar mensagem">&#9202;</button>
+          <button class="attach-btn" id="scheduleToggleBtn" onclick="alternarAgendamentoMensagem(event)" title="Agendar mensagem" aria-label="Agendar mensagem">
+            <svg class="composer-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="8" />
+              <path d="M12 8v4l3 2" />
+            </svg>
+          </button>
           <textarea
             id="messageInput"
             placeholder="Digite uma mensagem..."
@@ -385,7 +413,12 @@
             oninput="autoResizeComposer(); emitirDigitando(); salvarRascunhoAtual(); atualizarSugestoesMencao()"
           ></textarea>
           <div class="mention-suggestions hidden" id="mentionSuggestions" role="listbox" aria-label="Sugestões de menção"></div>
-          <button class="send-btn" onclick="enviarMensagem()" title="Enviar" aria-label="Enviar mensagem">&#10148;</button>
+          <button class="send-btn" onclick="enviarMensagem()" title="Enviar" aria-label="Enviar mensagem">
+            <svg class="composer-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 12h14" />
+              <path d="M13 6l6 6-6 6" />
+            </svg>
+          </button>
         </div>
         <div class="schedule-panel hidden" id="schedulePanel">
           <input class="field" id="scheduleDateTimeInput" type="datetime-local" aria-label="Data e hora do agendamento" />
