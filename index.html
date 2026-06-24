@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chat Interno - Equipe</title>
   <link rel="icon" id="appFavicon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Cpath d='M18 22c0-4.4 3.6-8 8-8h12c4.4 0 8 3.6 8 8v9c0 4.4-3.6 8-8 8H31l-8 7v-7h-1c-4.4 0-8-3.6-8-8V22Z' fill='white'/%3E%3Ccircle cx='27' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='33' cy='27' r='3' fill='%232563eb'/%3E%3Ccircle cx='39' cy='27' r='3' fill='%232563eb'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="/assets/app.css?v=20260624-brazil-cheer" />
+  <link rel="stylesheet" href="/assets/app.css?v=20260624-brazil-game-card" />
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
 </head>
@@ -225,6 +225,11 @@
           <span id="pinnedMessageText"></span>
         </button>
         <button class="pinned-message-close" type="button" onclick="desfixarMensagemAtual()" aria-label="Desfixar mensagem">×</button>
+      </div>
+
+      <div class="brazil-game-conversation-card" id="brazilGameConversationCard" aria-label="Jogo do Brasil hoje">
+        <span class="brazil-game-dot" aria-hidden="true"></span>
+        <span>Jogo do Brasil hoje</span>
       </div>
 
       <section class="conversation-workflow-panel hidden" id="conversationWorkflowPanel" aria-label="Atendimento da conversa">
@@ -764,6 +769,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.js?v=20260624-brazil-cheer"></script>
+  <script src="/assets/app.js?v=20260624-brazil-game-card"></script>
 </body>
 </html>
