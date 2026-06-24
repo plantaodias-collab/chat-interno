@@ -2845,6 +2845,47 @@ function aplicarFiltroDashboard(filter) {
   }
 }
 
+function isBrazilCheerDay() {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const dateParts = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const today = `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
+    return today === '2026-06-24';
+  } catch (_err) {
+    return new Date().toISOString().slice(0, 10) === '2026-06-24';
+  }
+}
+
+function getBrazilCheerCardHtml() {
+  if (!isBrazilCheerDay()) return '';
+  return `
+    <section class="brazil-cheer-card" aria-label="Torcida pela selecao brasileira">
+      <div class="brazil-cheer-visual" aria-hidden="true">
+        <div class="brazil-flag">
+          <span class="flag-diamond"></span>
+          <span class="flag-orb"></span>
+          <span class="flag-stripe"></span>
+        </div>
+        <svg class="soccer-ball" viewBox="0 0 80 80" role="img" aria-hidden="true">
+          <circle cx="40" cy="40" r="35" />
+          <path d="M40 19l14 10-5 16H31l-5-16 14-10Z" />
+          <path d="M26 29l-13 5M54 29l13 5M31 45l-9 13M49 45l9 13M40 19V8M22 58l-8 7M58 58l8 7" />
+        </svg>
+      </div>
+      <div class="brazil-cheer-copy">
+        <span class="brazil-cheer-kicker">Hoje &eacute; dia de torcida</span>
+        <strong>Estamos na torcida pela Sele&ccedil;&atilde;o Brasileira hoje.</strong>
+        <span>Que venha a classifica&ccedil;&atilde;o. Vai, Brasil!</span>
+      </div>
+    </section>
+  `;
+}
+
 function getWelcomeStateHtml() {
   const totalOnline = contatosCache.filter((usuario) => onlineState.has(Number(usuario.id))).length;
   const totalGrupos = gruposCache.length;
@@ -2892,6 +2933,7 @@ function getWelcomeStateHtml() {
           </div>
         </div>
       </div>
+      ${getBrazilCheerCardHtml()}
       <div class="welcome-stats dashboard-stats">
         <div class="welcome-stat-card ${totalOnline > 0 ? 'is-active' : 'is-zero'}">
           <strong>${totalOnline}</strong>
