@@ -11109,3 +11109,40 @@ body:not(.theme-dark) .header-actions .header-more-menu[open] > .header-btn {
 body.sidebar-collapsed .container {
   grid-template-columns: 74px minmax(0, 1fr) !important;
 }
+
+/* Lista de contatos (Online/Offline) como uma unica lista que rola
+   junto, em vez de duas caixas de scroll separadas. Antes o grupo
+   Offline ficava preso em max-height:260px enquanto o Online podia
+   crescer ate 34vh, entao com muita gente online os offline ficavam
+   espremidos numa caixinha minuscula e dificeis de achar. */
+.contacts-section .menu-list {
+  overflow-y: auto;
+}
+
+.contact-group.online-group .contact-group-items,
+.contact-group.offline-group .contact-group-items {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* Sidebar um pouco mais larga (pedido do usuario), so em telas
+   largas o suficiente pra nao apertar a area de conversa. Nao
+   entra em conflito com o colapso (.sidebar-collapsed tem mais
+   especificidade e continua vencendo) nem com o layout mobile
+   de coluna unica (essa regra so vale a partir de 981px). */
+@media (min-width: 981px) {
+  .container {
+    grid-template-columns: 360px minmax(0, 1fr) !important;
+  }
+}
+
+/* O grupo Online tinha flex:0 0 auto (nunca encolhe): sem o scroll
+   interno de cima, ele passava a reivindicar a altura total dos
+   itens e espremia o Offline a quase 0px. Os dois passam a apenas
+   ocupar sua altura natural, empilhados, e quem rola tudo agora
+   e o .menu-list (unico scroll). */
+.contact-group.online-group,
+.contact-group.offline-group {
+  flex: 0 0 auto !important;
+  min-height: 0;
+}
