@@ -11102,3 +11102,10 @@ body:not(.theme-dark) .header-actions .header-more-menu[open] > .header-btn {
   border-color: rgba(59,130,246,.4) !important;
   color: #1d4ed8 !important;
 }
+
+/* Corrige o botao "Menu" no tema claro: body:not(.theme-dark) .container
+   (mais abaixo no arquivo, mesma especificidade) sempre vencia e travava
+   a largura em 318px, entao o clique nao tinha nenhum efeito visual. */
+body.sidebar-collapsed .container {
+  grid-template-columns: 74px minmax(0, 1fr) !important;
+}
