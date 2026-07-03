@@ -2249,7 +2249,7 @@ body:not(.theme-dark) .mention-text small {
 }
 
 body {
-  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   background: linear-gradient(180deg, #0b141a 0, #0b141a 128px, #111b21 128px, #111b21 100%);
   color: var(--text);
 }
@@ -11045,4 +11045,60 @@ body.theme-dark .dashboard-chat-preview {
   .dashboard-grid {
     display: grid;
   }
+}
+
+/* Estilo único dos botões do topo (Menu/Global/Central/Mais).
+   Fica por último de propósito: várias regras antigas de .header-btn
+   acima brigam entre si (hover vira branco mesmo no tema escuro).
+   Escopo em .header-actions .header-btn evita mexer em .attach-btn,
+   .quick-reply-btn e nos botões dentro do menu "Mais". */
+.header-actions .header-btn {
+  border-radius: 10px;
+  font-weight: 600;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, transform .15s ease;
+}
+
+body.theme-dark .header-actions .header-btn {
+  border-color: rgba(148,163,184,.18);
+  background: rgba(255,255,255,.05);
+  color: var(--text);
+}
+
+body.theme-dark .header-actions .header-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(59,130,246,.16);
+  border-color: rgba(59,130,246,.4);
+  color: #ffffff;
+}
+
+body:not(.theme-dark) .header-actions .header-btn {
+  border-color: rgba(15,23,42,.08);
+  background: rgba(15,23,42,.03);
+  color: #142033;
+}
+
+body:not(.theme-dark) .header-actions .header-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(59,130,246,.1);
+  border-color: rgba(59,130,246,.35);
+  color: #1d4ed8;
+}
+
+.header-actions .header-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.28);
+}
+
+body.theme-dark .header-actions .header-btn.is-active,
+body.theme-dark .header-actions .header-more-menu[open] > .header-btn {
+  background: rgba(59,130,246,.3) !important;
+  border-color: rgba(59,130,246,.55) !important;
+  color: #ffffff !important;
+}
+
+body:not(.theme-dark) .header-actions .header-btn.is-active,
+body:not(.theme-dark) .header-actions .header-more-menu[open] > .header-btn {
+  background: rgba(59,130,246,.16) !important;
+  border-color: rgba(59,130,246,.4) !important;
+  color: #1d4ed8 !important;
 }
