@@ -2819,6 +2819,15 @@ function getDashboardChatCard(item) {
   `;
 }
 
+function getDashboardStatCard(label, value, filter, extraClass = '') {
+  return `
+    <button class="welcome-stat-card ${extraClass}" type="button" onclick="aplicarFiltroDashboard('${escapeHtml(filter)}')">
+      <strong>${escapeHtml(value)}</strong>
+      <span>${label}</span>
+    </button>
+  `;
+}
+
 function getDashboardListHtml(title, subtitle, items, emptyText) {
   return `
     <section class="dashboard-panel">
@@ -2886,7 +2895,7 @@ function getBrazilCheerCardHtml() {
   `;
 }
 
-function getWelcomeStateHtml() {
+function getLegacyWelcomeStateHtml() {
   const totalOnline = contatosCache.filter((usuario) => onlineState.has(Number(usuario.id))).length;
   const totalGrupos = gruposCache.length;
   const totalNaoLidas = Object.values(unreadState).reduce((sum, value) => sum + (Number(value) || 0), 0);
@@ -2959,6 +2968,57 @@ function getWelcomeStateHtml() {
       <div class="dashboard-grid">
         ${getDashboardListHtml('Urgentes', 'atenção agora', urgentItems, 'Nenhuma conversa urgente.')}
         ${getDashboardListHtml('Não lidas', 'pendências', unreadItems, 'Tudo em dia por aqui.')}
+      </div>
+    </div>
+  `;
+}
+
+function getWelcomeStateHtml() {
+  const totalOnline = contatosCache.filter((usuario) => onlineState.has(Number(usuario.id))).length;
+  const totalGrupos = gruposCache.length;
+  const totalNaoLidas = Object.values(unreadState).reduce((sum, value) => sum + (Number(value) || 0), 0);
+  const totalPendentes = Object.values(attendanceStatusState).filter((status) => status === 'pendente').length;
+  const totalUrgentes = Object.values(attendanceStatusState).filter((status) => status === 'urgente').length;
+  const nomeUsuario = String(usuarioAtual?.nome || '').trim();
+  const emailUsuario = String(usuarioAtual?.email || '').trim();
+  const firstNameRaw = /^\(?usu[aÃ¡]rio/i.test(nomeUsuario)
+    ? (emailUsuario.split('@')[0] || 'Admin')
+    : (nomeUsuario.split(/\s+/)[0] || emailUsuario.split('@')[0] || 'equipe');
+  const firstName = firstNameRaw.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, '') || 'equipe';
+  const urgentItems = getDashboardChatItems('urgent', 4);
+  const unreadItems = getDashboardChatItems('unread', 4);
+  const pendingItems = getDashboardChatItems('pending', 4);
+  const recentItems = getDashboardChatItems('all', 4);
+
+  return `
+    <div class="empty-state welcome-state dashboard-home">
+      <div class="dashboard-hero">
+        <div class="dashboard-title-group">
+          <div class="welcome-eyebrow">Painel inicial</div>
+          <div class="welcome-title">${getGreeting()}, ${escapeHtml(firstName)}</div>
+          <div class="welcome-copy">Abra rapidamente o que precisa de aten&ccedil;&atilde;o, acompanhe mensagens n&atilde;o lidas e continue conversas recentes sem procurar na lateral.</div>
+          <div class="dashboard-actions">
+            <button class="dashboard-action-btn primary" type="button" onclick="aplicarFiltroDashboard('nao-lidas')">Ver n&atilde;o lidas</button>
+            <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('pendentes')">Pendentes</button>
+            <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('urgentes')">Urgentes</button>
+            <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('online')">Equipe online</button>
+            <button class="dashboard-action-btn" type="button" onclick="abrirBuscaGlobal()">Busca global</button>
+          </div>
+        </div>
+      </div>
+      ${getBrazilCheerCardHtml()}
+      <div class="welcome-stats dashboard-stats">
+        ${getDashboardStatCard('online agora', totalOnline, 'online', totalOnline > 0 ? 'is-active' : 'is-zero')}
+        ${getDashboardStatCard('n&atilde;o lidas', totalNaoLidas, 'nao-lidas', totalNaoLidas > 0 ? 'is-active' : 'is-zero')}
+        ${getDashboardStatCard('grupos', totalGrupos, 'grupos', '')}
+        ${getDashboardStatCard('pendentes', totalPendentes, 'pendentes', `priority ${totalPendentes > 0 ? 'is-active' : 'is-zero'}`)}
+        ${getDashboardStatCard('urgentes', totalUrgentes, 'urgentes', `urgent ${totalUrgentes > 0 ? 'is-active' : 'is-zero'}`)}
+      </div>
+      <div class="dashboard-grid">
+        ${getDashboardListHtml('Urgentes', 'aten&ccedil;&atilde;o agora', urgentItems, 'Nenhuma conversa urgente.')}
+        ${getDashboardListHtml('N&atilde;o lidas', 'responder primeiro', unreadItems, 'Tudo em dia por aqui.')}
+        ${getDashboardListHtml('Pendentes', 'acompanhar andamento', pendingItems, 'Nenhuma conversa pendente.')}
+        ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecer&atilde;o aqui.')}
       </div>
     </div>
   `;
