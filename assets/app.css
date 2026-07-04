@@ -11146,3 +11146,16 @@ body.sidebar-collapsed .container {
   flex: 0 0 auto !important;
   min-height: 0;
 }
+
+/* Fix: o botao Prioridade tambem ganha a classe is-active (alem de
+   priority-active), e a regra de unificacao dos botoes do topo (acima)
+   tem especificidade maior, entao apagava o gradiente ambar/vermelho de
+   prioridade e deixava so o azul generico de "ativo". Restaura o
+   gradiente com a mesma especificidade, depois no arquivo. */
+body.theme-dark .header-actions .header-btn.priority-active,
+body:not(.theme-dark) .header-actions .header-btn.priority-active {
+  background: linear-gradient(135deg, #f59e0b, #ef4444) !important;
+  border-color: rgba(251,191,36,.65) !important;
+  color: #ffffff !important;
+  box-shadow: 0 12px 24px rgba(239,68,68,.20) !important;
+}
