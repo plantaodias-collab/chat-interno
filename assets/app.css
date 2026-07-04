@@ -11159,3 +11159,29 @@ body:not(.theme-dark) .header-actions .header-btn.priority-active {
   color: #ffffff !important;
   box-shadow: 0 12px 24px rgba(239,68,68,.20) !important;
 }
+
+/* Indicador de "Reconectando..." quando o socket cai (queda de rede,
+   proxy do Railway derrubando conexao ociosa). Sem isso o usuario nao
+   sabia que mensagens podiam estar atrasadas ate dar reload. */
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.connection-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f59e0b;
+  animation: connectionStatusPulse 1s ease-in-out infinite;
+}
+
+@keyframes connectionStatusPulse {
+  0%, 100% { opacity: .4; transform: scale(.8); }
+  50% { opacity: 1; transform: scale(1.1); }
+}

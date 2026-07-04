@@ -992,6 +992,18 @@ function alternarDensidadeMensagens() {
   aplicarDensidadeMensagens(next);
 }
 
+function mostrarStatusConexao(desconectado) {
+  const el = document.getElementById('connectionStatusBanner');
+  if (el) el.classList.toggle('hidden', !desconectado);
+}
+
+const RESPOSTA_RAPIDA_ATALHOS = {
+  '1': 'Bom dia! Já estou verificando e retorno em instantes.',
+  '2': 'Pode me enviar mais detalhes, por favor?',
+  '3': 'Resolvido. Qualquer coisa fico à disposição.',
+  '4': 'Vou encaminhar para o setor responsável e acompanho por aqui.'
+};
+
 function usarRespostaRapida(texto) {
   const input = document.getElementById('messageInput');
   if (!input) return;
@@ -3226,6 +3238,7 @@ function conectarSocket() {
   socket = io();
 
   socket.on('connect', () => {
+    mostrarStatusConexao(false);
     socket.emit('conectar-usuario', usuarioAtual.id);
     signalUserActivity(true);
 
@@ -3237,6 +3250,10 @@ function conectarSocket() {
       carregarChat(tipoChat, chatIdAtual, nomeChatAtual);
     }
     jaConectouSocket = true;
+  });
+
+  socket.on('disconnect', () => {
+    mostrarStatusConexao(true);
   });
 
   socket.on('presenca-atualizada', (data) => {
@@ -5670,6 +5687,11 @@ window.onclick = function(event) {
 };
 
 document.addEventListener('keydown', (event) => {
+  if (event.altKey && !event.ctrlKey && !event.metaKey && RESPOSTA_RAPIDA_ATALHOS[event.key] && tipoChat && chatIdAtual != null) {
+    event.preventDefault();
+    usarRespostaRapida(RESPOSTA_RAPIDA_ATALHOS[event.key]);
+    return;
+  }
   if (event.key !== 'Escape') return;
   fecharEmojiPicker();
   fecharStickerPicker();
