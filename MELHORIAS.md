@@ -29,9 +29,9 @@ Ordem sugerida: de cima para baixo.
 ## Fase 2 — Experiência de uso (médio risco) 🟡
 
 - [ ] **Validar layout no celular (PWA)** — primeira passada feita na tela inicial: menu e painel não estouram largura, e o composer some sem conversa aberta. Resta compactar a tela de conversa no celular, porque cabeçalho + composer ainda deixam pouca área para mensagens.
-- [ ] **Indicador de status da conexão** — um aviso discreto ("Reconectando...") quando o socket cai, para o usuário saber que mensagens podem estar atrasadas.
+- [x] **Indicador de status da conexão** — aviso discreto ("Reconectando...") no cabeçalho quando o socket cai. Commit `88d00e8`.
 - [ ] **Confirmação de entrega/leitura** mais clara nas mensagens (checks).
-- [ ] **Atalhos de teclado** para as respostas rápidas (Verificando / Pedir detalhes / Resolvido).
+- [x] **Atalhos de teclado** para as respostas rápidas (Alt+1 Verificando / Alt+2 Pedir detalhes / Alt+3 Resolvido / Alt+4 Encaminhar). Commit `88d00e8`.
 - [ ] **Acessibilidade** — revisar contrastes restantes e navegação por teclado (WCAG AA).
 
 ## Fase 3 — Confiabilidade e escala (médio/alto risco) 🟡🔴
