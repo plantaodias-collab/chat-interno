@@ -30,7 +30,7 @@ Ordem sugerida: de cima para baixo.
 
 - [ ] **Validar layout no celular (PWA)** — primeira passada feita na tela inicial: menu e painel não estouram largura, e o composer some sem conversa aberta. Resta compactar a tela de conversa no celular, porque cabeçalho + composer ainda deixam pouca área para mensagens.
 - [x] **Indicador de status da conexão** — aviso discreto ("Reconectando...") no cabeçalho quando o socket cai. Commit `88d00e8`.
-- [ ] **Confirmação de entrega/leitura** mais clara nas mensagens (checks).
+- [x] **Confirmação de entrega/leitura** mais clara nas mensagens (privado): enviada (1 check cinza) -> entregue (2 checks cinza) -> lida (2 checks azuis), como no WhatsApp. Commit `1eda244`.
 - [x] **Atalhos de teclado** para as respostas rápidas (Alt+1 Verificando / Alt+2 Pedir detalhes / Alt+3 Resolvido / Alt+4 Encaminhar). Commit `88d00e8`.
 - [ ] **Acessibilidade** — revisar contrastes restantes e navegação por teclado (WCAG AA).
 
