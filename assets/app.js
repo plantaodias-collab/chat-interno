@@ -1338,6 +1338,7 @@ function normalizeMessage(msg) {
     usuario_id: Number(msg.usuario_id ?? msg.usuarioId ?? msg.remetente_id ?? 0),
     usuarioId: Number(msg.usuarioId ?? msg.usuario_id ?? msg.remetente_id ?? 0),
     lido: Number(msg.lido || 0),
+    entregue: Number(msg.entregue || 0),
     tipo: msg.tipo || 'texto',
     reacoes: typeof msg.reacoes === 'object' && msg.reacoes ? msg.reacoes : {},
     reacoes_nomes: typeof msg.reacoes_nomes === 'object' && msg.reacoes_nomes ? msg.reacoes_nomes : {},
@@ -3406,6 +3407,12 @@ function conectarSocket() {
     }
   });
 
+  socket.on('mensagens-entregues', (data) => {
+    if (tipoChat === 'privado' && Number(chatIdAtual) === Number(data.destinatarioId)) {
+      marcarMensagensComoEntreguesNaTela();
+    }
+  });
+
   socket.on('mensagem-atualizada', (data) => {
     const chatCorreto = data.tipoChat === 'grupo'
       ? (tipoChat === 'grupo' && Number(chatIdAtual) === Number(data.grupoId))
@@ -4234,13 +4241,13 @@ function renderMessageRow(message) {
     : (message.lido ? 'lida' : '');
   const statusTitle = tipoChat === 'grupo'
     ? (resumoLeituraGrupo?.tooltip || '')
-    : (message.lido ? 'Mensagem lida' : 'Mensagem enviada');
-  // Checkmarks visuais: ✓ enviada, ✓✓(azul) lida
+    : (message.lido ? 'Mensagem lida' : (message.entregue ? 'Mensagem entregue' : 'Mensagem enviada'));
+  // Checkmarks visuais: ✓ enviada (cinza), ✓✓ entregue (cinza), ✓✓ lida (azul)
   const SVG_CHECK_SINGLE = `<svg class="check-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="3,9 7,13 13,5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   const SVG_CHECK_DOUBLE = `<svg class="check-icon check-double" viewBox="0 0 20 16" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="1,9 5,13 11,5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="6,9 10,13 16,5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   const statusText = tipoChat === 'grupo'
     ? (getLeiturasGrupo(message).length ? SVG_CHECK_DOUBLE : SVG_CHECK_SINGLE)
-    : (message.lido ? SVG_CHECK_DOUBLE : SVG_CHECK_SINGLE);
+    : ((message.lido || message.entregue) ? SVG_CHECK_DOUBLE : SVG_CHECK_SINGLE);
   const resumoHtml = tipoChat === 'grupo'
     ? `<div class="message-read-summary ${resumoLeituraGrupo?.total ? 'has-readers' : ''}" title="${escapeHtml(resumoLeituraGrupo?.tooltip || '')}"><strong>Visto por:</strong> ${escapeHtml(resumoLeituraGrupo?.detalhe || 'Ninguém do grupo viu ainda')}</div>`
     : '';
@@ -4619,6 +4626,15 @@ function marcarMensagensComoLidasNaTela(remetenteId) {
   unreadState[key] = 0;
   renderContatos();
   updateBrowserTitle();
+}
+
+function marcarMensagensComoEntreguesNaTela() {
+  currentMessagesCache = currentMessagesCache.map((message) => (
+    Number(message.usuarioId) === Number(usuarioAtual.id) && !message.entregue
+      ? { ...message, entregue: 1 }
+      : message
+  ));
+  renderMessages();
 }
 
 function removerMensagemDaTela(messageId) {

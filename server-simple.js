@@ -586,6 +586,27 @@ function marcarComoLidas(remetenteId, destinatarioId) {
   return alterou;
 }
 
+// Marca como "entregues" as mensagens privadas pendentes destinadas a um
+// usuario que acabou de conectar (estavam com entregue:0 porque ele estava
+// offline no momento do envio). Retorna os remetentes afetados para que o
+// chamador possa avisar cada um em tempo real (evento mensagens-entregues).
+function marcarComoEntregues(destinatarioId) {
+  const remetentesAfetados = new Set();
+  const agora = new Date().toISOString();
+  db.mensagens.forEach((m) => {
+    if (
+      m.usuario_destino_id === Number(destinatarioId) &&
+      !m.entregue
+    ) {
+      m.entregue = 1;
+      m.entregue_em = agora;
+      remetentesAfetados.add(Number(m.usuario_id));
+    }
+  });
+  if (remetentesAfetados.size) db.save();
+  return [...remetentesAfetados];
+}
+
 function emitPresence() {
   io.emit('presenca-atualizada', {
     online: Array.from(onlineUsers.keys()),
@@ -1363,6 +1384,7 @@ function emitScheduledMessage(entry) {
     return msg;
   }
 
+  const destinatarioAgendadaOnline = isUsuarioOnline(chatId);
   const msg = {
     id: gerarIdMensagem(),
     usuario_id: Number(usuario.id),
@@ -1373,6 +1395,8 @@ function emitScheduledMessage(entry) {
     reply_to_id: null,
     reacoes: {},
     lido: 0,
+    entregue: destinatarioAgendadaOnline ? 1 : 0,
+    entregue_em: destinatarioAgendadaOnline ? new Date().toISOString() : null,
     leituras_grupo: null,
     agendada_id: entry.id,
     criado_em: new Date().toISOString()
@@ -2859,6 +2883,7 @@ app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => 
       return res.status(400).json({ erro: 'Mensagem respondida inválida para esta conversa' });
     }
 
+    const destinatarioArquivoOnline = tipoChat === 'privado' && isUsuarioOnline(chatId);
     const msg = {
       id: gerarIdMensagem(),
       usuario_id: Number(req.userId),
@@ -2874,6 +2899,8 @@ app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => 
       arquivo_mimetype: req.file.mimetype,
       arquivo_tamanho: req.file.size,
       lido: 0,
+      entregue: destinatarioArquivoOnline ? 1 : 0,
+      entregue_em: destinatarioArquivoOnline ? new Date().toISOString() : null,
       leituras_grupo: tipoChat === 'grupo' ? [] : null,
       criado_em: new Date().toISOString()
     };
@@ -2931,6 +2958,16 @@ io.on('connection', (socket) => {
       db.save();
     }
     emitPresence();
+
+    // Mensagens privadas que chegaram enquanto este usuario estava offline
+    // agora foram entregues ao seu dispositivo: avisa quem enviou.
+    const remetentesAfetados = marcarComoEntregues(id);
+    remetentesAfetados.forEach((remetenteId) => {
+      io.to(`usuario-${remetenteId}`).emit('mensagens-entregues', {
+        remetenteId,
+        destinatarioId: id
+      });
+    });
   });
 
   socket.on('atividade-usuario', () => {
@@ -3049,6 +3086,7 @@ io.on('connection', (socket) => {
       return;
     }
 
+    const destinatarioOnline = isUsuarioOnline(data.destinatario_id);
     const msg = {
       id: gerarIdMensagem(),
       usuario_id: Number(data.remetente_id),
@@ -3059,6 +3097,8 @@ io.on('connection', (socket) => {
       reply_to_id: Number(data.replyToId || 0) || null,
       reacoes: {},
       lido: 0,
+      entregue: destinatarioOnline ? 1 : 0,
+      entregue_em: destinatarioOnline ? new Date().toISOString() : null,
       criado_em: new Date().toISOString()
     };
 
