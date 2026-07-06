@@ -11185,3 +11185,17 @@ body:not(.theme-dark) .header-actions .header-btn.priority-active {
   0%, 100% { opacity: .4; transform: scale(.8); }
   50% { opacity: 1; transform: scale(1.1); }
 }
+
+/* Fix de contraste: no tema claro, o check "enviado/entregue" (#1e3a5f)
+   e o "lido" (#0f4f85) sao dois azuis-marinho quase identicos - por isso
+   parecia que o check nunca ficava azul de verdade. Cinza neutro pro
+   nao-lido, azul vivo (mesma cor de marca do app) pro lido. */
+body:not(.theme-dark) .message-status {
+  color: #94a3b8;
+  background: rgba(100,116,139,.14);
+}
+
+body:not(.theme-dark) .message-status.lida {
+  color: #2563eb;
+  background: rgba(37,99,235,.14);
+}
