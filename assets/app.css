@@ -11204,16 +11204,22 @@ body:not(.theme-dark) .message-status.lida {
    Windows sem aceleracao de GPU) por SVG nitido. Tamanho recomendado pela
    propria lib, alinhado ao texto ao redor. */
 img.emoji {
-  height: 1.2em;
-  width: 1.2em;
-  margin: 0 .05em 0 .1em;
-  vertical-align: -0.2em;
+  height: 1.5em;
+  width: 1.5em;
+  margin: 0 .06em 0 .1em;
+  vertical-align: -0.3em;
 }
 
-.emoji-option img.emoji,
+.emoji-option img.emoji {
+  height: 26px;
+  width: 26px;
+  margin: 0;
+  vertical-align: middle;
+}
+
 .reaction-picker-btn img.emoji {
-  height: 20px;
-  width: 20px;
+  height: 22px;
+  width: 22px;
   margin: 0;
   vertical-align: middle;
 }
