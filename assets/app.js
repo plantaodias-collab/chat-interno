@@ -2579,12 +2579,22 @@ function fecharEmojiPicker() {
   document.getElementById('emojiToggleBtn')?.setAttribute('aria-expanded', 'false');
 }
 
+// Troca os emojis nativos (que no Windows/Chrome sem GPU costumam renderizar
+// "craquelados", pixelizados) por imagens SVG nitidas do Twemoji. Se o CDN
+// falhar (sem internet), o emoji nativo continua visivel normalmente.
+function aplicarTwemoji(el) {
+  if (window.twemoji && el) {
+    try { twemoji.parse(el, { folder: 'svg', ext: '.svg' }); } catch (_e) {}
+  }
+}
+
 function renderEmojiPicker() {
   const picker = document.getElementById('emojiPicker');
   if (!picker || picker.dataset.rendered === 'true') return;
   picker.innerHTML = EMOJI_OPTIONS.map((emoji) => `
     <button type="button" class="emoji-option" onclick="inserirEmoji('${escapeHtml(emoji).replace(/'/g, '&#039;')}')" title="${escapeHtml(emoji)}" aria-label="Inserir emoji ${escapeHtml(emoji)}">${escapeHtml(emoji)}</button>
   `).join('');
+  aplicarTwemoji(picker);
   picker.dataset.rendered = 'true';
 }
 
@@ -4350,6 +4360,7 @@ function renderMessages(options = {}) {
     return `${dividerHtml}<div class="message-row ${ehOutro ? '' : 'own'} ${compact ? 'compact' : ''} ${priorityClass} ${mentionClass}" data-message-id="${Number(message.id)}" data-usuario-id="${Number(message.usuarioId || 0)}">${renderMessageRow(message)}</div>`;
   }).join('');
   hydrateSecureAttachments(container);
+  aplicarTwemoji(container);
   if (scrollToBottom) scrollMessagesToBottom({ stabilize: stabilizeBottom });
   else container.classList.remove('preparing-scroll');
 }

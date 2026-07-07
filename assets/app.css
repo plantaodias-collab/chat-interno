@@ -11199,3 +11199,21 @@ body:not(.theme-dark) .message-status.lida {
   color: #2563eb;
   background: rgba(37,99,235,.14);
 }
+
+/* Twemoji: troca o emoji nativo (que renderiza craquelado/pixelizado no
+   Windows sem aceleracao de GPU) por SVG nitido. Tamanho recomendado pela
+   propria lib, alinhado ao texto ao redor. */
+img.emoji {
+  height: 1.2em;
+  width: 1.2em;
+  margin: 0 .05em 0 .1em;
+  vertical-align: -0.2em;
+}
+
+.emoji-option img.emoji,
+.reaction-picker-btn img.emoji {
+  height: 20px;
+  width: 20px;
+  margin: 0;
+  vertical-align: middle;
+}
