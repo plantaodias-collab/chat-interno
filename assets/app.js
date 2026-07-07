@@ -1294,6 +1294,22 @@ function formatCalendarDayLabel(date = new Date()) {
   });
 }
 
+function formatRelativeTime(timestamp) {
+  if (!timestamp) return '';
+  const target = new Date(Number(timestamp));
+  if (Number.isNaN(target.getTime())) return '';
+  const diffMs = Date.now() - target.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'agora';
+  if (diffMin < 60) return `há ${diffMin} min`;
+  const now = new Date();
+  if (isSameCalendarDay(target, now)) return `há ${Math.floor(diffMin / 60)}h`;
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (isSameCalendarDay(target, yesterday)) return 'ontem';
+  return target.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+
 function formatMessageTimestamp(date = new Date()) {
   const target = new Date(date);
   if (Number.isNaN(target.getTime())) return formatTime();
@@ -2827,7 +2843,7 @@ function getDashboardChatItems(filter, limit = 4) {
 }
 
 function getDashboardChatCard(item) {
-  const meta = item.unread > 0 ? (item.unread > 99 ? '99+' : item.unread) : (item.time || (item.online ? 'on' : ''));
+  const meta = item.unread > 0 ? (item.unread > 99 ? '99+' : item.unread) : (formatRelativeTime(item.timestamp) || item.time || (item.online ? 'on' : ''));
   const icon = item.tipo === 'grupo' ? '#' : initials(item.nome);
   const statusLabel = getAttendanceLabel(item.attendanceStatus);
   return `
@@ -2851,12 +2867,18 @@ function getDashboardStatCard(label, value, filter, extraClass = '') {
   `;
 }
 
-function getDashboardListHtml(title, subtitle, items, emptyText) {
+const DASHBOARD_EMPTY_ICONS = {
+  check: '<svg class="dashboard-empty-icon dashboard-empty-icon-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg>',
+  chat: '<svg class="dashboard-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-4.7 7.6 8.5 8.5 0 0 1-9.8-1.6L3 21l1.6-4.7A8.38 8.38 0 0 1 3 11.5a8.5 8.5 0 0 1 8-8.48V3h.5a8.5 8.5 0 0 1 8.5 8.5Z"/></svg>'
+};
+
+function getDashboardListHtml(title, subtitle, items, emptyText, emptyIcon = 'check') {
+  const iconSvg = DASHBOARD_EMPTY_ICONS[emptyIcon] || DASHBOARD_EMPTY_ICONS.check;
   return `
     <section class="dashboard-panel">
       <div class="dashboard-panel-title">${title}<span>${subtitle}</span></div>
       <div class="dashboard-list">
-        ${items.length ? items.map(getDashboardChatCard).join('') : `<div class="dashboard-empty">${emptyText}</div>`}
+        ${items.length ? items.map(getDashboardChatCard).join('') : `<div class="dashboard-empty">${iconSvg}<span>${emptyText}</span></div>`}
       </div>
     </section>
   `;
@@ -3041,7 +3063,7 @@ function getWelcomeStateHtml() {
         ${getDashboardListHtml('Urgentes', 'aten&ccedil;&atilde;o agora', urgentItems, 'Nenhuma conversa urgente.')}
         ${getDashboardListHtml('N&atilde;o lidas', 'responder primeiro', unreadItems, 'Tudo em dia por aqui.')}
         ${getDashboardListHtml('Pendentes', 'acompanhar andamento', pendingItems, 'Nenhuma conversa pendente.')}
-        ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecer&atilde;o aqui.')}
+        ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecer&atilde;o aqui.', 'chat')}
       </div>
     </div>
   `;
