@@ -9787,12 +9787,17 @@ body.theme-dark .welcome-stat-card.urgent.is-active strong {
   position: relative;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  padding: 0;
   border: 1px solid #e5e9f0;
   border-radius: 12px;
   overflow: hidden;
   text-decoration: none;
+  text-align: left;
+  font: inherit;
   color: #142033;
   background: #f8fafc;
+  cursor: pointer;
   transition: transform .12s ease, box-shadow .12s ease;
 }
 .media-item:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(20, 32, 51, .14); }

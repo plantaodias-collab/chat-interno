@@ -1525,22 +1525,23 @@ function getAttachmentFileName(rawUrl = '') {
   }
 }
 
-function getProtectedAttachmentUrl(rawUrl = '') {
+function getProtectedAttachmentUrl(rawUrl = '', variant = '') {
   const fileName = getAttachmentFileName(rawUrl);
-  return fileName ? `/api/uploads/${encodeURIComponent(fileName)}` : '';
+  if (!fileName) return '';
+  return variant ? `/api/uploads/${encodeURIComponent(fileName)}/${variant}` : `/api/uploads/${encodeURIComponent(fileName)}`;
 }
 
 function isBundledSticker(sticker) {
   return Boolean(sticker?.bundled || String(sticker?.url || '').startsWith('/assets/stickers/'));
 }
 
-function getCachedAttachmentObjectUrl(rawUrl = '') {
-  const protectedUrl = getProtectedAttachmentUrl(rawUrl);
+function getCachedAttachmentObjectUrl(rawUrl = '', variant = '') {
+  const protectedUrl = getProtectedAttachmentUrl(rawUrl, variant);
   return protectedUrl ? (secureAttachmentBlobUrls.get(protectedUrl) || '') : '';
 }
 
-async function fetchProtectedAttachmentBlob(rawUrl = '') {
-  const protectedUrl = getProtectedAttachmentUrl(rawUrl);
+async function fetchProtectedAttachmentBlob(rawUrl = '', variant = '') {
+  const protectedUrl = getProtectedAttachmentUrl(rawUrl, variant);
   if (!protectedUrl) throw new Error('Arquivo inválido');
   if (secureAttachmentBlobCache.has(protectedUrl)) return secureAttachmentBlobCache.get(protectedUrl);
   if (secureAttachmentPending.has(protectedUrl)) return secureAttachmentPending.get(protectedUrl);
@@ -1563,11 +1564,11 @@ async function fetchProtectedAttachmentBlob(rawUrl = '') {
   return pending;
 }
 
-async function getProtectedAttachmentObjectUrl(rawUrl = '') {
-  const protectedUrl = getProtectedAttachmentUrl(rawUrl);
+async function getProtectedAttachmentObjectUrl(rawUrl = '', variant = '') {
+  const protectedUrl = getProtectedAttachmentUrl(rawUrl, variant);
   const cached = protectedUrl ? secureAttachmentBlobUrls.get(protectedUrl) : '';
   if (cached) return cached;
-  await fetchProtectedAttachmentBlob(rawUrl);
+  await fetchProtectedAttachmentBlob(rawUrl, variant);
   return secureAttachmentBlobUrls.get(protectedUrl) || '';
 }
 
@@ -1579,6 +1580,23 @@ function hydrateSecureAttachments(root = document) {
       const objectUrl = await getProtectedAttachmentObjectUrl(rawUrl);
       if (!objectUrl) return;
       if (element.tagName === 'IMG' || element.tagName === 'VIDEO' || element.tagName === 'IFRAME') {
+        element.src = objectUrl;
+        element.dataset.secureLoaded = 'true';
+      }
+    } catch (_err) {
+      element.classList.add('attachment-load-error');
+    }
+  });
+
+  // Miniatura leve (gerada no servidor) para grids como a Galeria de midia;
+  // cai para o arquivo original no proprio endpoint se nao houver thumb.
+  root.querySelectorAll('[data-secure-thumb]').forEach(async (element) => {
+    const rawUrl = element.getAttribute('data-secure-thumb');
+    if (!rawUrl || element.dataset.secureLoaded === 'true') return;
+    try {
+      const objectUrl = await getProtectedAttachmentObjectUrl(rawUrl, 'thumb');
+      if (!objectUrl) return;
+      if (element.tagName === 'IMG') {
         element.src = objectUrl;
         element.dataset.secureLoaded = 'true';
       }
@@ -4604,10 +4622,14 @@ async function abrirGaleriaConversa() {
         const url = escapeHtml(m.arquivo_url || '');
         const nome = escapeHtml(m.arquivo_nome_original || 'arquivo');
         let thumb;
-        if (isImageAttachment(m)) thumb = `<img src="${url}" alt="${nome}" loading="lazy">`;
-        else if (isVideoAttachment(m)) thumb = `<video src="${url}" muted preload="metadata"></video><span class="media-badge">Vídeo</span>`;
+        // Imagens usam a miniatura protegida (menor e mais rapida); video/PDF usam
+        // o arquivo original protegido. Ambos exigem o token de autenticacao, por
+        // isso passam por data-secure-* + hydrateSecureAttachments em vez de um
+        // src direto (que resultaria em 404, pois /uploads nao e publico).
+        if (isImageAttachment(m)) thumb = `<img src="${ATTACHMENT_PLACEHOLDER_SRC}" data-secure-thumb="${url}" alt="${nome}" loading="lazy">`;
+        else if (isVideoAttachment(m)) thumb = `<video data-secure-attachment="${url}" muted preload="metadata"></video><span class="media-badge">Vídeo</span>`;
         else thumb = `<span class="media-pdf">PDF</span>`;
-        return `<a class="media-item" href="${url}" target="_blank" rel="noopener" title="${nome}">${thumb}<span class="media-name">${nome}</span></a>`;
+        return `<button type="button" class="media-item" onclick="abrirVisualizadorArquivo(${Number(m.id)})" title="${nome}">${thumb}<span class="media-name">${nome}</span></button>`;
       }).join('')
     : '<div class="media-empty">Nenhuma mídia nesta conversa.</div>';
   const overlay = document.createElement('div');
@@ -4624,6 +4646,7 @@ async function abrirGaleriaConversa() {
   overlay.addEventListener('click', (ev) => { if (ev.target === overlay) fecharGaleriaConversa(); });
   overlay.querySelector('.media-close').addEventListener('click', fecharGaleriaConversa);
   document.body.appendChild(overlay);
+  hydrateSecureAttachments(overlay);
 }
 
 function upsertMessageInCache(message) {

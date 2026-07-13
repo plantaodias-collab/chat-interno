@@ -2,12 +2,14 @@ const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
 const cors = require('cors');
+const compression = require('compression');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const multer = require('multer');
+const sharp = require('sharp');
 
 const app = express();
 const server = http.createServer(app);
@@ -25,7 +27,10 @@ const STORAGE_ROOT = process.env.STORAGE_ROOT || process.env.RAILWAY_VOLUME_MOUN
 const IS_EPHEMERAL_STORAGE = !process.env.STORAGE_ROOT && !process.env.RAILWAY_VOLUME_MOUNT_PATH && Boolean(process.env.RAILWAY_ENVIRONMENT);
 const DATA_DIR = path.join(STORAGE_ROOT, 'data');
 const UPLOAD_DIR = path.join(STORAGE_ROOT, 'uploads');
+const THUMB_DIR = path.join(UPLOAD_DIR, 'thumbs');
 const BACKUP_DIR = path.join(STORAGE_ROOT, 'backups');
+const THUMBNAIL_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
+const THUMBNAIL_MAX_WIDTH = 480;
 const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
 // Janela de agrupamento das gravacoes em disco (debounce). Mudancas em rajada
@@ -64,19 +69,25 @@ function getDefaultBackupSchedule() {
 if (!fs.existsSync(STORAGE_ROOT)) fs.mkdirSync(STORAGE_ROOT, { recursive: true });
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+if (!fs.existsSync(THUMB_DIR)) fs.mkdirSync(THUMB_DIR, { recursive: true });
 if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
 app.use(cors());
+app.use(compression());
 app.use(express.json());
 app.use((req, res, next) => {
-  if (req.path === '/' || req.path.endsWith('.html') || req.path.startsWith('/assets/')) {
+  if (req.path === '/' || req.path.endsWith('.html')) {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
   }
   next();
 });
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
+// app.css/app.js sao versionados por query string (?v=...) no index.html,
+// e o service worker (sw.js) ja assume cache-first para eles: e seguro
+// deixar o navegador cachear por 1 ano, pois qualquer mudanca de conteudo
+// vem com uma URL nova.
+app.use('/assets', express.static(path.join(__dirname, 'assets'), { maxAge: '1y', immutable: true }));
 app.use('/emergencia', express.static(path.join(__dirname, 'emergencia')));
 
 app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'index.html')));
@@ -98,6 +109,31 @@ app.get('/api/uploads/:fileName', verificarToken, (req, res) => {
     const message = db.mensagens.find((item) => String(item.arquivo_nome_salvo || '') === fileName);
     if (!message || !canUserAccessMessage(req.userId, message)) {
       return res.status(404).json({ erro: 'Arquivo nao encontrado' });
+    }
+
+    const filePath = path.join(UPLOAD_DIR, fileName);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ erro: 'Arquivo nao encontrado' });
+    res.sendFile(filePath);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.get('/api/uploads/:fileName/thumb', verificarToken, (req, res) => {
+  try {
+    const fileName = path.basename(String(req.params.fileName || ''));
+    if (!fileName) return res.status(404).json({ erro: 'Arquivo nao encontrado' });
+
+    const message = db.mensagens.find((item) => String(item.arquivo_nome_salvo || '') === fileName);
+    if (!message || !canUserAccessMessage(req.userId, message)) {
+      return res.status(404).json({ erro: 'Arquivo nao encontrado' });
+    }
+
+    // Mensagens enviadas antes deste recurso (ou cuja miniatura falhou ao gerar)
+    // nao tem thumb salvo: cai de volta para o arquivo original.
+    if (message.arquivo_thumb_nome_salvo) {
+      const thumbPath = path.join(THUMB_DIR, message.arquivo_thumb_nome_salvo);
+      if (fs.existsSync(thumbPath)) return res.sendFile(thumbPath);
     }
 
     const filePath = path.join(UPLOAD_DIR, fileName);
@@ -1536,9 +1572,9 @@ function getGroupConversationSummary(grupoId, userId) {
   };
 }
 
-function removeFileIfExists(fileName) {
+function removeFileIfExists(fileName, baseDir = UPLOAD_DIR) {
   if (!fileName) return;
-  const filePath = path.join(UPLOAD_DIR, fileName);
+  const filePath = path.join(baseDir, fileName);
   if (fs.existsSync(filePath)) {
     try {
       fs.unlinkSync(filePath);
@@ -2721,6 +2757,7 @@ app.delete('/api/mensagens/:id', verificarToken, (req, res) => {
     registrarAuditoria({ acao: 'apagada', usuarioId: req.userId, mensagemId: messageId, req });
     if (mensagem.tipo === 'arquivo') {
       removeFileIfExists(mensagem.arquivo_nome_salvo);
+      removeFileIfExists(mensagem.arquivo_thumb_nome_salvo, THUMB_DIR);
     }
 
     const payload = {
@@ -2859,7 +2896,7 @@ app.post('/api/mensagens/:id/fixar', verificarToken, (req, res) => {
   }
 });
 
-app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => {
+app.post('/api/upload', verificarToken, upload.single('arquivo'), async (req, res) => {
   try {
     const tipoChat = sanitizeText(req.body?.tipoChat);
     const chatId = Number(req.body?.chatId);
@@ -2883,6 +2920,22 @@ app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => 
       return res.status(400).json({ erro: 'Mensagem respondida inválida para esta conversa' });
     }
 
+    let arquivoThumbNomeSalvo = null;
+    const uploadExt = path.extname(req.file.filename).toLowerCase();
+    if (THUMBNAIL_EXTENSIONS.has(uploadExt)) {
+      try {
+        const candidateThumbName = `${path.basename(req.file.filename, uploadExt)}.jpg`;
+        await sharp(req.file.path)
+          .resize({ width: THUMBNAIL_MAX_WIDTH, withoutEnlargement: true })
+          .flatten({ background: '#ffffff' })
+          .jpeg({ quality: 72 })
+          .toFile(path.join(THUMB_DIR, candidateThumbName));
+        arquivoThumbNomeSalvo = candidateThumbName;
+      } catch (_err) {
+        arquivoThumbNomeSalvo = null;
+      }
+    }
+
     const destinatarioArquivoOnline = tipoChat === 'privado' && isUsuarioOnline(chatId);
     const msg = {
       id: gerarIdMensagem(),
@@ -2896,6 +2949,7 @@ app.post('/api/upload', verificarToken, upload.single('arquivo'), (req, res) => 
       arquivo_nome_original: req.file.originalname,
       arquivo_nome_salvo: req.file.filename,
       arquivo_url: `/uploads/${req.file.filename}`,
+      arquivo_thumb_nome_salvo: arquivoThumbNomeSalvo,
       arquivo_mimetype: req.file.mimetype,
       arquivo_tamanho: req.file.size,
       lido: 0,
