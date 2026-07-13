@@ -8370,10 +8370,23 @@ body:not(.theme-dark) .contact-group-count.zero {
 .plantao-period-edit {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) auto auto;
+  grid-template-columns: minmax(150px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) auto auto;
   gap: 8px;
   align-items: center;
   margin-top: 2px;
+}
+
+.plantao-date-edit {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.plantao-date-edit span {
+  color: var(--muted, #64748b);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .plantao-period-edit .field {

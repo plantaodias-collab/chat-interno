@@ -3738,7 +3738,7 @@ function renderPlantaoPanel() {
             <span>${item.conflito ? 'Conflito de ferias' : escapeHtml(getPlantaoEscreventeNome(item.escreventeId))}</span>
           </div>
           <div class="plantao-scale-actions">
-            <button class="plantao-scale-edit" type="button" onclick="editarPeriodoEscalaPlantao('${escapeHtml(item.inicio)}','${escapeHtml(item.fim)}')" title="Editar escrevente deste periodo" aria-label="Editar escrevente deste periodo">Editar</button>
+            <button class="plantao-scale-edit" type="button" onclick="editarPeriodoEscalaPlantao('${escapeHtml(item.inicio)}','${escapeHtml(item.fim)}')" title="Editar periodo e escrevente" aria-label="Editar periodo e escrevente">Editar</button>
             <button class="plantao-scale-delete" type="button" onclick="excluirPeriodoEscalaPlantao('${escapeHtml(item.inicio)}','${escapeHtml(item.fim)}')" title="Excluir este periodo" aria-label="Excluir este periodo">x</button>
           </div>
           ${isEditing ? `
@@ -3746,6 +3746,14 @@ function renderPlantaoPanel() {
               <select class="field" id="plantaoEditPeriodoSelect">
                 ${editOptions}
               </select>
+              <label class="plantao-date-edit">
+                <span>Inicio</span>
+                <input class="field" id="plantaoEditPeriodoInicio" type="date" value="${escapeHtml(item.inicio)}" />
+              </label>
+              <label class="plantao-date-edit">
+                <span>Fim</span>
+                <input class="field" id="plantaoEditPeriodoFim" type="date" value="${escapeHtml(item.fim)}" />
+              </label>
               <button class="btn btn-primary plantao-edit-save" type="button" onclick="salvarEdicaoPeriodoEscalaPlantao('${escapeHtml(item.inicio)}','${escapeHtml(item.fim)}')">Salvar</button>
               <button class="btn btn-secondary plantao-edit-cancel" type="button" onclick="cancelarEdicaoPeriodoEscalaPlantao()">Cancelar</button>
             </div>
@@ -3839,14 +3847,20 @@ function cancelarEdicaoPeriodoEscalaPlantao() {
 async function salvarEdicaoPeriodoEscalaPlantao(inicio, fim) {
   const select = document.getElementById('plantaoEditPeriodoSelect');
   const escreventeId = Number(select?.value);
+  const novoInicio = document.getElementById('plantaoEditPeriodoInicio')?.value;
+  const novoFim = document.getElementById('plantaoEditPeriodoFim')?.value;
   if (!escreventeId) {
     mostrarNotificacao('Selecione um escrevente para este periodo', 'warning');
+    return;
+  }
+  if (!novoInicio || !novoFim || novoInicio > novoFim) {
+    mostrarNotificacao('Informe um periodo valido', 'warning');
     return;
   }
   plantaoEditingPeriodoKey = '';
   await salvarPlantaoViaApi('/api/plantao/escala-periodo', {
     method: 'POST',
-    body: JSON.stringify({ escreventeId, inicio, fim })
+    body: JSON.stringify({ escreventeId, originalInicio: inicio, originalFim: fim, inicio: novoInicio, fim: novoFim })
   }, 'Periodo atualizado');
 }
 

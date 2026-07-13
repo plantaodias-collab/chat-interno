@@ -1229,6 +1229,39 @@ function cadastrarPlantaoPeriodo(escreventeId, inicio, fim) {
   return state;
 }
 
+function atualizarPlantaoPeriodo(originalInicio, originalFim, escreventeId, inicio, fim) {
+  const state = sanitizeEscalaPlantaoPayload();
+  const selectedId = Number(escreventeId);
+  const originalStart = parseDateOnly(originalInicio);
+  const originalEnd = parseDateOnly(originalFim);
+  const start = parseDateOnly(inicio);
+  const end = parseDateOnly(fim);
+  if (!selectedId || !originalStart || !originalEnd || !start || !end || originalStart > originalEnd || start > end) {
+    const error = new Error('Informe escrevente e periodos validos');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!state.escreventes.some((item) => Number(item.id) === selectedId)) {
+    const error = new Error('Escrevente nao encontrado');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const periodoOriginal = new Set(getDateRange(originalStart, originalEnd));
+  const novoPeriodo = getDateRange(start, end).map((data) => ({
+    data,
+    escreventeId: selectedId,
+    conflito: false,
+    observacao: 'Periodo ajustado manualmente'
+  }));
+  state.escalas = [
+    ...state.escalas.filter((item) => !periodoOriginal.has(item.data) && !novoPeriodo.some((novo) => novo.data === item.data)),
+    ...novoPeriodo
+  ].sort((a, b) => a.data.localeCompare(b.data));
+  saveEscalaPlantaoState(state);
+  return state;
+}
+
 function excluirPlantaoPeriodo(inicio, fim) {
   const state = sanitizeEscalaPlantaoPayload();
   const start = parseDateOnly(inicio);
@@ -2183,7 +2216,9 @@ app.post('/api/plantao/gerar-escala', verificarToken, (req, res) => {
 
 app.post('/api/plantao/escala-periodo', verificarToken, (req, res) => {
   try {
-    const state = cadastrarPlantaoPeriodo(req.body?.escreventeId, req.body?.inicio, req.body?.fim);
+    const state = req.body?.originalInicio || req.body?.originalFim
+      ? atualizarPlantaoPeriodo(req.body?.originalInicio, req.body?.originalFim, req.body?.escreventeId, req.body?.inicio, req.body?.fim)
+      : cadastrarPlantaoPeriodo(req.body?.escreventeId, req.body?.inicio, req.body?.fim);
     io.emit('plantao-escala-atualizada', state);
     res.json(state);
   } catch (err) {
