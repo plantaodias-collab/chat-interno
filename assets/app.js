@@ -2902,6 +2902,18 @@ function getDashboardListHtml(title, subtitle, items, emptyText, emptyIcon = 'ch
   `;
 }
 
+// Quando urgentes e pendentes estao zerados, os dois cards grandes de "nada
+// por aqui" so ocupam espaco sem informar nada de novo. Substitui os dois por
+// uma faixa unica e compacta, sobrando mais espaco pra lista de Recentes.
+function getDashboardQuietBannerHtml() {
+  return `
+    <div class="dashboard-quiet-banner">
+      ${DASHBOARD_EMPTY_ICONS.check}
+      <span>Tudo em dia - sem urgentes ou pendentes.</span>
+    </div>
+  `;
+}
+
 function abrirAtalhoDashboard(button) {
   const tipo = button?.dataset?.chatType;
   const id = button?.dataset?.chatId;
@@ -3057,15 +3069,10 @@ function getWelcomeStateHtml() {
     <div class="empty-state welcome-state dashboard-home">
       <div class="dashboard-hero">
         <div class="dashboard-title-group">
-          <div class="welcome-eyebrow">Painel inicial</div>
           <div class="welcome-title">${getGreeting()}, ${escapeHtml(firstName)}</div>
-          <div class="welcome-copy">Abra rapidamente o que precisa de aten&ccedil;&atilde;o, acompanhe mensagens n&atilde;o lidas e continue conversas recentes sem procurar na lateral.</div>
+          <div class="welcome-copy">Acompanhe o que precisa de aten&ccedil;&atilde;o pelos n&uacute;meros abaixo ou continue uma conversa recente sem procurar na lateral.</div>
           <div class="dashboard-actions">
-            <button class="dashboard-action-btn primary" type="button" onclick="aplicarFiltroDashboard('nao-lidas')">Ver n&atilde;o lidas</button>
-            <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('pendentes')">Pendentes</button>
-            <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('urgentes')">Urgentes</button>
-            <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('online')">Equipe online</button>
-            <button class="dashboard-action-btn" type="button" onclick="abrirBuscaGlobal()">Busca global</button>
+            <button class="dashboard-action-btn primary" type="button" onclick="abrirBuscaGlobal()">Busca global</button>
           </div>
         </div>
       </div>
@@ -3078,9 +3085,12 @@ function getWelcomeStateHtml() {
         ${getDashboardStatCard('urgentes', totalUrgentes, 'urgentes', `urgent ${totalUrgentes > 0 ? 'is-active' : 'is-zero'}`)}
       </div>
       <div class="dashboard-grid">
-        ${getDashboardListHtml('Urgentes', 'aten&ccedil;&atilde;o agora', urgentItems, 'Nenhuma conversa urgente.')}
+        ${urgentItems.length === 0 && pendingItems.length === 0
+          ? getDashboardQuietBannerHtml()
+          : `${getDashboardListHtml('Urgentes', 'aten&ccedil;&atilde;o agora', urgentItems, 'Nenhuma conversa urgente.')}
+             ${getDashboardListHtml('Pendentes', 'acompanhar andamento', pendingItems, 'Nenhuma conversa pendente.')}`
+        }
         ${getDashboardListHtml('N&atilde;o lidas', 'responder primeiro', unreadItems, 'Tudo em dia por aqui.')}
-        ${getDashboardListHtml('Pendentes', 'acompanhar andamento', pendingItems, 'Nenhuma conversa pendente.')}
         ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecer&atilde;o aqui.', 'chat')}
       </div>
     </div>
