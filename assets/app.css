@@ -11214,8 +11214,8 @@ body:not(.theme-dark) .message-status {
 }
 
 body:not(.theme-dark) .message-status.lida {
-  color: #2c5079;
-  background: rgba(44,80,121,.14);
+  color: #2563eb;
+  background: rgba(37,99,235,.14);
 }
 
 /* Twemoji: troca o emoji nativo (que renderiza craquelado/pixelizado no
