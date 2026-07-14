@@ -3,6 +3,7 @@ const http = require('http');
 const socketIO = require('socket.io');
 const cors = require('cors');
 const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const path = require('path');
@@ -1653,7 +1654,19 @@ function cleanupExpiredPdfAttachments(now = new Date()) {
   return { removed, changed };
 }
 
-app.post('/api/login', async (req, res) => {
+// Limita tentativas de login por IP para dificultar forca bruta de senha.
+// Limite generoso de proposito: a equipe toda acessa pelo mesmo IP do
+// cartorio (rede/NAT compartilhada), entao um limite baixo bloquearia todo
+// mundo por causa de alguns erros de digitacao.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas tentativas de login. Tente novamente em alguns minutos.' }
+});
+
+app.post('/api/login', loginLimiter, async (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email);
     const senha = String(req.body?.senha || '');
