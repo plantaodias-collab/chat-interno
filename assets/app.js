@@ -3304,11 +3304,15 @@ function conectarSocket() {
     signalUserActivity(true);
 
     // Em reconexoes (queda de rede, proxy do Railway derrubando conexao ociosa),
-    // recarrega a conversa aberta para trazer mensagens que chegaram durante a
-    // queda. Sem isso, mensagens enviadas enquanto o socket estava desconectado
-    // nao apareciam ate dar reload na pagina.
-    if (jaConectouSocket && chatIdAtual != null && tipoChat) {
-      carregarChat(tipoChat, chatIdAtual, nomeChatAtual);
+    // recarrega contatos/grupos/presenca e a conversa aberta para trazer o que
+    // chegou durante a queda. So recarregar a conversa aberta nao bastava: a
+    // lista lateral (quem esta online, quem da pra chamar) ficava presa no
+    // estado de antes da queda e so se atualizava com F5 na pagina.
+    if (jaConectouSocket) {
+      carregarDadosIniciais();
+      if (chatIdAtual != null && tipoChat) {
+        carregarChat(tipoChat, chatIdAtual, nomeChatAtual);
+      }
     }
     jaConectouSocket = true;
   });
