@@ -1,3 +1,28 @@
+// Captura erros que antes falhavam em silencio (tela "travada" sem nenhuma
+// pista visivel, so descobrivel abrindo o console). Mostra um aviso com a
+// mensagem do erro pra quem estiver usando o chat conseguir repassar o texto
+// exato, em vez de so "travou". Throttle pra nao empilhar toasts se o mesmo
+// erro repetir varias vezes seguidas.
+let ultimoErroCapturadoEm = 0;
+function avisarErroInesperado(origem, detalhe) {
+  const agora = Date.now();
+  console.error(`[erro-${origem}]`, detalhe);
+  if (agora - ultimoErroCapturadoEm < 8000) return;
+  ultimoErroCapturadoEm = agora;
+  const mensagem = detalhe?.message || String(detalhe || 'erro desconhecido');
+  try {
+    mostrarNotificacao(`Erro inesperado (${origem}): ${mensagem}. Recarregue a pagina; se continuar, avise o suporte com essa mensagem.`, 'error');
+  } catch (_e) {
+    // mostrarNotificacao pode nao estar disponivel ainda no boot inicial.
+  }
+}
+window.addEventListener('error', (event) => {
+  avisarErroInesperado('script', event.error || event.message);
+});
+window.addEventListener('unhandledrejection', (event) => {
+  avisarErroInesperado('promise', event.reason);
+});
+
 let socket = null;
 let token = null;
 let usuarioAtual = null;
