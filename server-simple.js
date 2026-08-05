@@ -14,14 +14,30 @@ const sharp = require('sharp');
 
 const app = express();
 const server = http.createServer(app);
+const DEFAULT_APP_ORIGINS = [
+  'https://chat-interno-production-d45a.up.railway.app',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+const APP_ORIGINS = new Set(
+  String(process.env.CORS_ORIGINS || DEFAULT_APP_ORIGINS.join(','))
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+);
+function isAllowedOrigin(origin) {
+  return !origin || APP_ORIGINS.has(origin);
+}
 const io = socketIO(server, {
   cors: {
-    origin: '*',
+    origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
     methods: ['GET', 'POST']
   }
 });
 
-const DEFAULT_SECRET_KEY = 'sua-chave-secreta-aqui-mude-isso';
+// Fallback apenas para desenvolvimento local. Em producao, defina SECRET_KEY
+// no ambiente do Railway; este valor nao e o segredo historico conhecido.
+const DEFAULT_SECRET_KEY = 'chatinterno-local-fallback-7b8f1c4d2e9a6f0b3c5d8e1a4f7b0c2d9e6a3f8b1c4d7e0a5f2b9c6d3e8a1f4';
 const SECRET_KEY = process.env.SECRET_KEY || DEFAULT_SECRET_KEY;
 const SEED_DATA_DIR = path.join(__dirname, 'data');
 const STORAGE_ROOT = process.env.STORAGE_ROOT || process.env.RAILWAY_VOLUME_MOUNT_PATH || (process.env.RAILWAY_ENVIRONMENT ? path.join(os.tmpdir(), 'chatinterno') : __dirname);
@@ -73,9 +89,28 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 if (!fs.existsSync(THUMB_DIR)) fs.mkdirSync(THUMB_DIR, { recursive: true });
 if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) return callback(null, true);
+    return callback(new Error('Origem nao autorizada'));
+  }
+}));
 app.use(compression());
 app.use(express.json());
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.set({
+    'Content-Security-Policy': "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'",
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
+  });
+  if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+    res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
 app.use((req, res, next) => {
   if (req.path === '/' || req.path.endsWith('.html')) {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -370,8 +405,7 @@ function getUsuarioPublico(usuario) {
     admin: usuario.admin,
     ativo: usuario.ativo,
     status: usuario.status || 'disponivel',
-    ultimo_visto_em: usuario.ultimo_visto_em || null,
-    senha_painel: String(usuario.senha_painel || '')
+    ultimo_visto_em: usuario.ultimo_visto_em || null
   };
 }
 
@@ -1693,8 +1727,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
         id: usuario.id,
         email: usuario.email,
         nome: usuario.nome,
-        admin: usuario.admin,
-        senha_painel: String(usuario.senha_painel || '')
+        admin: usuario.admin
       }
     });
   } catch (err) {
@@ -2126,6 +2159,8 @@ app.get('/api/usuarios', verificarToken, (req, res) => {
         email: u.email,
         online: isUsuarioOnline(u.id),
         ultimo_visto_em: u.ultimo_visto_em || null,
+        // Este campo alimenta o painel operacional compartilhado da equipe.
+        // A rota continua protegida por JWT e nao o inclui em /api/me.
         senha_painel: String(u.senha_painel || '')
       }));
 
@@ -3046,10 +3081,28 @@ app.use((err, _req, res, _next) => {
   return res.status(500).json({ erro: 'Erro interno' });
 });
 
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(' ')[1];
+  if (!token) return next(new Error('Autenticacao necessaria'));
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+    const usuario = findActiveUserById(decoded.id);
+    if (!usuario) return next(new Error('Usuario inativo ou inexistente'));
+    socket.data.userId = Number(usuario.id);
+    socket.data.user = usuario;
+    return next();
+  } catch (_err) {
+    return next(new Error('Token invalido'));
+  }
+});
+
 io.on('connection', (socket) => {
-  socket.on('conectar-usuario', (usuarioId) => {
-    const id = Number(usuarioId);
-    const usuario = db.usuarios.find((item) => Number(item.id) === id);
+  const authenticatedUser = socket.data.user;
+  const authenticatedUserId = Number(socket.data.userId);
+
+  socket.on('conectar-usuario', () => {
+    const id = authenticatedUserId;
+    const usuario = authenticatedUser;
     socket.join(`usuario-${id}`);
     socketUsers.set(socket.id, id);
 
@@ -3087,12 +3140,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('entrar-grupo', (data) => {
+    data = { ...(data || {}), usuarioId: authenticatedUserId };
     if (usuarioPodeAcessarGrupo(data.usuarioId, data.grupoId)) {
       socket.join(`grupo-${data.grupoId}`);
     }
   });
 
   socket.on('digitando', (data) => {
+    data = { ...(data || {}), usuarioId: authenticatedUserId, usuarioNome: authenticatedUser.nome };
     const { tipo, chatId, usuarioId, usuarioNome } = data;
     const timeoutKey = `${socket.id}-${tipo}-${chatId}`;
 
@@ -3130,6 +3185,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('mensagem-grupo', (data) => {
+    data = { ...(data || {}), usuarioId: authenticatedUserId, usuarioNome: authenticatedUser.nome };
     if (!usuarioPodeAcessarGrupo(data.usuarioId, data.grupoId)) {
       return;
     }
@@ -3184,6 +3240,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('mensagem-privada', (data) => {
+    data = { ...(data || {}), remetente_id: authenticatedUserId, remetenteNome: authenticatedUser.nome };
+    if (!findActiveUserById(data.destinatario_id)) return;
     if (!isValidReplyTarget({ replyToId: Number(data.replyToId || 0), tipoChat: 'privado', chatId: data.destinatario_id, userId: data.remetente_id })) {
       return;
     }
@@ -3231,7 +3289,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('marcar-lidas', (data) => {
-    const { remetenteId, destinatarioId } = data;
+    const remetenteId = Number(data?.remetenteId);
+    const destinatarioId = authenticatedUserId;
+    if (!remetenteId) return;
     const alterou = marcarComoLidas(remetenteId, destinatarioId);
     limparConversaPrivadaPendente(destinatarioId, remetenteId);
 
@@ -3245,7 +3305,7 @@ io.on('connection', (socket) => {
 
   socket.on('marcar-lidas-grupo', (data) => {
     const grupoId = Number(data?.grupoId);
-    const usuarioId = Number(data?.usuarioId);
+    const usuarioId = authenticatedUserId;
     if (!grupoId || !usuarioId) return;
     if (!usuarioPodeAcessarGrupo(usuarioId, grupoId)) return;
     marcarMensagensGrupoComoLidas(grupoId, usuarioId);

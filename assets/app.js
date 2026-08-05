@@ -3321,7 +3321,7 @@ async function fazerLogin() {
 }
 
 function conectarSocket() {
-  socket = io();
+  socket = io({ auth: { token } });
 
   socket.on('connect', () => {
     mostrarStatusConexao(false);

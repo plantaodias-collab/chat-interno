@@ -5,8 +5,9 @@ Para manter os dados do chat no Railway sem perder mensagens, nomes ou grupos em
 1. Adicione um volume persistente ao servico.
 2. Use o mount path `/app/storage`.
 3. Configure a variavel `STORAGE_ROOT=/app/storage`.
-4. Configure uma `SECRET_KEY` forte e fixa.
-5. Use `/health` como healthcheck.
+4. Configure uma `SECRET_KEY` forte, aleatoria e fixa (nunca use o fallback do codigo).
+5. Opcionalmente, configure `CORS_ORIGINS` com as origens permitidas separadas por virgula.
+6. Use `/health` como healthcheck.
 
 Com essa configuracao:
 
