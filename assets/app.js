@@ -3183,7 +3183,15 @@ async function restaurarSessao() {
     }
 
     token = session.token;
-    usuarioAtual = session.usuario;
+    const response = await fetch('/api/me', {
+      headers: { Authorization: `Bearer ${session.token}` }
+    });
+    if (!response.ok) {
+      limparSessao();
+      return;
+    }
+
+    usuarioAtual = await response.json();
     aplicarSessaoUsuario();
     conectarSocket();
     await carregarPainelSenha();
