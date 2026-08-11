@@ -2811,7 +2811,7 @@ function aplicarSessaoUsuario() {
 const ASSISTENTE_JURIDICO_ATIVO = false;
 
 function avisarAssistenteEmBreve() {
-  mostrarNotificacao('Assistente Jurídico em breve. Ele será liberado quando a IA estiver ativada pelo administrador.', 'info');
+  mostrarNotificacao('IA Cartório Dias em breve. Ela será liberada quando a IA estiver ativada pelo administrador.', 'info');
 }
 
 function abrirAssistenteJuridico() {
@@ -3395,10 +3395,10 @@ function getLegacyWelcomeStateHtml() {
         </div>
       </div>
       ${getBrazilCheerCardHtml()}
-      <section class="assistant-promo" aria-label="Assistente Jurídico em breve">
+      <section class="assistant-promo" aria-label="IA Cartório Dias em breve">
         <div class="assistant-promo-icon">✦</div>
         <div class="assistant-promo-copy">
-          <div class="assistant-promo-title"><span class="assistant-promo-badge">EM BREVE</span> Assistente Jurídico</div>
+          <div class="assistant-promo-title"><span class="assistant-promo-badge">EM BREVE</span> IA Cartório Dias</div>
           <div class="assistant-promo-text">A área está preparada e será liberada quando a IA for ativada pelo administrador.</div>
         </div>
         <button class="assistant-promo-btn" type="button" onclick="abrirAssistenteJuridico()">Em breve <span>◷</span></button>
@@ -3479,8 +3479,8 @@ function getWelcomeStateHtml() {
             ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecer&atilde;o aqui.', 'chat')}
           </div>
         </section>
-        <aside class="dashboard-assistant-card is-coming-soon" aria-label="Assistente Jurídico em breve">
-          <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge coming-soon">EM BREVE</span><h2>Assistente Jurídico</h2><p>Preparado para atender a rotina do cartório assim que for liberado.</p></div></div>
+        <aside class="dashboard-assistant-card is-coming-soon" aria-label="IA Cartório Dias em breve">
+          <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge coming-soon">EM BREVE</span><h2>IA Cartório Dias</h2><p>Preparada para atender a rotina do cartório assim que for liberada.</p></div></div>
           <div class="dashboard-assistant-user"><span>✓</span> Você está identificado como <strong>${escapeHtml(nomeUsuario || emailUsuario || 'colaborador')}</strong>.</div>
           <div class="dashboard-assistant-coming-notice"><span>◷</span><div><strong>Em breve</strong><small>As consultas serão liberadas após a ativação da IA pelo administrador.</small></div></div>
           <label for="dashboardAssistantQuestion"><span data-assistant-mode-label>Orientação</span> do cartório</label>
