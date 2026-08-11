@@ -2808,7 +2808,17 @@ function aplicarSessaoUsuario() {
   if (!tipoChat || !chatIdAtual) renderWelcomeState();
 }
 
+const ASSISTENTE_JURIDICO_ATIVO = false;
+
+function avisarAssistenteEmBreve() {
+  mostrarNotificacao('Assistente Jurídico em breve. Ele será liberado quando a IA estiver ativada pelo administrador.', 'info');
+}
+
 function abrirAssistenteJuridico() {
+  if (!ASSISTENTE_JURIDICO_ATIVO) {
+    avisarAssistenteEmBreve();
+    return;
+  }
   if (!usuarioAtual) return;
   const panel = document.getElementById('assistantNativePanel');
   const firstName = String(usuarioAtual.nome || usuarioAtual.email || 'colaborador').trim().split(/\s+/)[0];
@@ -3021,6 +3031,10 @@ async function registrarUsoAssistenteBloqueado() {
 }
 
 function responderPerguntaAssistente() {
+  if (!ASSISTENTE_JURIDICO_ATIVO) {
+    avisarAssistenteEmBreve();
+    return;
+  }
   const input = document.getElementById('assistantQuestion');
   const question = String(input?.value || '').trim();
   if (!question) {
@@ -3081,6 +3095,10 @@ async function copiarRespostaAssistente() {
 }
 
 function responderPerguntaDashboard() {
+  if (!ASSISTENTE_JURIDICO_ATIVO) {
+    avisarAssistenteEmBreve();
+    return;
+  }
   const input = document.getElementById('dashboardAssistantQuestion');
   const question = String(input?.value || '').trim();
   if (!question) {
@@ -3377,13 +3395,13 @@ function getLegacyWelcomeStateHtml() {
         </div>
       </div>
       ${getBrazilCheerCardHtml()}
-      <section class="assistant-promo" aria-label="Novo Assistente Jurídico">
+      <section class="assistant-promo" aria-label="Assistente Jurídico em breve">
         <div class="assistant-promo-icon">✦</div>
         <div class="assistant-promo-copy">
-          <div class="assistant-promo-title"><span class="assistant-promo-badge">NOVO</span> Assistente Jurídico</div>
-          <div class="assistant-promo-text">Tire dúvidas sobre documentos, procedimentos e atendimento do cartório. Você já está identificado.</div>
+          <div class="assistant-promo-title"><span class="assistant-promo-badge">EM BREVE</span> Assistente Jurídico</div>
+          <div class="assistant-promo-text">A área está preparada e será liberada quando a IA for ativada pelo administrador.</div>
         </div>
-        <button class="assistant-promo-btn" type="button" onclick="abrirAssistenteJuridico()">Experimentar agora <span>→</span></button>
+        <button class="assistant-promo-btn" type="button" onclick="abrirAssistenteJuridico()">Em breve <span>◷</span></button>
       </section>
       <div class="welcome-stats dashboard-stats">
         <div class="welcome-stat-card ${totalOnline > 0 ? 'is-active' : 'is-zero'}">
@@ -3461,15 +3479,16 @@ function getWelcomeStateHtml() {
             ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecer&atilde;o aqui.', 'chat')}
           </div>
         </section>
-        <aside class="dashboard-assistant-card" aria-label="Assistente Jurídico">
-          <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge">USO INTERNO</span><h2>Assistente Jurídico</h2><p>Orientação segura para sua rotina no cartório.</p></div></div>
+        <aside class="dashboard-assistant-card is-coming-soon" aria-label="Assistente Jurídico em breve">
+          <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge coming-soon">EM BREVE</span><h2>Assistente Jurídico</h2><p>Preparado para atender a rotina do cartório assim que for liberado.</p></div></div>
           <div class="dashboard-assistant-user"><span>✓</span> Você está identificado como <strong>${escapeHtml(nomeUsuario || emailUsuario || 'colaborador')}</strong>.</div>
+          <div class="dashboard-assistant-coming-notice"><span>◷</span><div><strong>Em breve</strong><small>As consultas serão liberadas após a ativação da IA pelo administrador.</small></div></div>
           <label for="dashboardAssistantQuestion"><span data-assistant-mode-label>Orientação</span> do cartório</label>
-          <div class="assistant-mode-switch dashboard-mode-switch" role="group" aria-label="Tipo de ajuda"><button class="${modoAssistente === 'orientacao' ? 'active' : ''}" type="button" data-assistant-mode="orientacao" onclick="definirModoAssistente('orientacao')">Orientação</button><button class="${modoAssistente === 'email' ? 'active' : ''}" type="button" data-assistant-mode="email" onclick="definirModoAssistente('email')">E-mail / WhatsApp</button><button class="${modoAssistente === 'nota' ? 'active' : ''}" type="button" data-assistant-mode="nota" onclick="definirModoAssistente('nota')">Nota</button></div>
-          <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" placeholder="Escreva sua dúvida registral..." onkeydown="enviarPerguntaDashboard(event)" /><button type="button" onclick="responderPerguntaDashboard()" aria-label="Consultar assistente">→</button></div>
-          <div class="dashboard-assistant-shortcuts"><button type="button" onclick="consultarServicoDashboard('Quais documentos são necessários para habilitação de casamento?')">Casamento</button><button type="button" onclick="consultarServicoDashboard('Quero orientar uma solicitação de certidão')">Certidões</button><button type="button" onclick="consultarServicoDashboard('Preciso analisar um estatuto para registro no RCPJ')">Pessoas Jurídicas</button><button type="button" onclick="definirModoAssistente('email'); usarAtalhoDashboard('Preciso responder um e-mail sobre documentos de casamento')">Responder e-mail</button></div>
+          <div class="assistant-mode-switch dashboard-mode-switch" role="group" aria-label="Tipo de ajuda"><button class="${modoAssistente === 'orientacao' ? 'active' : ''}" type="button" disabled>Orientação</button><button class="${modoAssistente === 'email' ? 'active' : ''}" type="button" disabled>E-mail / WhatsApp</button><button class="${modoAssistente === 'nota' ? 'active' : ''}" type="button" disabled>Nota</button></div>
+          <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" placeholder="Consultas disponíveis em breve" disabled /><button type="button" disabled aria-label="Assistente indisponível">→</button></div>
+          <div class="dashboard-assistant-shortcuts"><button type="button" disabled>Casamento</button><button type="button" disabled>Certidões</button><button type="button" disabled>Pessoas Jurídicas</button><button type="button" disabled>Responder e-mail</button></div>
           <div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><strong id="dashboardAssistantTitle" class="dashboard-assistant-answer-title"></strong><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div><div class="dashboard-assistant-next"><strong>Próximo passo</strong><span id="dashboardAssistantNext"></span></div><a class="assistant-response-link hidden" id="dashboardAssistantLink" target="_blank" rel="noopener noreferrer"></a></div>
-          <button class="dashboard-assistant-expand" type="button" onclick="abrirAssistenteJuridico()">Abrir tela completa <span>↗</span></button>
+          <button class="dashboard-assistant-expand" type="button" onclick="abrirAssistenteJuridico()">Disponível em breve <span>◷</span></button>
         </aside>
       </div>
     </div>
