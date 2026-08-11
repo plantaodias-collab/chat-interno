@@ -63,8 +63,6 @@ let conversationSearchRemoteMatches = new Set();
 let conversationSearchTimer = null;
 let conversationRenderTimer = null;
 let sidebarRenderFrame = null;
-const ASSISTANT_JURIDICO_URL = 'https://assistente-dias-de-castro.cartoriodias.chatgpt.site';
-let assistantJuridicoWindow = null;
 let pendingSidebarGroupsRender = false;
 let pendingSidebarContactsRender = false;
 let conversationFilter = 'todos';
@@ -2812,28 +2810,144 @@ function aplicarSessaoUsuario() {
 
 function abrirAssistenteJuridico() {
   if (!usuarioAtual) return;
-  if (!assistantJuridicoWindow || assistantJuridicoWindow.closed) {
-    assistantJuridicoWindow = window.open(ASSISTANT_JURIDICO_URL, 'assistente-juridico');
-  }
-  if (!assistantJuridicoWindow) {
-    window.location.assign(ASSISTANT_JURIDICO_URL);
-    return;
-  }
-  assistantJuridicoWindow.focus();
+  const panel = document.getElementById('assistantNativePanel');
+  const firstName = String(usuarioAtual.nome || usuarioAtual.email || 'colaborador').trim().split(/\s+/)[0];
+  document.getElementById('assistantNativeUser').textContent = usuarioAtual.nome || usuarioAtual.email;
+  document.getElementById('assistantFirstName').textContent = firstName;
+  document.getElementById('assistantNativeEmail').textContent = usuarioAtual.email || 'Sessão do Chat Interno';
+  panel?.classList.remove('hidden');
+  document.body.classList.add('assistant-native-open');
+  setTimeout(() => document.getElementById('assistantQuestion')?.focus(), 80);
 }
 
-function enviarUsuarioParaAssistente(event) {
-  if (event.origin !== ASSISTANT_JURIDICO_URL || event.data?.type !== 'assistente-ready' || !usuarioAtual) return;
-  event.source?.postMessage({
-    type: 'chat-interno-user',
-    user: { nome: usuarioAtual.nome, email: usuarioAtual.email, id: usuarioAtual.id }
-  }, ASSISTANT_JURIDICO_URL);
+function fecharAssistenteJuridico() {
+  document.getElementById('assistantNativePanel')?.classList.add('hidden');
+  document.body.classList.remove('assistant-native-open');
 }
-window.addEventListener('message', enviarUsuarioParaAssistente);
+
+function getRespostaAssistente(question) {
+  const normalized = String(question || '').toLowerCase();
+  const isSensitive = /recusa|falso|falsidade|compet[êe]ncia|suscita[cç][ãa]o|estado civil|filia[cç][ãa]o|incapacidade|diverg[êe]ncia relevante/.test(normalized);
+  if (isSensitive) {
+    return {
+      level: 'OFICIAL',
+      text: 'Esta situação deve ser submetida ao Oficial. Ela pode envolver interpretação jurídica relevante, competência, responsabilidade da serventia ou reflexos no direito de terceiros. Reúna os documentos e descreva objetivamente a divergência antes do encaminhamento.',
+      basis: 'Encaminhamento preventivo conforme o protocolo interno de segurança registral.'
+    };
+  }
+  if (/casamento|habilita/.test(normalized)) {
+    return {
+      level: 'ROTINA',
+      text: 'Para iniciar a habilitação, confira a identificação dos nubentes, as certidões de nascimento ou de casamento com as averbações cabíveis e o comprovante de residência. A conferência final depende do estado civil e da documentação apresentada.',
+      basis: 'Lei nº 6.015/1973 e Código de Normas da CGJ/SC: confirmar a redação vigente na base normativa interna.'
+    };
+  }
+  if (/estatuto|rcpj|associa/.test(normalized)) {
+    return {
+      level: 'ATENÇÃO',
+      text: 'Confira a versão consolidada do estatuto, convocação, quórum, lista de presença, assinaturas e a compatibilidade da ata com as regras estatutárias. Se houver divergência entre o estatuto e a deliberação, encaminhe ao Oficial antes de concluir a qualificação.',
+      basis: 'Código Civil, Lei nº 6.015/1973 e normas aplicáveis ao RCPJ; verificar a base interna antes da resposta definitiva.'
+    };
+  }
+  if (/nota devolutiva|exig[êe]ncia/.test(normalized)) {
+    return {
+      level: 'ATENÇÃO',
+      text: 'A nota devolutiva deve apontar o problema encontrado, indicar de forma clara a providência necessária e mencionar a base normativa quando ela estiver localizada. Não formule exigência sem suporte legal ou normativo.',
+      basis: 'Protocolo interno de qualificação e legislação aplicável ao ato solicitado.'
+    };
+  }
+  return {
+    level: 'ATENÇÃO',
+    text: 'A orientação inicial é conferir os documentos apresentados, o procedimento correspondente na base normativa interna e os modelos aprovados pela serventia. Se houver situação excepcional, ausência de regra clara ou risco registral, submeta ao Oficial.',
+    basis: 'Consultar a legislação aplicável, o Código de Normas da CGJ/SC e as orientações internas vigentes.'
+  };
+}
+
+function responderPerguntaAssistente() {
+  const input = document.getElementById('assistantQuestion');
+  const question = String(input?.value || '').trim();
+  if (!question) {
+    input?.focus();
+    mostrarNotificacao('Escreva uma pergunta para o Assistente.', 'warning');
+    return;
+  }
+  const response = getRespostaAssistente(question);
+  const answer = document.getElementById('assistantAnswer');
+  const level = document.getElementById('assistantAnswerLevel');
+  level.textContent = response.level;
+  level.className = `assistant-answer-level ${response.level.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
+  document.getElementById('assistantAnswerQuestion').textContent = question;
+  document.getElementById('assistantAnswerText').textContent = response.text;
+  document.getElementById('assistantAnswerBasis').textContent = response.basis;
+  answer?.classList.remove('hidden');
+  answer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function enviarPerguntaAssistente(event) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    responderPerguntaAssistente();
+  }
+}
+
+function usarAtalhoAssistente(question) {
+  const input = document.getElementById('assistantQuestion');
+  input.value = question;
+  responderPerguntaAssistente();
+}
+
+async function copiarRespostaAssistente() {
+  const text = document.getElementById('assistantAnswerText')?.textContent || '';
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    mostrarNotificacao('Resposta copiada.', 'success');
+  } catch (_err) {
+    mostrarNotificacao('Não foi possível copiar a resposta.', 'warning');
+  }
+}
+
+function responderPerguntaDashboard() {
+  const input = document.getElementById('dashboardAssistantQuestion');
+  const question = String(input?.value || '').trim();
+  if (!question) {
+    input?.focus();
+    return;
+  }
+  const response = getRespostaAssistente(question);
+  const answer = document.getElementById('dashboardAssistantAnswer');
+  const level = document.getElementById('dashboardAssistantLevel');
+  level.textContent = response.level;
+  level.className = `dashboard-assistant-level ${response.level.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
+  document.getElementById('dashboardAssistantText').textContent = response.text;
+  document.getElementById('dashboardAssistantBasis').textContent = response.basis;
+  answer?.classList.remove('hidden');
+}
+
+function enviarPerguntaDashboard(event) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    responderPerguntaDashboard();
+  }
+}
+
+function usarAtalhoDashboard(question) {
+  const input = document.getElementById('dashboardAssistantQuestion');
+  input.value = question;
+  responderPerguntaDashboard();
+}
 
 // Os botões do index.html usam onclick inline; exponha explicitamente as ações
 // para funcionar também quando o bundle é servido em modo estrito/cacheado.
 window.abrirAssistenteJuridico = abrirAssistenteJuridico;
+window.fecharAssistenteJuridico = fecharAssistenteJuridico;
+window.enviarPerguntaAssistente = enviarPerguntaAssistente;
+window.responderPerguntaAssistente = responderPerguntaAssistente;
+window.usarAtalhoAssistente = usarAtalhoAssistente;
+window.copiarRespostaAssistente = copiarRespostaAssistente;
+window.enviarPerguntaDashboard = enviarPerguntaDashboard;
+window.responderPerguntaDashboard = responderPerguntaDashboard;
+window.usarAtalhoDashboard = usarAtalhoDashboard;
 
 async function carregarWorkflow() {
   try {
@@ -3127,31 +3241,42 @@ function getWelcomeStateHtml() {
 
   return `
     <div class="empty-state welcome-state dashboard-home">
-      <div class="dashboard-hero">
-        <div class="dashboard-title-group">
-          <div class="welcome-title">${getGreeting()}, ${escapeHtml(firstName)}</div>
-          <div class="welcome-copy">Acompanhe o que precisa de aten&ccedil;&atilde;o pelos n&uacute;meros abaixo ou continue uma conversa recente sem procurar na lateral.</div>
-          <div class="dashboard-actions">
-            <button class="dashboard-action-btn primary" type="button" onclick="abrirBuscaGlobal()">Busca global</button>
+      <div class="dashboard-split">
+        <section class="dashboard-conversations-card">
+          <div class="dashboard-hero compact">
+            <div class="dashboard-title-group">
+              <div class="welcome-eyebrow">CENTRAL DE CONVERSAS</div>
+              <div class="welcome-title">${getGreeting()}, ${escapeHtml(firstName)}</div>
+              <div class="welcome-copy">Acompanhe as prioridades e continue as conversas recentes.</div>
+              <div class="dashboard-actions"><button class="dashboard-action-btn primary" type="button" onclick="abrirBuscaGlobal()">Busca global</button></div>
+            </div>
           </div>
-        </div>
-      </div>
-      ${getBrazilCheerCardHtml()}
-      <div class="welcome-stats dashboard-stats">
-        ${getDashboardStatCard('online agora', totalOnline, 'online', totalOnline > 0 ? 'is-active' : 'is-zero')}
-        ${getDashboardStatCard('n&atilde;o lidas', totalNaoLidas, 'nao-lidas', totalNaoLidas > 0 ? 'is-active' : 'is-zero')}
-        ${getDashboardStatCard('grupos', totalGrupos, 'grupos', '')}
-        ${getDashboardStatCard('pendentes', totalPendentes, 'pendentes', `priority ${totalPendentes > 0 ? 'is-active' : 'is-zero'}`)}
-        ${getDashboardStatCard('urgentes', totalUrgentes, 'urgentes', `urgent ${totalUrgentes > 0 ? 'is-active' : 'is-zero'}`)}
-      </div>
-      <div class="dashboard-grid">
-        ${urgentItems.length === 0 && pendingItems.length === 0
-          ? getDashboardQuietBannerHtml()
-          : `${getDashboardListHtml('Urgentes', 'aten&ccedil;&atilde;o agora', urgentItems, 'Nenhuma conversa urgente.')}
-             ${getDashboardListHtml('Pendentes', 'acompanhar andamento', pendingItems, 'Nenhuma conversa pendente.')}`
-        }
-        ${getDashboardListHtml('N&atilde;o lidas', 'responder primeiro', unreadItems, 'Tudo em dia por aqui.')}
-        ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecer&atilde;o aqui.', 'chat')}
+          <div class="welcome-stats dashboard-stats">
+            ${getDashboardStatCard('online agora', totalOnline, 'online', totalOnline > 0 ? 'is-active' : 'is-zero')}
+            ${getDashboardStatCard('n&atilde;o lidas', totalNaoLidas, 'nao-lidas', totalNaoLidas > 0 ? 'is-active' : 'is-zero')}
+            ${getDashboardStatCard('grupos', totalGrupos, 'grupos', '')}
+            ${getDashboardStatCard('pendentes', totalPendentes, 'pendentes', `priority ${totalPendentes > 0 ? 'is-active' : 'is-zero'}`)}
+            ${getDashboardStatCard('urgentes', totalUrgentes, 'urgentes', `urgent ${totalUrgentes > 0 ? 'is-active' : 'is-zero'}`)}
+          </div>
+          <div class="dashboard-grid">
+            ${urgentItems.length === 0 && pendingItems.length === 0
+              ? getDashboardQuietBannerHtml()
+              : `${getDashboardListHtml('Urgentes', 'aten&ccedil;&atilde;o agora', urgentItems, 'Nenhuma conversa urgente.')}
+                 ${getDashboardListHtml('Pendentes', 'acompanhar andamento', pendingItems, 'Nenhuma conversa pendente.')}`
+            }
+            ${getDashboardListHtml('N&atilde;o lidas', 'responder primeiro', unreadItems, 'Tudo em dia por aqui.')}
+            ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecer&atilde;o aqui.', 'chat')}
+          </div>
+        </section>
+        <aside class="dashboard-assistant-card" aria-label="Assistente Jurídico">
+          <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge">NOVO</span><h2>Assistente Jurídico</h2><p>Orientação interna para sua rotina no cartório.</p></div></div>
+          <div class="dashboard-assistant-user"><span>✓</span> Você está identificado como <strong>${escapeHtml(nomeUsuario || emailUsuario || 'colaborador')}</strong>.</div>
+          <label for="dashboardAssistantQuestion">Em que posso ajudar?</label>
+          <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" placeholder="Escreva sua dúvida..." onkeydown="enviarPerguntaDashboard(event)" /><button type="button" onclick="responderPerguntaDashboard()">→</button></div>
+          <div class="dashboard-assistant-shortcuts"><button type="button" onclick="usarAtalhoDashboard('Quais documentos são necessários para habilitação de casamento?')">Casamento</button><button type="button" onclick="usarAtalhoDashboard('Preciso analisar um estatuto para registro no RCPJ')">Estatuto</button><button type="button" onclick="usarAtalhoDashboard('Preciso preparar uma nota devolutiva')">Nota devolutiva</button></div>
+          <div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div></div>
+          <button class="dashboard-assistant-expand" type="button" onclick="abrirAssistenteJuridico()">Abrir tela completa <span>↗</span></button>
+        </aside>
       </div>
     </div>
   `;
