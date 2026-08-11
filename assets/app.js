@@ -2856,6 +2856,16 @@ function getRespostaAssistente(question, mode = modoAssistente) {
     };
   }
   if (mode === 'email') {
+    if (/certidao/.test(normalized)) {
+      return {
+        level: 'ROTINA',
+        title: 'Minuta de resposta para e-mail ou WhatsApp',
+        text: 'Olá, [Nome].\n\nA solicitação de certidão pode ser realizada pelo portal oficial de forma rápida e segura. Caso prefira atendimento presencial, pedimos que informe qual certidão necessita e os dados disponíveis para localizarmos o registro.\n\nFicamos à disposição.\n\nCartório Dias de Castro',
+        basis: 'Minuta de atendimento: não confirme a localização do registro sem a consulta correspondente.',
+        nextStep: 'Substitua [Nome] e envie o link oficial de solicitação quando for adequado.',
+        link: { href: 'https://serp.registros.org.br/', label: 'Abrir solicitação oficial de certidão (SERP)' }
+      };
+    }
     if (/casamento|habilitacao/.test(normalized)) {
       return {
         level: 'ROTINA',
@@ -2900,6 +2910,53 @@ function getRespostaAssistente(question, mode = modoAssistente) {
       nextStep: 'Identifique o estado civil de cada nubente antes de informar a relação final de documentos.'
     };
   }
+  if (/certidao|segunda via|2a via/.test(normalized)) {
+    return {
+      level: 'ROTINA',
+      title: 'Certidões — orientação ao atendimento',
+      text: 'Identifique qual certidão é necessária e solicite os dados disponíveis para localização do registro. Quando o usuário preferir o serviço online, indique o portal oficial de solicitações. Não confirme prazo, valor ou existência do registro antes da consulta apropriada.',
+      basis: 'Orientação de atendimento do cartório e canal oficial de solicitação eletrônica.',
+      nextStep: 'Informe ao usuário o canal adequado e confira se a certidão pretendida exige dado complementar.',
+      link: { href: 'https://serp.registros.org.br/', label: 'Abrir solicitações de certidões (SERP)' }
+    };
+  }
+  if (/nascimento|recem nascido|recem-nascido/.test(normalized)) {
+    return {
+      level: 'ROTINA',
+      title: 'Registro de nascimento — triagem inicial',
+      text: 'Para a triagem, confira a declaração de nascido vivo quando aplicável, a identificação dos responsáveis e os elementos necessários para o assento. Situações com ausência de documentação, reconhecimento de paternidade, declaração especial ou divergência de dados devem ser apresentadas ao Oficial antes da orientação definitiva.',
+      basis: 'Lei nº 6.015/1973 e Código de Normas da CGJ/SC: conferir a regra vigente e os documentos do caso.',
+      nextStep: 'Registre quais documentos foram apresentados e identifique qualquer divergência de nome, filiação ou data.'
+    };
+  }
+  if (/obito|plantao/.test(normalized)) {
+    return {
+      level: 'ATENÇÃO',
+      title: 'Registro de óbito — atendimento e plantão',
+      text: 'Confirme a urgência, a declaração de óbito e a identificação de quem fará a declaração. No plantão, concentre a orientação no registro de óbito e encaminhe situações incomuns ou inconsistências documentais ao responsável pelo serviço.',
+      basis: 'Rotina de atendimento do cartório e legislação aplicável ao Registro Civil das Pessoas Naturais.',
+      nextStep: 'Confirme o horário e canal de plantão vigente antes de orientar o usuário.',
+      link: { href: 'https://registrocivilchapeco.com.br/', label: 'Consultar canais e plantão no site do cartório' }
+    };
+  }
+  if (/averb|anotacao/.test(normalized)) {
+    return {
+      level: 'ATENÇÃO',
+      title: 'Anotações e averbações — conferência inicial',
+      text: 'Identifique o assento que será alterado e o título que fundamenta o pedido. Confira se o documento é compatível com o ato pretendido, se os dados coincidem com o registro e se há averbações anteriores relevantes. Não antecipe o resultado da qualificação.',
+      basis: 'Lei nº 6.015/1973, Código de Normas da CGJ/SC e título apresentado.',
+      nextStep: 'Separe o assento, o título base e as divergências encontradas para a qualificação.'
+    };
+  }
+  if (/titulo|rtd|notificacao extrajudicial/.test(normalized)) {
+    return {
+      level: 'ATENÇÃO',
+      title: 'Títulos e Documentos — triagem inicial',
+      text: 'Confirme a natureza do instrumento, a finalidade do registro, a integridade do documento e a identificação das partes. Verifique se há anexos, assinaturas e elementos indispensáveis para a publicidade pretendida. Casos de competência duvidosa ou eficácia perante terceiros devem ser submetidos ao Oficial.',
+      basis: 'Lei nº 6.015/1973 e procedimento interno para Registro de Títulos e Documentos.',
+      nextStep: 'Descreva o tipo de documento e a finalidade informada pelo apresentante antes de orientar os próximos passos.'
+    };
+  }
   if (/estatuto|rcpj|associa/.test(normalized)) {
     return {
       level: 'ATENÇÃO',
@@ -2931,7 +2988,7 @@ function definirModoAssistente(mode) {
   modoAssistente = ['orientacao', 'email', 'nota'].includes(mode) ? mode : 'orientacao';
   const config = {
     orientacao: { label: 'Orientação', placeholder: 'Ex.: quais documentos preciso para habilitação de casamento?' },
-    email: { label: 'Resposta de e-mail', placeholder: 'Ex.: preciso responder sobre documentos de casamento' },
+    email: { label: 'Resposta para e-mail / WhatsApp', placeholder: 'Ex.: preciso responder sobre documentos de casamento' },
     nota: { label: 'Nota devolutiva', placeholder: 'Descreva a pendência encontrada no documento...' }
   }[modoAssistente];
   document.querySelectorAll('[data-assistant-mode]').forEach((button) => {
@@ -2944,6 +3001,11 @@ function definirModoAssistente(mode) {
   document.querySelectorAll('[data-assistant-mode-label]').forEach((element) => {
     element.textContent = config.label;
   });
+}
+
+function consultarServicoAssistente(question) {
+  definirModoAssistente('orientacao');
+  usarAtalhoAssistente(question);
 }
 
 async function registrarUsoAssistenteBloqueado() {
@@ -2976,6 +3038,15 @@ function responderPerguntaAssistente() {
   document.getElementById('assistantAnswerText').textContent = response.text;
   document.getElementById('assistantAnswerBasis').textContent = response.basis;
   document.getElementById('assistantAnswerNext').textContent = response.nextStep || '';
+  const answerLink = document.getElementById('assistantAnswerLink');
+  if (response.link?.href) {
+    answerLink.href = response.link.href;
+    answerLink.textContent = `↗ ${response.link.label}`;
+    answerLink.classList.remove('hidden');
+  } else {
+    answerLink.removeAttribute('href');
+    answerLink.classList.add('hidden');
+  }
   answer?.classList.remove('hidden');
   answer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -3026,6 +3097,15 @@ function responderPerguntaDashboard() {
   document.getElementById('dashboardAssistantText').textContent = response.text;
   document.getElementById('dashboardAssistantBasis').textContent = response.basis;
   document.getElementById('dashboardAssistantNext').textContent = response.nextStep || '';
+  const dashboardLink = document.getElementById('dashboardAssistantLink');
+  if (response.link?.href) {
+    dashboardLink.href = response.link.href;
+    dashboardLink.textContent = `↗ ${response.link.label}`;
+    dashboardLink.classList.remove('hidden');
+  } else {
+    dashboardLink.removeAttribute('href');
+    dashboardLink.classList.add('hidden');
+  }
   answer?.classList.remove('hidden');
 }
 
@@ -3042,6 +3122,11 @@ function usarAtalhoDashboard(question) {
   responderPerguntaDashboard();
 }
 
+function consultarServicoDashboard(question) {
+  definirModoAssistente('orientacao');
+  usarAtalhoDashboard(question);
+}
+
 // Os botões do index.html usam onclick inline; exponha explicitamente as ações
 // para funcionar também quando o bundle é servido em modo estrito/cacheado.
 window.abrirAssistenteJuridico = abrirAssistenteJuridico;
@@ -3051,9 +3136,11 @@ window.responderPerguntaAssistente = responderPerguntaAssistente;
 window.usarAtalhoAssistente = usarAtalhoAssistente;
 window.copiarRespostaAssistente = copiarRespostaAssistente;
 window.definirModoAssistente = definirModoAssistente;
+window.consultarServicoAssistente = consultarServicoAssistente;
 window.enviarPerguntaDashboard = enviarPerguntaDashboard;
 window.responderPerguntaDashboard = responderPerguntaDashboard;
 window.usarAtalhoDashboard = usarAtalhoDashboard;
+window.consultarServicoDashboard = consultarServicoDashboard;
 
 async function carregarWorkflow() {
   try {
@@ -3378,10 +3465,10 @@ function getWelcomeStateHtml() {
           <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge">USO INTERNO</span><h2>Assistente Jurídico</h2><p>Orientação segura para sua rotina no cartório.</p></div></div>
           <div class="dashboard-assistant-user"><span>✓</span> Você está identificado como <strong>${escapeHtml(nomeUsuario || emailUsuario || 'colaborador')}</strong>.</div>
           <label for="dashboardAssistantQuestion"><span data-assistant-mode-label>Orientação</span> do cartório</label>
-          <div class="assistant-mode-switch dashboard-mode-switch" role="group" aria-label="Tipo de ajuda"><button class="${modoAssistente === 'orientacao' ? 'active' : ''}" type="button" data-assistant-mode="orientacao" onclick="definirModoAssistente('orientacao')">Orientação</button><button class="${modoAssistente === 'email' ? 'active' : ''}" type="button" data-assistant-mode="email" onclick="definirModoAssistente('email')">E-mail</button><button class="${modoAssistente === 'nota' ? 'active' : ''}" type="button" data-assistant-mode="nota" onclick="definirModoAssistente('nota')">Nota</button></div>
+          <div class="assistant-mode-switch dashboard-mode-switch" role="group" aria-label="Tipo de ajuda"><button class="${modoAssistente === 'orientacao' ? 'active' : ''}" type="button" data-assistant-mode="orientacao" onclick="definirModoAssistente('orientacao')">Orientação</button><button class="${modoAssistente === 'email' ? 'active' : ''}" type="button" data-assistant-mode="email" onclick="definirModoAssistente('email')">E-mail / WhatsApp</button><button class="${modoAssistente === 'nota' ? 'active' : ''}" type="button" data-assistant-mode="nota" onclick="definirModoAssistente('nota')">Nota</button></div>
           <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" placeholder="Escreva sua dúvida registral..." onkeydown="enviarPerguntaDashboard(event)" /><button type="button" onclick="responderPerguntaDashboard()" aria-label="Consultar assistente">→</button></div>
-          <div class="dashboard-assistant-shortcuts"><button type="button" onclick="usarAtalhoDashboard('Quais documentos são necessários para habilitação de casamento?')">Casamento</button><button type="button" onclick="usarAtalhoDashboard('Preciso analisar um estatuto para registro no RCPJ')">Estatuto</button><button type="button" onclick="definirModoAssistente('email'); usarAtalhoDashboard('Preciso responder um e-mail sobre documentos de casamento')">Responder e-mail</button></div>
-          <div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><strong id="dashboardAssistantTitle" class="dashboard-assistant-answer-title"></strong><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div><div class="dashboard-assistant-next"><strong>Próximo passo</strong><span id="dashboardAssistantNext"></span></div></div>
+          <div class="dashboard-assistant-shortcuts"><button type="button" onclick="consultarServicoDashboard('Quais documentos são necessários para habilitação de casamento?')">Casamento</button><button type="button" onclick="consultarServicoDashboard('Quero orientar uma solicitação de certidão')">Certidões</button><button type="button" onclick="consultarServicoDashboard('Preciso analisar um estatuto para registro no RCPJ')">Pessoas Jurídicas</button><button type="button" onclick="definirModoAssistente('email'); usarAtalhoDashboard('Preciso responder um e-mail sobre documentos de casamento')">Responder e-mail</button></div>
+          <div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><strong id="dashboardAssistantTitle" class="dashboard-assistant-answer-title"></strong><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div><div class="dashboard-assistant-next"><strong>Próximo passo</strong><span id="dashboardAssistantNext"></span></div><a class="assistant-response-link hidden" id="dashboardAssistantLink" target="_blank" rel="noopener noreferrer"></a></div>
           <button class="dashboard-assistant-expand" type="button" onclick="abrirAssistenteJuridico()">Abrir tela completa <span>↗</span></button>
         </aside>
       </div>
