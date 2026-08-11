@@ -5559,7 +5559,7 @@ body.theme-dark .assistant-header-badge { background:#3aa979; color:#092418; }
 
 .dashboard-split {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(310px, .9fr);
+  grid-template-columns: minmax(0, 1.5fr) minmax(370px, 1fr);
   gap: 18px;
   align-items: start;
 }
