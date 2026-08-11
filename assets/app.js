@@ -64,6 +64,7 @@ let conversationSearchTimer = null;
 let conversationRenderTimer = null;
 let sidebarRenderFrame = null;
 const ASSISTANT_JURIDICO_URL = 'https://assistente-dias-de-castro.cartoriodias.chatgpt.site';
+let assistantJuridicoWindow = null;
 let pendingSidebarGroupsRender = false;
 let pendingSidebarContactsRender = false;
 let conversationFilter = 'todos';
@@ -2810,31 +2811,26 @@ function aplicarSessaoUsuario() {
 }
 
 function abrirAssistenteJuridico() {
-  const panel = document.getElementById('assistantPanel');
-  const frame = document.getElementById('assistantFrame');
-  const userLabel = document.getElementById('assistantPanelUser');
-  if (!panel || !frame || !usuarioAtual) return;
-  panel.classList.remove('hidden');
-  userLabel.textContent = `${usuarioAtual.nome} · ${usuarioAtual.email}`;
-  if (!frame.src || frame.src === 'about:blank') frame.src = ASSISTANT_JURIDICO_URL;
-  frame.addEventListener('load', () => {
-    frame.contentWindow?.postMessage({
-      type: 'chat-interno-user',
-      user: { nome: usuarioAtual.nome, email: usuarioAtual.email, id: usuarioAtual.id }
-    }, ASSISTANT_JURIDICO_URL);
-  }, { once: true });
-  document.body.classList.add('assistant-open');
+  if (!usuarioAtual) return;
+  if (!assistantJuridicoWindow || assistantJuridicoWindow.closed) {
+    assistantJuridicoWindow = window.open(ASSISTANT_JURIDICO_URL, 'assistente-juridico');
+  }
+  assistantJuridicoWindow?.focus();
 }
 
-function fecharAssistenteJuridico() {
-  document.getElementById('assistantPanel')?.classList.add('hidden');
-  document.body.classList.remove('assistant-open');
+function enviarUsuarioParaAssistente(event) {
+  if (event.origin !== ASSISTANT_JURIDICO_URL || event.data?.type !== 'assistente-ready' || !usuarioAtual) return;
+  if (!assistantJuridicoWindow || event.source !== assistantJuridicoWindow) return;
+  assistantJuridicoWindow.postMessage({
+    type: 'chat-interno-user',
+    user: { nome: usuarioAtual.nome, email: usuarioAtual.email, id: usuarioAtual.id }
+  }, ASSISTANT_JURIDICO_URL);
 }
+window.addEventListener('message', enviarUsuarioParaAssistente);
 
 // Os botões do index.html usam onclick inline; exponha explicitamente as ações
 // para funcionar também quando o bundle é servido em modo estrito/cacheado.
 window.abrirAssistenteJuridico = abrirAssistenteJuridico;
-window.fecharAssistenteJuridico = fecharAssistenteJuridico;
 
 async function carregarWorkflow() {
   try {

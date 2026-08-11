@@ -11360,11 +11360,3 @@ body.theme-dark .main-content {
  .assistant-header-btn:hover { border-color:#6ec594; background:#e3f7ea; }
  .assistant-header-spark { color:#b77e39; font-size:16px; line-height:1; }
  .assistant-header-badge { border-radius:999px; padding:2px 5px; background:#176c55; color:#fff; font-size:7px; font-weight:900; letter-spacing:.6px; }
- .assistant-panel { position:fixed; inset:0; z-index:1000; display:flex; flex-direction:column; background:#f8faf8; }
- .assistant-panel.hidden { display:none; }
- .assistant-panel-header { height:58px; flex:none; display:flex; align-items:center; justify-content:space-between; padding:0 20px; background:#fff; border-bottom:1px solid #dfe8e3; }
- .assistant-panel-header strong, .assistant-panel-header small { display:block; }
- .assistant-panel-header strong { color:#145f52; font-size:14px; }
- .assistant-panel-header small { color:#8a9a93; font-size:10px; margin-top:4px; }
- .assistant-panel-header button { width:30px; height:30px; border:1px solid #dfe8e3; border-radius:50%; background:#fff; color:#61736b; font-size:22px; line-height:1; cursor:pointer; }
- .assistant-panel iframe { flex:1; width:100%; border:0; background:#f8faf8; }
