@@ -2831,6 +2831,11 @@ function fecharAssistenteJuridico() {
   document.body.classList.remove('assistant-open');
 }
 
+// Os botões do index.html usam onclick inline; exponha explicitamente as ações
+// para funcionar também quando o bundle é servido em modo estrito/cacheado.
+window.abrirAssistenteJuridico = abrirAssistenteJuridico;
+window.fecharAssistenteJuridico = fecharAssistenteJuridico;
+
 async function carregarWorkflow() {
   try {
     const response = await fetch('/api/workflow', { headers: authHeaders() });
