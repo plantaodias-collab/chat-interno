@@ -5895,6 +5895,7 @@ function abrirPainelAdmin() {
   carregarAgendamentoBackupAdmin();
   carregarMensagensApagadasAdmin();
   carregarTemplatesAdmin();
+  carregarBaseIaAdmin();
   document.getElementById('adminModal').classList.add('active');
 }
 
@@ -6469,6 +6470,118 @@ async function excluirTemplateAdmin(id) {
     await carregarTemplatesAdmin();
   } catch (_e) { mostrarNotificacaoToast('Erro ao excluir.', 'erro'); }
 }
+
+// Base interna que será usada como referência pela IA Cartório Dias.
+let baseIaCache = [];
+let baseIaEditandoId = null;
+
+async function carregarBaseIaAdmin() {
+  const list = document.getElementById('adminBaseIaList');
+  try {
+    const response = await fetch('/api/base-ia', { headers: authHeaders() });
+    if (!response.ok) throw new Error('Falha ao carregar base interna');
+    baseIaCache = await response.json();
+    renderBaseIaAdmin();
+  } catch (_err) {
+    if (list) list.innerHTML = '<p style="color:#ef4444;font-size:13px;">Erro ao carregar a Base Interna.</p>';
+  }
+}
+
+function renderBaseIaAdmin() {
+  const list = document.getElementById('adminBaseIaList');
+  if (!list) return;
+  if (!baseIaCache.length) {
+    list.innerHTML = '<p style="color:#64748b;font-size:13px;">Nenhum procedimento cadastrado. Comece pela rotina mais frequente do cartório.</p>';
+    return;
+  }
+  list.innerHTML = baseIaCache.map((item) => {
+    const checklist = Array.isArray(item.checklist) && item.checklist.length
+      ? `<ul style="margin:9px 0 0;padding-left:18px;font-size:12px;color:#64748b;line-height:1.55;">${item.checklist.map((check) => `<li>${escapeHtml(check)}</li>`).join('')}</ul>`
+      : '<div style="margin-top:8px;font-size:11px;color:#94a3b8;">Sem checklist cadastrado.</div>';
+    return `<article style="padding:14px;border:1px solid #dbe4ee;border-radius:12px;background:rgba(248,250,252,.78);">
+      <div style="display:flex;gap:10px;justify-content:space-between;align-items:flex-start;">
+        <div><span style="display:inline-block;padding:3px 7px;border-radius:999px;background:#e8f5ed;color:#26745c;font-size:9px;font-weight:900;">${escapeHtml(item.area)}</span><strong style="display:block;margin-top:7px;font-size:13px;color:#1e3b31;">${escapeHtml(item.titulo)}</strong></div>
+        <div style="display:flex;gap:6px;"><button class="btn btn-secondary" style="width:auto;padding:6px 9px;font-size:11px;" type="button" onclick="editarBaseIaAdmin(${item.id})">Editar</button><button style="border:0;background:none;color:#dc2626;cursor:pointer;font-size:12px;" type="button" onclick="excluirBaseIaAdmin(${item.id})">Excluir</button></div>
+      </div>
+      <div style="margin-top:9px;font-size:12px;color:#475569;line-height:1.55;white-space:pre-line;">${escapeHtml(item.procedimento)}</div>
+      ${checklist}
+    </article>`;
+  }).join('');
+}
+
+function checklistBaseIaDoFormulario() {
+  return String(document.getElementById('baseIaChecklistInput')?.value || '')
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+async function salvarBaseIaAdmin() {
+  const area = document.getElementById('baseIaAreaInput')?.value || '';
+  const titulo = document.getElementById('baseIaTituloInput')?.value.trim() || '';
+  const procedimento = document.getElementById('baseIaProcedimentoInput')?.value.trim() || '';
+  if (!area || !titulo || !procedimento) {
+    mostrarNotificacao('Preencha área, título e orientação aprovada.', 'warning');
+    return;
+  }
+  const payload = { area, titulo, procedimento, checklist: checklistBaseIaDoFormulario() };
+  const editing = Boolean(baseIaEditandoId);
+  try {
+    const response = await fetch(editing ? `/api/admin/base-ia/${baseIaEditandoId}` : '/api/admin/base-ia', {
+      method: editing ? 'PUT' : 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error('Falha ao salvar procedimento');
+    cancelarEdicaoBaseIa();
+    await carregarBaseIaAdmin();
+    mostrarNotificacao(editing ? 'Procedimento atualizado.' : 'Procedimento adicionado à Base Interna.', 'success');
+  } catch (_err) {
+    mostrarNotificacao('Não foi possível salvar o procedimento.', 'error');
+  }
+}
+
+function editarBaseIaAdmin(id) {
+  const item = baseIaCache.find((registro) => Number(registro.id) === Number(id));
+  if (!item) return;
+  baseIaEditandoId = item.id;
+  document.getElementById('baseIaAreaInput').value = item.area;
+  document.getElementById('baseIaTituloInput').value = item.titulo;
+  document.getElementById('baseIaProcedimentoInput').value = item.procedimento;
+  document.getElementById('baseIaChecklistInput').value = (item.checklist || []).join('\n');
+  document.getElementById('baseIaCancelBtn')?.classList.remove('hidden');
+  document.getElementById('baseIaTituloInput')?.focus();
+}
+
+function cancelarEdicaoBaseIa() {
+  baseIaEditandoId = null;
+  ['baseIaTituloInput', 'baseIaProcedimentoInput', 'baseIaChecklistInput'].forEach((id) => {
+    const field = document.getElementById(id);
+    if (field) field.value = '';
+  });
+  const area = document.getElementById('baseIaAreaInput');
+  if (area) area.selectedIndex = 0;
+  document.getElementById('baseIaCancelBtn')?.classList.add('hidden');
+}
+
+async function excluirBaseIaAdmin(id) {
+  const item = baseIaCache.find((registro) => Number(registro.id) === Number(id));
+  if (!item || !confirm(`Excluir o procedimento “${item.titulo}”?`)) return;
+  try {
+    const response = await fetch(`/api/admin/base-ia/${id}`, { method: 'DELETE', headers: authHeaders() });
+    if (!response.ok) throw new Error('Falha ao excluir procedimento');
+    if (Number(baseIaEditandoId) === Number(id)) cancelarEdicaoBaseIa();
+    await carregarBaseIaAdmin();
+    mostrarNotificacao('Procedimento excluído.', 'success');
+  } catch (_err) {
+    mostrarNotificacao('Não foi possível excluir o procedimento.', 'error');
+  }
+}
+
+window.salvarBaseIaAdmin = salvarBaseIaAdmin;
+window.editarBaseIaAdmin = editarBaseIaAdmin;
+window.cancelarEdicaoBaseIa = cancelarEdicaoBaseIa;
+window.excluirBaseIaAdmin = excluirBaseIaAdmin;
 
 // Template picker no campo de mensagem
 function alternarTemplates(event) {

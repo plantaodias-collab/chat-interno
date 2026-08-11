@@ -493,6 +493,7 @@
         <button class="modal-tab-btn" type="button" data-admin-tab="apagadas" onclick="setAdminTab('apagadas')">Apagadas</button>
         <button class="modal-tab-btn" type="button" data-admin-tab="backups" onclick="setAdminTab('backups')">Backups</button>
         <button class="modal-tab-btn" type="button" data-admin-tab="templates" onclick="setAdminTab('templates')">Templates</button>
+        <button class="modal-tab-btn" type="button" data-admin-tab="base-ia" onclick="setAdminTab('base-ia')">Base IA</button>
         <button class="modal-tab-btn" type="button" data-admin-tab="auditoria" onclick="setAdminTab('auditoria')">Auditoria</button>
         <button class="modal-tab-btn" type="button" data-admin-tab="metricas" onclick="setAdminTab('metricas')">Métricas</button>
       </div>
@@ -667,6 +668,40 @@
           <div id="adminTemplateList" style="display:flex;flex-direction:column;gap:8px;">Carregando...</div>
         </section>
 
+        <section class="modal-tab-panel hidden" data-admin-panel="base-ia">
+          <h4 style="margin-bottom:8px;">Base Interna — IA Cartório Dias</h4>
+          <p style="font-size:13px;color:#64748b;margin-bottom:14px;">Cadastre procedimentos aprovados e checklists. Este conteúdo servirá de referência para a IA quando ela for ativada.</p>
+          <div class="form-group">
+            <label for="baseIaAreaInput">Área / serviço</label>
+            <select class="field" id="baseIaAreaInput">
+              <option value="Pessoas Naturais">Pessoas Naturais</option>
+              <option value="Casamento">Casamento</option>
+              <option value="Certidões">Certidões</option>
+              <option value="Pessoas Jurídicas">Pessoas Jurídicas</option>
+              <option value="Títulos e Documentos">Títulos e Documentos</option>
+              <option value="Atendimento">Atendimento</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="baseIaTituloInput">Título do procedimento</label>
+            <input class="field" id="baseIaTituloInput" maxlength="160" placeholder="Ex.: Habilitação de casamento — triagem inicial" />
+          </div>
+          <div class="form-group">
+            <label for="baseIaProcedimentoInput">Orientação aprovada</label>
+            <textarea class="field" id="baseIaProcedimentoInput" rows="5" maxlength="8000" placeholder="Descreva a rotina, cuidados e quando encaminhar ao Oficial."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="baseIaChecklistInput">Checklist de conferência</label>
+            <textarea class="field" id="baseIaChecklistInput" rows="4" maxlength="8000" placeholder="Um item por linha. Ex.: Documento de identificação apresentado"></textarea>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:18px;">
+            <button class="btn btn-primary" style="width:auto;" type="button" onclick="salvarBaseIaAdmin()">Salvar procedimento</button>
+            <button class="btn btn-secondary hidden" id="baseIaCancelBtn" type="button" onclick="cancelarEdicaoBaseIa()">Cancelar edição</button>
+          </div>
+          <div id="adminBaseIaList" style="display:flex;flex-direction:column;gap:10px;">Carregando...</div>
+        </section>
+
         <!-- TAB: AUDITORIA -->
         <section data-admin-tab-content="auditoria" class="hidden">
           <h4 style="margin-bottom:14px;">Auditoria de Mensagens</h4>
@@ -817,6 +852,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.min.js?v=20260811-ia-cartorio-dias"></script>
+  <script src="/assets/app.min.js?v=20260811-base-interna-ia"></script>
 </body>
 </html>

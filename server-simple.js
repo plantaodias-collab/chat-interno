@@ -70,7 +70,7 @@ const ALLOWED_MIME_EXTENSIONS = {
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
 };
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
-const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'notas-conversa.json', 'etiquetas-conversa.json', 'responsavel-conversa.json', 'mensagens-agendadas.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json'];
+const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'notas-conversa.json', 'etiquetas-conversa.json', 'responsavel-conversa.json', 'mensagens-agendadas.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'base-ia.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json'];
 
 function getDefaultBackupSchedule() {
   return {
@@ -200,6 +200,7 @@ class SimpleDB {
     this.mensagens_prioritarias = this.loadFile('mensagens-prioritarias.json', []);
     this.mensagens_fixadas = this.loadFile('mensagens-fixadas.json', []);
     this.templates = this.loadFile('templates.json', []);
+    this.base_ia = this.loadFile('base-ia.json', []);
     this.auditoria = this.loadFile('auditoria.json', []);
     this.push_subscriptions = this.loadFile('push-subscriptions.json', []);
     this.escala_plantao = this.loadFile('escala-plantao.json', {
@@ -269,6 +270,7 @@ class SimpleDB {
       ['painel-senhas.json', this.painel_senhas],
       ['backup-agendamento.json', this.backup_agendamento],
       ['templates.json', this.templates],
+      ['base-ia.json', this.base_ia],
       ['push-subscriptions.json', this.push_subscriptions],
       ['escala-plantao.json', this.escala_plantao]
     ];
@@ -3447,6 +3449,58 @@ app.delete('/api/templates/:id', verificarToken, (req, res) => {
   const id = Number(req.params.id);
   db.templates = db.templates.filter((t) => t.id !== id);
   db.saveFile('templates.json', db.templates);
+  res.json({ ok: true });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BASE INTERNA DA IA — procedimentos e checklists aprovados
+// ─────────────────────────────────────────────────────────────────────────────
+function normalizarItemBaseIa(body = {}) {
+  const area = String(body.area || '').trim().slice(0, 80);
+  const titulo = String(body.titulo || '').trim().slice(0, 160);
+  const procedimento = String(body.procedimento || '').trim().slice(0, 8000);
+  const checklist = Array.isArray(body.checklist)
+    ? body.checklist.map((item) => String(item || '').trim().slice(0, 500)).filter(Boolean).slice(0, 30)
+    : [];
+  if (!area || !titulo || !procedimento) return null;
+  return { area, titulo, procedimento, checklist };
+}
+
+app.get('/api/base-ia', verificarToken, (_req, res) => {
+  res.json(db.base_ia || []);
+});
+
+app.post('/api/admin/base-ia', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const item = normalizarItemBaseIa(req.body);
+  if (!item) return res.status(400).json({ erro: 'Área, título e procedimento são obrigatórios' });
+  const registro = { id: Date.now(), ...item, criado_em: new Date().toISOString(), atualizado_em: new Date().toISOString(), atualizado_por: req.userId };
+  db.base_ia.unshift(registro);
+  db.saveFile('base-ia.json', db.base_ia);
+  registrarAuditoria({ acao: 'base_ia_criada', usuarioId: req.userId, usuarioNome: findActiveUserById(req.userId)?.nome, detalhe: registro.titulo, req });
+  res.json(registro);
+});
+
+app.put('/api/admin/base-ia/:id', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const item = normalizarItemBaseIa(req.body);
+  if (!item) return res.status(400).json({ erro: 'Área, título e procedimento são obrigatórios' });
+  const id = Number(req.params.id);
+  const index = db.base_ia.findIndex((registro) => registro.id === id);
+  if (index < 0) return res.status(404).json({ erro: 'Procedimento não encontrado' });
+  db.base_ia[index] = { ...db.base_ia[index], ...item, atualizado_em: new Date().toISOString(), atualizado_por: req.userId };
+  db.saveFile('base-ia.json', db.base_ia);
+  registrarAuditoria({ acao: 'base_ia_atualizada', usuarioId: req.userId, usuarioNome: findActiveUserById(req.userId)?.nome, detalhe: db.base_ia[index].titulo, req });
+  res.json(db.base_ia[index]);
+});
+
+app.delete('/api/admin/base-ia/:id', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const id = Number(req.params.id);
+  const item = db.base_ia.find((registro) => registro.id === id);
+  db.base_ia = db.base_ia.filter((registro) => registro.id !== id);
+  db.saveFile('base-ia.json', db.base_ia);
+  if (item) registrarAuditoria({ acao: 'base_ia_excluida', usuarioId: req.userId, usuarioNome: findActiveUserById(req.userId)?.nome, detalhe: item.titulo, req });
   res.json({ ok: true });
 });
 
