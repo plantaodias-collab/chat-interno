@@ -5461,6 +5461,42 @@ body.theme-dark .quick-reply-btn:hover {
   line-height: 1.55;
 }
 
+.assistant-promo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #a9dfc0;
+  border-radius: 14px;
+  background: linear-gradient(100deg, #edfdf3 0%, #f9fffb 62%, #f4faf7 100%);
+  box-shadow: 0 10px 22px rgba(23, 114, 77, .08);
+}
+
+.assistant-promo-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 11px;
+  background: #d5f3e1;
+  color: #b77e39;
+  font-size: 20px;
+}
+
+.assistant-promo-copy { min-width: 0; flex: 1; }
+.assistant-promo-title { color: #155d49; font-size: 13px; font-weight: 900; }
+.assistant-promo-badge { display: inline-block; margin-right: 6px; padding: 3px 6px; border-radius: 999px; background: #197653; color: #fff; font-size: 8px; letter-spacing: .7px; vertical-align: 2px; }
+.assistant-promo-text { margin-top: 5px; color: #5f8877; font-size: 11px; line-height: 1.4; }
+.assistant-promo-btn { flex: none; border: 0; border-radius: 8px; padding: 10px 13px; background: #176c55; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 12px rgba(23, 108, 85, .18); }
+.assistant-promo-btn:hover { background: #105843; transform: translateY(-1px); }
+.assistant-promo-btn span { padding-left: 7px; font-size: 15px; }
+
+body.theme-dark .assistant-promo { border-color: #276d54; background: linear-gradient(100deg, #183e32, #172c28); }
+body.theme-dark .assistant-promo-title { color: #b6edce; }
+body.theme-dark .assistant-promo-text { color: #93c7ad; }
+body.theme-dark .assistant-promo-icon { background: #275644; }
+
 .dashboard-actions {
   display: flex;
   flex-wrap: wrap;
@@ -5695,6 +5731,10 @@ body.theme-dark .dashboard-chat-meta {
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
+
+  .assistant-promo { align-items: flex-start; flex-wrap: wrap; }
+  .assistant-promo-copy { flex-basis: calc(100% - 58px); }
+  .assistant-promo-btn { margin-left: 52px; }
 
   .welcome-state.dashboard-home {
     width: min(760px, calc(100% - 28px));

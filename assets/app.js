@@ -3066,6 +3066,14 @@ function getLegacyWelcomeStateHtml() {
         </div>
       </div>
       ${getBrazilCheerCardHtml()}
+      <section class="assistant-promo" aria-label="Novo Assistente Jurídico">
+        <div class="assistant-promo-icon">✦</div>
+        <div class="assistant-promo-copy">
+          <div class="assistant-promo-title"><span class="assistant-promo-badge">NOVO</span> Assistente Jurídico</div>
+          <div class="assistant-promo-text">Tire dúvidas sobre documentos, procedimentos e atendimento do cartório. Você já está identificado.</div>
+        </div>
+        <button class="assistant-promo-btn" type="button" onclick="abrirAssistenteJuridico()">Experimentar agora <span>→</span></button>
+      </section>
       <div class="welcome-stats dashboard-stats">
         <div class="welcome-stat-card ${totalOnline > 0 ? 'is-active' : 'is-zero'}">
           <strong>${totalOnline}</strong>
