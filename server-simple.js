@@ -3453,6 +3453,22 @@ app.delete('/api/templates/:id', verificarToken, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // AUDITORIA — endpoint admin
 // ─────────────────────────────────────────────────────────────────────────────
+app.post('/api/assistente/uso-bloqueado', verificarToken, (req, res) => {
+  const usuario = findActiveUserById(req.userId);
+  if (!usuario) return res.status(404).json({ erro: 'Usuário não encontrado' });
+
+  // Não registrar a pergunta: o objetivo é sinalizar o uso fora do escopo,
+  // preservando a privacidade do colaborador e evitando guardar conteúdo pessoal.
+  registrarAuditoria({
+    acao: 'assistente_escopo_bloqueado',
+    usuarioId: usuario.id,
+    usuarioNome: usuario.nome,
+    detalhe: 'assunto-pessoal-ou-fora-do-escopo',
+    req
+  });
+  res.json({ ok: true });
+});
+
 app.get('/api/admin/auditoria', verificarToken, (req, res) => {
   if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
   const { acao, limite = 200 } = req.query;

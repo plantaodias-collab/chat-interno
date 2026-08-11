@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/app.min.css?v=20260811-assistente-ampliado" />
+  <link rel="stylesheet" href="/assets/app.min.css?v=20260811-assistente-escopo" />
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@17.0.3/dist/twemoji.min.js" crossorigin="anonymous" defer></script>
@@ -453,20 +453,23 @@
           <div class="assistant-native-identity"><span>✓</span><div><strong>Você já está identificado</strong><small id="assistantNativeEmail"></small></div></div>
         </section>
         <section class="assistant-native-ask">
-          <label for="assistantQuestion">Em que posso ajudar?</label>
+          <label for="assistantQuestion"><span data-assistant-mode-label>Orientação</span> do cartório</label>
+          <div class="assistant-mode-switch" role="group" aria-label="Tipo de ajuda"><button class="active" type="button" data-assistant-mode="orientacao" onclick="definirModoAssistente('orientacao')">Orientação</button><button type="button" data-assistant-mode="email" onclick="definirModoAssistente('email')">Responder e-mail</button><button type="button" data-assistant-mode="nota" onclick="definirModoAssistente('nota')">Nota devolutiva</button></div>
           <div class="assistant-native-input-row"><input id="assistantQuestion" type="text" placeholder="Ex.: quais documentos preciso para habilitação de casamento?" onkeydown="enviarPerguntaAssistente(event)" /><button type="button" onclick="responderPerguntaAssistente()">Consultar <span>→</span></button></div>
-          <small>Use o Assistente para orientações rotineiras. Questões sensíveis serão direcionadas ao Oficial.</small>
+          <small>Uso restrito à rotina do cartório. Assuntos sensíveis serão direcionados ao Oficial.</small>
         </section>
         <section class="assistant-native-shortcuts" aria-label="Atalhos do Assistente">
           <button type="button" onclick="usarAtalhoAssistente('Quais documentos são necessários para habilitação de casamento?')"><span>♡</span><div><strong>Habilitação de casamento</strong><small>Documentos e procedimento inicial</small></div></button>
           <button type="button" onclick="usarAtalhoAssistente('Preciso analisar um estatuto para registro no RCPJ')"><span>▦</span><div><strong>Analisar estatuto</strong><small>Quóruns, assinaturas e RCPJ</small></div></button>
           <button type="button" onclick="usarAtalhoAssistente('Preciso preparar uma nota devolutiva')"><span>✎</span><div><strong>Nota devolutiva</strong><small>Exigência clara e fundamentada</small></div></button>
+          <button type="button" onclick="definirModoAssistente('email'); usarAtalhoAssistente('Preciso responder um e-mail sobre documentos de casamento')"><span>✉</span><div><strong>Responder e-mail</strong><small>Minuta para atendimento ao usuário</small></div></button>
         </section>
         <section class="assistant-native-answer hidden" id="assistantAnswer" aria-live="polite">
           <div class="assistant-answer-top"><span id="assistantAnswerLevel">ROTINA</span><button type="button" onclick="copiarRespostaAssistente()">Copiar resposta</button></div>
           <h2 id="assistantAnswerQuestion"></h2>
           <p id="assistantAnswerText"></p>
           <div class="assistant-answer-basis"><strong>Base e segurança</strong><span id="assistantAnswerBasis"></span></div>
+          <div class="assistant-answer-next"><strong>Próximo passo</strong><span id="assistantAnswerNext"></span></div>
         </section>
       </div>
     </section>
@@ -668,6 +671,7 @@
               <option value="apagada">Apagada</option>
               <option value="encaminhada">Encaminhada</option>
               <option value="editada">Editada</option>
+              <option value="assistente_escopo_bloqueado">Assistente: fora do escopo</option>
             </select>
             <button class="btn btn-secondary" onclick="carregarAuditoriaAdmin()">Atualizar</button>
           </div>
@@ -807,6 +811,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.min.js?v=20260811-assistente-integrado"></script>
+  <script src="/assets/app.min.js?v=20260811-assistente-escopo"></script>
 </body>
 </html>

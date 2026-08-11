@@ -2817,6 +2817,7 @@ function abrirAssistenteJuridico() {
   document.getElementById('assistantNativeEmail').textContent = usuarioAtual.email || 'Sessão do Chat Interno';
   panel?.classList.remove('hidden');
   document.body.classList.add('assistant-native-open');
+  definirModoAssistente(modoAssistente);
   setTimeout(() => document.getElementById('assistantQuestion')?.focus(), 80);
 }
 
@@ -2825,42 +2826,136 @@ function fecharAssistenteJuridico() {
   document.body.classList.remove('assistant-native-open');
 }
 
-function getRespostaAssistente(question) {
-  const normalized = String(question || '').toLowerCase();
-  const isSensitive = /recusa|falso|falsidade|compet[êe]ncia|suscita[cç][ãa]o|estado civil|filia[cç][ãa]o|incapacidade|diverg[êe]ncia relevante/.test(normalized);
+let modoAssistente = 'orientacao';
+
+function normalizarAssistente(texto) {
+  return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function getRespostaAssistente(question, mode = modoAssistente) {
+  const normalized = normalizarAssistente(question);
+  const isPersonal = /\b(receita|namorad|casament[o|a] pessoal|relacionamento|horoscopo|filme|serie|jogo|viagem|dieta|academia|fofoca|conselho pessoal|vida pessoal)\b/.test(normalized);
+  const isCartorio = /cartorio|registro|registral|certidao|casamento|nascimento|obito|averbacao|emancipacao|pacto|protesto|rtd|rcpn|rcpj|estatuto|associacao|ata|documento|reconhecimento de firma|autenticacao|nota devolutiva|exigencia|oficial|habilitacao|protocolo|pessoa juridica|atendimento|email|e-mail/.test(normalized);
+  if (isPersonal || !isCartorio) {
+    return {
+      level: 'ESCOPO INTERNO',
+      title: 'Assunto fora do escopo do Assistente',
+      text: 'Essa pergunta é pessoal ou não está ligada à rotina do cartório e, por isso, não pode ser atendida pelo Assistente.',
+      basis: 'Regra de uso interno: assuntos pessoais e gerais não são processados nem enviados para a IA.',
+      nextStep: 'A tentativa foi registrada para ciência do administrador. Reformule a dúvida informando o ato do cartório ou o documento que precisa conferir.'
+    };
+  }
+  const isSensitive = /recusa|falso|falsidade|competencia|suscitacao|estado civil|filiacao|incapacidade|divergencia relevante|fraude|documento adulterado/.test(normalized);
   if (isSensitive) {
     return {
       level: 'OFICIAL',
+      title: 'Encaminhamento obrigatório ao Oficial',
       text: 'Esta situação deve ser submetida ao Oficial. Ela pode envolver interpretação jurídica relevante, competência, responsabilidade da serventia ou reflexos no direito de terceiros. Reúna os documentos e descreva objetivamente a divergência antes do encaminhamento.',
-      basis: 'Encaminhamento preventivo conforme o protocolo interno de segurança registral.'
+      basis: 'Encaminhamento preventivo conforme o protocolo interno de segurança registral.',
+      nextStep: 'Não envie resposta definitiva ao usuário antes da validação do Oficial.'
+    };
+  }
+  if (mode === 'email') {
+    if (/casamento|habilitacao/.test(normalized)) {
+      return {
+        level: 'ROTINA',
+        title: 'Minuta de resposta por e-mail',
+        text: 'Olá, [Nome].\n\nAgradecemos o seu contato. Para iniciarmos a orientação sobre a habilitação de casamento, pedimos que nos informe o estado civil de ambos os nubentes e apresente os documentos de identificação, as certidões atualizadas compatíveis com o estado civil e o comprovante de residência.\n\nApós a conferência dos documentos, informaremos os próximos passos e eventual necessidade de documentação complementar.\n\nAtenciosamente,\nCartório Dias de Castro',
+        basis: 'Minuta de atendimento: conferir dados, documentos e normas internas antes do envio.',
+        nextStep: 'Substitua [Nome], ajuste os documentos ao caso concreto e revise antes de enviar.'
+      };
+    }
+    if (/estatuto|rcpj|associacao|ata/.test(normalized)) {
+      return {
+        level: 'ATENÇÃO',
+        title: 'Minuta de resposta por e-mail',
+        text: 'Olá, [Nome].\n\nPara a análise do pedido de registro, pedimos o envio da versão consolidada do estatuto, da ata correspondente, da convocação, da lista de presença e dos demais documentos que comprovem as deliberações e assinaturas exigidas.\n\nA documentação será qualificada após o protocolo. Caso seja identificada alguma necessidade complementar, será emitida orientação específica.\n\nAtenciosamente,\nCartório Dias de Castro',
+        basis: 'Minuta de atendimento para RCPJ: a qualificação definitiva depende dos documentos protocolados.',
+        nextStep: 'Não antecipe deferimento por e-mail; confirme a situação somente após a qualificação.'
+      };
+    }
+    return {
+      level: 'ROTINA',
+      title: 'Minuta de resposta por e-mail',
+      text: 'Olá, [Nome].\n\nAgradecemos o seu contato. Para que possamos orientar corretamente, pedimos que nos informe o ato pretendido e encaminhe os documentos disponíveis para conferência.\n\nApós essa análise inicial, retornaremos com os próximos passos e eventuais documentos complementares.\n\nAtenciosamente,\nCartório Dias de Castro',
+      basis: 'Minuta de atendimento: revisar o conteúdo e adequar ao caso antes do envio.',
+      nextStep: 'Cole a mensagem recebida ou explique o caso com mais detalhes para uma minuta mais específica.'
+    };
+  }
+  if (mode === 'nota') {
+    return {
+      level: 'ATENÇÃO',
+      title: 'Estrutura segura para nota devolutiva',
+      text: '1. Descreva objetivamente o documento ou ato apresentado.\n2. Aponte a inconsistência encontrada, sem linguagem conclusiva além do necessário.\n3. Indique a providência que permitirá o prosseguimento.\n4. Inclua a base legal ou normativa somente depois de confirmada.\n5. Revise clareza, prazo e identificação do protocolo antes da emissão.\n\nModelo inicial:\n“Verificou-se a necessidade de [providência]. Para o prosseguimento do pedido, solicita-se [documento/retificação], observada a norma aplicável ao caso.”',
+      basis: 'Nunca emita exigência sem fundamento confirmado na legislação, no Código de Normas e nos procedimentos internos.',
+      nextStep: 'Se houver dúvida de competência, interpretação ou impacto a terceiros, encaminhe ao Oficial.'
     };
   }
   if (/casamento|habilita/.test(normalized)) {
     return {
       level: 'ROTINA',
+      title: 'Habilitação de casamento — triagem inicial',
       text: 'Para iniciar a habilitação, confira a identificação dos nubentes, as certidões de nascimento ou de casamento com as averbações cabíveis e o comprovante de residência. A conferência final depende do estado civil e da documentação apresentada.',
-      basis: 'Lei nº 6.015/1973 e Código de Normas da CGJ/SC: confirmar a redação vigente na base normativa interna.'
+      basis: 'Lei nº 6.015/1973 e Código de Normas da CGJ/SC: confirmar a redação vigente na base normativa interna.',
+      nextStep: 'Identifique o estado civil de cada nubente antes de informar a relação final de documentos.'
     };
   }
   if (/estatuto|rcpj|associa/.test(normalized)) {
     return {
       level: 'ATENÇÃO',
+      title: 'RCPJ — conferência inicial',
       text: 'Confira a versão consolidada do estatuto, convocação, quórum, lista de presença, assinaturas e a compatibilidade da ata com as regras estatutárias. Se houver divergência entre o estatuto e a deliberação, encaminhe ao Oficial antes de concluir a qualificação.',
-      basis: 'Código Civil, Lei nº 6.015/1973 e normas aplicáveis ao RCPJ; verificar a base interna antes da resposta definitiva.'
+      basis: 'Código Civil, Lei nº 6.015/1973 e normas aplicáveis ao RCPJ; verificar a base interna antes da resposta definitiva.',
+      nextStep: 'Monte uma lista objetiva das pendências e confronte cada uma com o estatuto apresentado.'
     };
   }
   if (/nota devolutiva|exig[êe]ncia/.test(normalized)) {
     return {
       level: 'ATENÇÃO',
+      title: 'Nota devolutiva — orientação',
       text: 'A nota devolutiva deve apontar o problema encontrado, indicar de forma clara a providência necessária e mencionar a base normativa quando ela estiver localizada. Não formule exigência sem suporte legal ou normativo.',
-      basis: 'Protocolo interno de qualificação e legislação aplicável ao ato solicitado.'
+      basis: 'Protocolo interno de qualificação e legislação aplicável ao ato solicitado.',
+      nextStep: 'Use o modo “Nota devolutiva” para receber uma estrutura de redação segura.'
     };
   }
   return {
     level: 'ATENÇÃO',
+    title: 'Orientação inicial',
     text: 'A orientação inicial é conferir os documentos apresentados, o procedimento correspondente na base normativa interna e os modelos aprovados pela serventia. Se houver situação excepcional, ausência de regra clara ou risco registral, submeta ao Oficial.',
-    basis: 'Consultar a legislação aplicável, o Código de Normas da CGJ/SC e as orientações internas vigentes.'
+    basis: 'Consultar a legislação aplicável, o Código de Normas da CGJ/SC e as orientações internas vigentes.',
+    nextStep: 'Informe o tipo de ato e o que já foi apresentado para receber uma orientação mais direcionada.'
   };
+}
+
+function definirModoAssistente(mode) {
+  modoAssistente = ['orientacao', 'email', 'nota'].includes(mode) ? mode : 'orientacao';
+  const config = {
+    orientacao: { label: 'Orientação', placeholder: 'Ex.: quais documentos preciso para habilitação de casamento?' },
+    email: { label: 'Resposta de e-mail', placeholder: 'Ex.: preciso responder sobre documentos de casamento' },
+    nota: { label: 'Nota devolutiva', placeholder: 'Descreva a pendência encontrada no documento...' }
+  }[modoAssistente];
+  document.querySelectorAll('[data-assistant-mode]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.assistantMode === modoAssistente);
+  });
+  ['assistantQuestion', 'dashboardAssistantQuestion'].forEach((id) => {
+    const input = document.getElementById(id);
+    if (input) input.placeholder = config.placeholder;
+  });
+  document.querySelectorAll('[data-assistant-mode-label]').forEach((element) => {
+    element.textContent = config.label;
+  });
+}
+
+async function registrarUsoAssistenteBloqueado() {
+  try {
+    await fetch('/api/assistente/uso-bloqueado', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ motivo: 'assunto fora do escopo interno' })
+    });
+  } catch (_err) {
+    // O bloqueio continua válido mesmo se a auditoria estiver temporariamente indisponível.
+  }
 }
 
 function responderPerguntaAssistente() {
@@ -2872,13 +2967,15 @@ function responderPerguntaAssistente() {
     return;
   }
   const response = getRespostaAssistente(question);
+  if (response.level === 'ESCOPO INTERNO') registrarUsoAssistenteBloqueado();
   const answer = document.getElementById('assistantAnswer');
   const level = document.getElementById('assistantAnswerLevel');
   level.textContent = response.level;
   level.className = `assistant-answer-level ${response.level.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
-  document.getElementById('assistantAnswerQuestion').textContent = question;
+  document.getElementById('assistantAnswerQuestion').textContent = response.title || question;
   document.getElementById('assistantAnswerText').textContent = response.text;
   document.getElementById('assistantAnswerBasis').textContent = response.basis;
+  document.getElementById('assistantAnswerNext').textContent = response.nextStep || '';
   answer?.classList.remove('hidden');
   answer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -2897,7 +2994,12 @@ function usarAtalhoAssistente(question) {
 }
 
 async function copiarRespostaAssistente() {
-  const text = document.getElementById('assistantAnswerText')?.textContent || '';
+  const text = [
+    document.getElementById('assistantAnswerQuestion')?.textContent,
+    document.getElementById('assistantAnswerText')?.textContent,
+    document.getElementById('assistantAnswerBasis')?.textContent,
+    document.getElementById('assistantAnswerNext')?.textContent
+  ].filter(Boolean).join('\n\n');
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
@@ -2915,12 +3017,15 @@ function responderPerguntaDashboard() {
     return;
   }
   const response = getRespostaAssistente(question);
+  if (response.level === 'ESCOPO INTERNO') registrarUsoAssistenteBloqueado();
   const answer = document.getElementById('dashboardAssistantAnswer');
   const level = document.getElementById('dashboardAssistantLevel');
   level.textContent = response.level;
   level.className = `dashboard-assistant-level ${response.level.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
+  document.getElementById('dashboardAssistantTitle').textContent = response.title || 'Orientação';
   document.getElementById('dashboardAssistantText').textContent = response.text;
   document.getElementById('dashboardAssistantBasis').textContent = response.basis;
+  document.getElementById('dashboardAssistantNext').textContent = response.nextStep || '';
   answer?.classList.remove('hidden');
 }
 
@@ -2945,6 +3050,7 @@ window.enviarPerguntaAssistente = enviarPerguntaAssistente;
 window.responderPerguntaAssistente = responderPerguntaAssistente;
 window.usarAtalhoAssistente = usarAtalhoAssistente;
 window.copiarRespostaAssistente = copiarRespostaAssistente;
+window.definirModoAssistente = definirModoAssistente;
 window.enviarPerguntaDashboard = enviarPerguntaDashboard;
 window.responderPerguntaDashboard = responderPerguntaDashboard;
 window.usarAtalhoDashboard = usarAtalhoDashboard;
@@ -3269,12 +3375,13 @@ function getWelcomeStateHtml() {
           </div>
         </section>
         <aside class="dashboard-assistant-card" aria-label="Assistente Jurídico">
-          <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge">NOVO</span><h2>Assistente Jurídico</h2><p>Orientação interna para sua rotina no cartório.</p></div></div>
+          <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge">USO INTERNO</span><h2>Assistente Jurídico</h2><p>Orientação segura para sua rotina no cartório.</p></div></div>
           <div class="dashboard-assistant-user"><span>✓</span> Você está identificado como <strong>${escapeHtml(nomeUsuario || emailUsuario || 'colaborador')}</strong>.</div>
-          <label for="dashboardAssistantQuestion">Em que posso ajudar?</label>
-          <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" placeholder="Escreva sua dúvida..." onkeydown="enviarPerguntaDashboard(event)" /><button type="button" onclick="responderPerguntaDashboard()">→</button></div>
-          <div class="dashboard-assistant-shortcuts"><button type="button" onclick="usarAtalhoDashboard('Quais documentos são necessários para habilitação de casamento?')">Casamento</button><button type="button" onclick="usarAtalhoDashboard('Preciso analisar um estatuto para registro no RCPJ')">Estatuto</button><button type="button" onclick="usarAtalhoDashboard('Preciso preparar uma nota devolutiva')">Nota devolutiva</button></div>
-          <div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div></div>
+          <label for="dashboardAssistantQuestion"><span data-assistant-mode-label>Orientação</span> do cartório</label>
+          <div class="assistant-mode-switch dashboard-mode-switch" role="group" aria-label="Tipo de ajuda"><button class="${modoAssistente === 'orientacao' ? 'active' : ''}" type="button" data-assistant-mode="orientacao" onclick="definirModoAssistente('orientacao')">Orientação</button><button class="${modoAssistente === 'email' ? 'active' : ''}" type="button" data-assistant-mode="email" onclick="definirModoAssistente('email')">E-mail</button><button class="${modoAssistente === 'nota' ? 'active' : ''}" type="button" data-assistant-mode="nota" onclick="definirModoAssistente('nota')">Nota</button></div>
+          <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" placeholder="Escreva sua dúvida registral..." onkeydown="enviarPerguntaDashboard(event)" /><button type="button" onclick="responderPerguntaDashboard()" aria-label="Consultar assistente">→</button></div>
+          <div class="dashboard-assistant-shortcuts"><button type="button" onclick="usarAtalhoDashboard('Quais documentos são necessários para habilitação de casamento?')">Casamento</button><button type="button" onclick="usarAtalhoDashboard('Preciso analisar um estatuto para registro no RCPJ')">Estatuto</button><button type="button" onclick="definirModoAssistente('email'); usarAtalhoDashboard('Preciso responder um e-mail sobre documentos de casamento')">Responder e-mail</button></div>
+          <div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><strong id="dashboardAssistantTitle" class="dashboard-assistant-answer-title"></strong><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div><div class="dashboard-assistant-next"><strong>Próximo passo</strong><span id="dashboardAssistantNext"></span></div></div>
           <button class="dashboard-assistant-expand" type="button" onclick="abrirAssistenteJuridico()">Abrir tela completa <span>↗</span></button>
         </aside>
       </div>
