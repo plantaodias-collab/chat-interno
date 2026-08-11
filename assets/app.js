@@ -2815,13 +2815,16 @@ function abrirAssistenteJuridico() {
   if (!assistantJuridicoWindow || assistantJuridicoWindow.closed) {
     assistantJuridicoWindow = window.open(ASSISTANT_JURIDICO_URL, 'assistente-juridico');
   }
-  assistantJuridicoWindow?.focus();
+  if (!assistantJuridicoWindow) {
+    window.location.assign(ASSISTANT_JURIDICO_URL);
+    return;
+  }
+  assistantJuridicoWindow.focus();
 }
 
 function enviarUsuarioParaAssistente(event) {
   if (event.origin !== ASSISTANT_JURIDICO_URL || event.data?.type !== 'assistente-ready' || !usuarioAtual) return;
-  if (!assistantJuridicoWindow || event.source !== assistantJuridicoWindow) return;
-  assistantJuridicoWindow.postMessage({
+  event.source?.postMessage({
     type: 'chat-interno-user',
     user: { nome: usuarioAtual.nome, email: usuarioAtual.email, id: usuarioAtual.id }
   }, ASSISTANT_JURIDICO_URL);
