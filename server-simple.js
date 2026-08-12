@@ -3862,7 +3862,8 @@ function normalizarItemBaseIa(body = {}) {
 
 function normalizarFonteLegadaIa(item = {}) {
   const tipo_fonte = TIPOS_FONTE_IA.has(String(item.tipo_fonte || '').toUpperCase()) ? String(item.tipo_fonte).toUpperCase() : 'PROCEDIMENTO';
-  const status = STATUS_FONTE_IA.has(String(item.status || '').toUpperCase()) ? String(item.status).toUpperCase() : (tipo_fonte === 'ORIENTACAO_OFICIAL' ? 'APROVADA' : 'VIGENTE');
+  // Registros antigos não recebem aprovação automática: precisam de revisão explícita no painel.
+  const status = STATUS_FONTE_IA.has(String(item.status || '').toUpperCase()) ? String(item.status).toUpperCase() : 'EM_REVISAO';
   return { ...item, tipo_fonte, status, versao: item.versao || '1.0', vigente_desde: item.vigente_desde || '', vigente_ate: item.vigente_ate || '', substitui_documento_id: item.substitui_documento_id || null, assunto: item.assunto || '', atribuicao: item.atribuicao || '', fundamento: item.fundamento || '', palavras_chave: item.palavras_chave || '', responsavel: item.responsavel || '', data_orientacao: item.data_orientacao || '', artigo_item: item.artigo_item || '', pagina_trecho: item.pagina_trecho || '' };
 }
 
