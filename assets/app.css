@@ -11631,3 +11631,15 @@ body.theme-dark .main-content {
 
 body.theme-dark .dashboard-assistant-card.is-coming-soon .dashboard-assistant-knowledge > strong { color: #ead49b; }
 body.theme-dark .dashboard-assistant-card.is-coming-soon .dashboard-assistant-knowledge > div > span { border-color: #74613c; background: rgba(116,97,60,.32); color: #ead49b; }
+
+/* Central compacta: prioriza o espaço de trabalho da IA sem perder o resumo essencial. */
+@media (min-width: 1121px) {
+  .dashboard-split {
+    grid-template-columns: minmax(360px, .68fr) minmax(620px, 1.32fr);
+    gap: 20px;
+  }
+}
+
+.dashboard-conversations-card .welcome-stats.dashboard-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}

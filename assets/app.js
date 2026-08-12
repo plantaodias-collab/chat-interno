@@ -3415,14 +3415,12 @@ function getDashboardListHtml(title, subtitle, items, emptyText, emptyIcon = 'ch
   `;
 }
 
-// Quando urgentes e pendentes estao zerados, os dois cards grandes de "nada
-// por aqui" so ocupam espaco sem informar nada de novo. Substitui os dois por
-// uma faixa unica e compacta, sobrando mais espaco pra lista de Recentes.
+// Faixa simples de situação para a central compacta.
 function getDashboardQuietBannerHtml() {
   return `
     <div class="dashboard-quiet-banner">
       ${DASHBOARD_EMPTY_ICONS.check}
-      <span>Tudo em dia - sem urgentes ou pendentes.</span>
+      <span>Tudo em dia.</span>
     </div>
   `;
 }
@@ -3487,8 +3485,6 @@ function getLegacyWelcomeStateHtml() {
   const totalOnline = contatosCache.filter((usuario) => onlineState.has(Number(usuario.id))).length;
   const totalGrupos = gruposCache.length;
   const totalNaoLidas = Object.values(unreadState).reduce((sum, value) => sum + (Number(value) || 0), 0);
-  const totalPendentes = Object.values(attendanceStatusState).filter((status) => status === 'pendente').length;
-  const totalUrgentes = Object.values(attendanceStatusState).filter((status) => status === 'urgente').length;
   const nomeUsuario = String(usuarioAtual?.nome || '').trim();
   const emailUsuario = String(usuarioAtual?.email || '').trim();
   const firstNameRaw = /^\(?usu[aá]rio/i.test(nomeUsuario)
@@ -3581,9 +3577,7 @@ function getWelcomeStateHtml() {
     ? (emailUsuario.split('@')[0] || 'Admin')
     : (nomeUsuario.split(/\s+/)[0] || emailUsuario.split('@')[0] || 'equipe');
   const firstName = firstNameRaw.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, '') || 'equipe';
-  const urgentItems = getDashboardChatItems('urgent', 4);
   const unreadItems = getDashboardChatItems('unread', 4);
-  const pendingItems = getDashboardChatItems('pending', 4);
   const recentItems = getDashboardChatItems('all', 4);
   const iaEmBreve = !ASSISTENTE_JURIDICO_ATIVO;
 
@@ -3595,7 +3589,7 @@ function getWelcomeStateHtml() {
             <div class="dashboard-title-group">
               <div class="welcome-eyebrow">CENTRAL DE CONVERSAS</div>
               <div class="welcome-title">${getGreeting()}, ${escapeHtml(firstName)}</div>
-              <div class="welcome-copy">Acompanhe as prioridades e continue as conversas recentes.</div>
+              <div class="welcome-copy">Acompanhe conversas não lidas e continue os atendimentos recentes.</div>
               <div class="dashboard-actions"><button class="dashboard-action-btn primary" type="button" onclick="abrirBuscaGlobal()">Busca global</button></div>
             </div>
           </div>
@@ -3603,15 +3597,9 @@ function getWelcomeStateHtml() {
             ${getDashboardStatCard('online agora', totalOnline, 'online', totalOnline > 0 ? 'is-active' : 'is-zero')}
             ${getDashboardStatCard('n&atilde;o lidas', totalNaoLidas, 'nao-lidas', totalNaoLidas > 0 ? 'is-active' : 'is-zero')}
             ${getDashboardStatCard('grupos', totalGrupos, 'grupos', '')}
-            ${getDashboardStatCard('pendentes', totalPendentes, 'pendentes', `priority ${totalPendentes > 0 ? 'is-active' : 'is-zero'}`)}
-            ${getDashboardStatCard('urgentes', totalUrgentes, 'urgentes', `urgent ${totalUrgentes > 0 ? 'is-active' : 'is-zero'}`)}
           </div>
           <div class="dashboard-grid">
-            ${urgentItems.length === 0 && pendingItems.length === 0
-              ? getDashboardQuietBannerHtml()
-              : `${getDashboardListHtml('Urgentes', 'aten&ccedil;&atilde;o agora', urgentItems, 'Nenhuma conversa urgente.')}
-                 ${getDashboardListHtml('Pendentes', 'acompanhar andamento', pendingItems, 'Nenhuma conversa pendente.')}`
-            }
+            ${getDashboardQuietBannerHtml()}
             ${getDashboardListHtml('N&atilde;o lidas', 'responder primeiro', unreadItems, 'Tudo em dia por aqui.')}
             ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecer&atilde;o aqui.', 'chat')}
           </div>
