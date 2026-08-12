@@ -11827,3 +11827,16 @@ body.theme-dark .assistant-chat-feedback > small { color: #b4d4c0; }
 .assistant-native-history-delete { align-self: center; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #c6dfd0; padding: 7px 6px; font: 700 10px/1.2 inherit; cursor: pointer; }
 .assistant-native-history-row:hover .assistant-native-history-delete,.assistant-native-history-delete:focus { border-color: #7d2f35; background: #3d2528; color: #ffd0d0; }
 body.theme-dark .assistant-native-history-delete { color: #c6dfd0; }
+
+.admin-ia-report-topics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.admin-ia-report-topic { width: 100%; border: 1px solid #dbe4ee; border-radius: 9px; background: #fff; color: #334155; padding: 10px; text-align: left; cursor: pointer; }
+.admin-ia-report-topic:hover { border-color: #86bda0; background: #f4fbf6; }
+.admin-ia-report-topic > strong { display: inline-block; max-width: calc(100% - 32px); font-size: 12px; }
+.admin-ia-report-topic > span { float: right; color: #0f766e; font-size: 12px; font-weight: 800; }
+.admin-ia-report-topic ul { margin: 7px 0 0; padding-left: 17px; color: #64748b; font-size: 11px; line-height: 1.45; }
+.admin-ia-report-topic small { display: block; margin-top: 8px; color: #176c55; font-size: 10px; font-weight: 800; }
+.admin-ia-consulta { margin-top: 8px; border: 1px solid #d9e8df; border-radius: 9px; background: #fff; overflow: hidden; }
+.admin-ia-consulta summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; list-style: none; padding: 10px; color: #315b48; font-size: 12px; }.admin-ia-consulta summary::-webkit-details-marker { display: none; }
+.admin-ia-consulta summary small { display: block; margin-top: 3px; color: #718278; font-size: 10px; }.admin-ia-consulta summary > span:last-child { color: #176c55; font-size: 11px; font-weight: 800; }
+.admin-ia-consulta > div { border-top: 1px solid #e5eee8; padding: 10px; color: #465b50; font-size: 12px; line-height: 1.5; }.admin-ia-consulta > div > strong { display: block; color: #24513e; font-size: 11px; }.admin-ia-consulta > div p { margin: 4px 0 12px; white-space: normal; }
+@media (max-width: 720px) { .admin-ia-report-topics { grid-template-columns: 1fr; } }

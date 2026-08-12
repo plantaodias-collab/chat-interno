@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/app.min.css?v=20260812-melhorias-uso-ia" />
+  <link rel="stylesheet" href="/assets/app.min.css?v=20260812-consultas-adm-ia" />
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@17.0.3/dist/twemoji.min.js" crossorigin="anonymous" defer></script>
@@ -692,7 +692,7 @@
           </div>
           <div id="adminBaseIaList" style="display:flex;flex-direction:column;gap:10px;">Carregando...</div>
           <section style="margin-top:24px;padding-top:18px;border-top:1px solid #dbe4ee;"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;"><div><h4 style="margin-bottom:6px;">Uso e custo estimado da IA</h4><p style="font-size:12px;color:#64748b;margin-bottom:10px;">O custo é uma estimativa informada pelo ADM por consulta. Não substitui a cobrança real do provedor.</p></div><button class="btn btn-secondary" style="width:auto;white-space:nowrap;" type="button" onclick="carregarUsoIaAdmin()">Atualizar</button></div><div id="adminIaUso">Carregando...</div></section>
-          <section style="margin-top:24px;padding-top:18px;border-top:1px solid #dbe4ee;"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;"><div><h4 style="margin-bottom:6px;">Relatório de dúvidas e treinamento</h4><p style="font-size:12px;color:#64748b;margin-bottom:10px;">Resumo dos temas mais consultados nos últimos 30 dias para orientar comunicados, FAQs e treinamentos. Os exemplos ocultam e-mails, telefones, documentos e números extensos.</p></div><button class="btn btn-secondary" style="width:auto;white-space:nowrap;" type="button" onclick="carregarRelatorioIaAdmin()">Atualizar</button></div><div id="adminIaRelatorio">Carregando...</div></section>
+          <section style="margin-top:24px;padding-top:18px;border-top:1px solid #dbe4ee;"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;"><div><h4 style="margin-bottom:6px;">Relatório de dúvidas e treinamento</h4><p style="font-size:12px;color:#64748b;margin-bottom:10px;">Resumo dos temas mais consultados nos últimos 30 dias para orientar comunicados, FAQs e treinamentos. Clique em um tema ou exemplo para abrir as consultas, com dados pessoais ocultados.</p></div><button class="btn btn-secondary" style="width:auto;white-space:nowrap;" type="button" onclick="carregarRelatorioIaAdmin()">Atualizar</button></div><div id="adminIaRelatorio">Carregando...</div><div id="adminIaConsultas" class="hidden" style="margin-top:12px;padding:12px;border:1px solid #b8d7c5;border-radius:10px;background:#f7fcf8;"></div></section>
           <section style="margin-top:24px;padding-top:18px;border-top:1px solid #dbe4ee;"><h4 style="margin-bottom:6px;">Fila de melhorias da IA</h4><p style="font-size:12px;color:#64748b;margin-bottom:10px;">Transforme achados do relatório e feedbacks em ações acompanháveis.</p><div style="display:grid;grid-template-columns:1fr 150px 150px;gap:8px;margin-bottom:8px;"><input class="field" id="adminIaMelhoriaTitulo" maxlength="180" placeholder="Ex.: Criar FAQ sobre prazo de certidões" /><select class="field" id="adminIaMelhoriaTipo"><option value="FAQ">FAQ</option><option value="TREINAMENTO">Treinamento</option><option value="REVISAO_BASE">Revisão da base</option><option value="MELHORIA">Melhoria do sistema</option></select><input class="field" id="adminIaMelhoriaResponsavel" maxlength="120" placeholder="Responsável" /></div><textarea class="field" id="adminIaMelhoriaDescricao" rows="2" maxlength="2000" placeholder="Descreva a ação, contexto ou material necessário."></textarea><div style="margin:8px 0 12px;"><button class="btn btn-primary" style="width:auto;" type="button" onclick="criarMelhoriaIaAdmin()">Adicionar à fila</button></div><div id="adminIaMelhoriasList" style="display:flex;flex-direction:column;gap:8px;">Carregando...</div></section>
           <section style="margin-top:24px;padding-top:18px;border-top:1px solid #dbe4ee;"><h4 style="margin-bottom:6px;">Fila anônima de feedback da IA</h4><p style="font-size:12px;color:#64748b;margin-bottom:10px;">Impressões do piloto, sugestões de melhoria e pedidos de implementação. Nome, perfil, pergunta e histórico não são exibidos ao ADM.</p><div id="adminIaFeedbackList" style="display:flex;flex-direction:column;gap:8px;">Carregando...</div></section>
         </section>
@@ -847,6 +847,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.min.js?v=20260812-melhorias-uso-ia"></script>
+  <script src="/assets/app.min.js?v=20260812-consultas-adm-ia"></script>
 </body>
 </html>

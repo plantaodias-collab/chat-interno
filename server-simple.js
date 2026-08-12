@@ -2143,15 +2143,19 @@ function temaRelatorioIa(pergunta) {
   return temas.find(([, padrao]) => padrao.test(texto))?.[0] || 'Outras dúvidas de trabalho';
 }
 
-function resumirPerguntaRelatorioIa(pergunta) {
-  return String(pergunta || '')
+function anonimizarTextoRelatorioIa(texto, limite = 260) {
+  return String(texto || '')
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[e-mail]')
     .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[documento]')
     .replace(/(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?(?:9\s?)?\d{4}[-\s]?\d{4}/g, '[telefone]')
     .replace(/\b\d{6,}\b/g, '[número]')
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, 260);
+    .slice(0, limite);
+}
+
+function resumirPerguntaRelatorioIa(pergunta) {
+  return anonimizarTextoRelatorioIa(pergunta, 260);
 }
 
 function montarContextoHistoricoIa(usuarioId, conversaId = '') {
@@ -2449,6 +2453,26 @@ app.get('/api/admin/ia-relatorio', verificarToken, (req, res) => {
   }));
   const recomendacoes = temas.slice(0, 3).map((item) => `${item.tema}: preparar orientação rápida ou treinamento para ${item.total} consulta${item.total === 1 ? '' : 's'} no período.`);
   res.json({ dias, inicio: new Date(inicio).toISOString(), total_consultas: consultas.length, temas, recentes, recomendacoes });
+});
+
+app.get('/api/admin/ia-consultas', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const tema = String(req.query?.tema || '').trim().slice(0, 100);
+  const inicio = Date.now() - (30 * 24 * 60 * 60 * 1000);
+  const consultas = (db.ia_historico || [])
+    .filter((item) => new Date(item.criado_em || 0).getTime() >= inicio)
+    .filter((item) => !tema || temaRelatorioIa(item.pergunta) === tema)
+    .sort((a, b) => new Date(b.criado_em || 0) - new Date(a.criado_em || 0))
+    .slice(0, 80)
+    .map((item) => ({
+      id: item.id,
+      tema: temaRelatorioIa(item.pergunta),
+      pergunta: anonimizarTextoRelatorioIa(item.pergunta, 6000),
+      resposta: anonimizarTextoRelatorioIa(item.resposta, 10000),
+      classificacao: String(item.classificacao || item.nivel || 'ATENCAO'),
+      criado_em: item.criado_em
+    }));
+  res.json({ tema: tema || 'Todas as consultas', total: consultas.length, consultas });
 });
 
 app.get('/api/admin/ia-melhorias', verificarToken, (req, res) => {

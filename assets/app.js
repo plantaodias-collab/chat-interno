@@ -7115,12 +7115,39 @@ async function carregarRelatorioIaAdmin() {
       container.innerHTML = '<p style="color:#64748b;font-size:12px;">Ainda não há consultas da IA nos últimos 30 dias.</p>';
       return;
     }
-    const temas = (relatorio.temas || []).slice(0, 6).map((item) => `<div style="padding:10px;border:1px solid #dbe4ee;border-radius:9px;background:#fff;"><strong style="color:#334155;font-size:12px;">${escapeHtml(item.tema)}</strong><span style="float:right;color:#0f766e;font-size:12px;font-weight:800;">${Number(item.total) || 0}</span>${(item.exemplos || []).length ? `<ul style="margin:7px 0 0;padding-left:17px;color:#64748b;font-size:11px;line-height:1.45;">${item.exemplos.map((exemplo) => `<li>${escapeHtml(exemplo)}</li>`).join('')}</ul>` : ''}</div>`).join('');
+    const temas = (relatorio.temas || []).slice(0, 6).map((item) => {
+      const temaSeguro = escapeHtml(item.tema).replace(/'/g, "\\'");
+      return `<button type="button" class="admin-ia-report-topic" onclick="abrirConsultasIaAdmin('${temaSeguro}')"><strong>${escapeHtml(item.tema)}</strong><span>${Number(item.total) || 0}</span>${(item.exemplos || []).length ? `<ul>${item.exemplos.map((exemplo) => `<li>${escapeHtml(exemplo)}</li>`).join('')}</ul>` : ''}<small>Abrir consultas →</small></button>`;
+    }).join('');
     const recomendacoes = (relatorio.recomendacoes || []).map((item) => `<li>${escapeHtml(item)}</li>`).join('');
-    container.innerHTML = `<div style="display:flex;gap:10px;align-items:baseline;margin-bottom:10px;"><strong style="font-size:20px;color:#0f766e;">${Number(relatorio.total_consultas) || 0}</strong><span style="color:#64748b;font-size:12px;">consultas nos últimos ${Number(relatorio.dias) || 30} dias</span></div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">${temas}</div>${recomendacoes ? `<div style="margin-top:10px;padding:10px;border-radius:9px;background:#eff8f3;color:#365548;font-size:12px;line-height:1.45;"><strong style="display:block;margin-bottom:5px;">Sugestões de treinamento</strong><ul style="margin:0;padding-left:17px;">${recomendacoes}</ul></div>` : ''}`;
+    container.innerHTML = `<div style="display:flex;gap:10px;align-items:baseline;margin-bottom:10px;"><strong style="font-size:20px;color:#0f766e;">${Number(relatorio.total_consultas) || 0}</strong><span style="color:#64748b;font-size:12px;">consultas nos últimos ${Number(relatorio.dias) || 30} dias</span><button class="btn btn-secondary" style="width:auto;margin-left:auto;padding:6px 9px;font-size:11px;" type="button" onclick="abrirConsultasIaAdmin()">Ver todas</button></div><div class="admin-ia-report-topics">${temas}</div>${recomendacoes ? `<div style="margin-top:10px;padding:10px;border-radius:9px;background:#eff8f3;color:#365548;font-size:12px;line-height:1.45;"><strong style="display:block;margin-bottom:5px;">Sugestões de treinamento</strong><ul style="margin:0;padding-left:17px;">${recomendacoes}</ul></div>` : ''}`;
   } catch (_error) {
     container.innerHTML = '<p style="color:#dc2626;font-size:12px;">Não foi possível carregar o relatório.</p>';
   }
+}
+
+async function abrirConsultasIaAdmin(tema = '') {
+  const container = document.getElementById('adminIaConsultas');
+  if (!container) return;
+  container.classList.remove('hidden');
+  container.innerHTML = '<p style="margin:0;color:#64748b;font-size:12px;">Carregando consultas...</p>';
+  try {
+    const response = await fetch(`/api/admin/ia-consultas?tema=${encodeURIComponent(tema)}`, { headers: authHeaders() });
+    if (!response.ok) throw new Error('Falha ao carregar consultas');
+    const dados = await response.json();
+    const itens = (dados.consultas || []).map((item) => `<details class="admin-ia-consulta"><summary><span><strong>${escapeHtml(item.tema)}</strong><small>${escapeHtml(formatarDataHistoricoIa(item.criado_em))} · ${escapeHtml(item.classificacao || 'ATENÇÃO')}</small></span><span>Abrir</span></summary><div><strong>Pergunta</strong><p>${escapeHtml(item.pergunta || '').replace(/\n/g, '<br>')}</p><strong>Resposta da IA</strong><p>${escapeHtml(item.resposta || '').replace(/\n/g, '<br>')}</p></div></details>`).join('');
+    container.innerHTML = `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;"><div><strong style="color:#284d3c;font-size:14px;">Consultas: ${escapeHtml(dados.tema || 'Todas')}</strong><small style="display:block;color:#64748b;font-size:11px;">${Number(dados.total) || 0} consulta(s); e-mails, telefones, documentos e números extensos são mascarados.</small></div><button class="btn btn-secondary" style="width:auto;padding:6px 9px;font-size:11px;" type="button" onclick="fecharConsultasIaAdmin()">Fechar</button></div>${itens || '<p style="color:#64748b;font-size:12px;">Nenhuma consulta encontrada neste tema.</p>'}`;
+    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (_error) {
+    container.innerHTML = '<p style="margin:0;color:#dc2626;font-size:12px;">Não foi possível carregar as consultas.</p>';
+  }
+}
+
+function fecharConsultasIaAdmin() {
+  const container = document.getElementById('adminIaConsultas');
+  if (!container) return;
+  container.classList.add('hidden');
+  container.innerHTML = '';
 }
 
 function formatarMoedaIa(valor) {
