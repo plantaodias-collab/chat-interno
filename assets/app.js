@@ -2849,6 +2849,7 @@ function abrirAssistenteJuridico() {
   document.body.classList.add('assistant-native-open');
   definirModoAssistente('orientacao');
   iniciarConversaAssistente();
+  carregarHistoricoIa();
   setTimeout(() => document.getElementById('assistantQuestion')?.focus(), 80);
 }
 
@@ -3096,6 +3097,66 @@ function renderHistoricoIa() {
   lista.innerHTML = itens.slice(0, 20).map((item) => `<div class="dashboard-assistant-history-row"><button class="dashboard-assistant-history-item" type="button" onclick="abrirHistoricoIa('${escapeHtml(item.id)}')"><span>${escapeHtml(formatarDataHistoricoIa(item.criado_em))}</span><strong>${escapeHtml(item.pergunta)}</strong><small>${escapeHtml(item.titulo || 'Consulta ao assistente')}</small></button><button class="dashboard-assistant-history-delete" type="button" onclick="excluirHistoricoIa('${escapeHtml(item.id)}')" aria-label="Excluir esta consulta" title="Excluir consulta">×</button></div>`).join('');
 }
 
+function gruposHistoricoAssistenteNativo() {
+  const grupos = new Map();
+  historicoIaCache.forEach((item) => {
+    const id = String(item.conversa_id || item.id || '');
+    if (!id) return;
+    if (!grupos.has(id)) grupos.set(id, []);
+    grupos.get(id).push(item);
+  });
+  return [...grupos.entries()];
+}
+
+function renderHistoricoAssistenteNativo() {
+  const lista = document.getElementById('assistantNativeHistoryList');
+  if (!lista) return;
+  const termo = normalizarAssistente(document.getElementById('assistantNativeHistorySearch')?.value || '');
+  const grupos = gruposHistoricoAssistenteNativo().filter(([, itens]) => !termo || itens.some((item) => normalizarAssistente(`${item.pergunta} ${item.titulo} ${item.resposta}`).includes(termo)));
+  lista.innerHTML = '';
+  if (!grupos.length) {
+    const vazio = document.createElement('span');
+    vazio.textContent = termo ? 'Nenhuma conversa encontrada.' : 'Suas conversas aparecerão aqui.';
+    lista.appendChild(vazio);
+    return;
+  }
+  grupos.slice(0, 30).forEach(([conversaId, itens]) => {
+    const primeiro = itens[itens.length - 1];
+    const maisRecente = itens[0];
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'assistant-native-history-item';
+    botao.classList.toggle('active', String(conversaIaNativaId || '') === conversaId);
+    const data = document.createElement('small');
+    data.textContent = formatarDataHistoricoIa(maisRecente.criado_em);
+    const titulo = document.createElement('strong');
+    titulo.textContent = String(primeiro.pergunta || 'Conversa com a IA').replace(/\s+/g, ' ').slice(0, 88);
+    const meta = document.createElement('span');
+    meta.textContent = `${itens.length} ${itens.length === 1 ? 'mensagem' : 'mensagens'}`;
+    botao.append(data, titulo, meta);
+    botao.addEventListener('click', () => abrirConversaAssistenteNativa(conversaId));
+    lista.appendChild(botao);
+  });
+}
+
+function abrirConversaAssistenteNativa(conversaId) {
+  const itens = historicoIaCache.filter((item) => String(item.conversa_id || '') === String(conversaId)).slice().reverse();
+  if (!itens.length) return;
+  conversaIaNativaId = String(conversaId);
+  const mensagens = document.getElementById('assistantNativeMessages');
+  if (mensagens) mensagens.innerHTML = '';
+  itens.forEach((item) => {
+    adicionarMensagemAssistente('user', item.pergunta);
+    adicionarMensagemAssistente('assistant', { level: item.nivel || item.classificacao, title: item.titulo, text: item.resposta, basis: item.base, nextStep: item.proximo_passo });
+  });
+  renderHistoricoAssistenteNativo();
+  document.getElementById('assistantQuestion')?.focus();
+}
+
+function filtrarHistoricoAssistenteNativo() {
+  renderHistoricoAssistenteNativo();
+}
+
 async function carregarHistoricoIa() {
   if (!usuarioAtual || !ASSISTENTE_JURIDICO_ATIVO) return;
   try {
@@ -3103,9 +3164,12 @@ async function carregarHistoricoIa() {
     if (!response.ok) throw new Error('Falha ao carregar histórico');
     historicoIaCache = await response.json();
     renderHistoricoIa();
+    renderHistoricoAssistenteNativo();
   } catch (_error) {
     const lista = document.getElementById('dashboardAssistantHistoryList');
     if (lista) lista.innerHTML = '<div class="dashboard-assistant-history-empty">Histórico indisponível no momento.</div>';
+    const listaNativa = document.getElementById('assistantNativeHistoryList');
+    if (listaNativa) listaNativa.textContent = 'Histórico indisponível no momento.';
   }
 }
 
@@ -3336,6 +3400,7 @@ function novaConversaAssistente() {
   const mensagens = document.getElementById('assistantNativeMessages');
   if (mensagens) mensagens.innerHTML = '';
   iniciarConversaAssistente();
+  renderHistoricoAssistenteNativo();
   document.getElementById('assistantQuestion')?.focus();
 }
 
@@ -3488,6 +3553,7 @@ function consultarServicoDashboard(question) {
 window.abrirAssistenteJuridico = abrirAssistenteJuridico;
 window.fecharAssistenteJuridico = fecharAssistenteJuridico;
 window.novaConversaAssistente = novaConversaAssistente;
+window.filtrarHistoricoAssistenteNativo = filtrarHistoricoAssistenteNativo;
 window.enviarPerguntaAssistente = enviarPerguntaAssistente;
 window.responderPerguntaAssistente = responderPerguntaAssistente;
 window.usarAtalhoAssistente = usarAtalhoAssistente;

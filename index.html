@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/app.min.css?v=20260812-chat-ia" />
+  <link rel="stylesheet" href="/assets/app.min.css?v=20260812-historico-ia" />
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@17.0.3/dist/twemoji.min.js" crossorigin="anonymous" defer></script>
@@ -448,6 +448,11 @@
         <div class="assistant-native-user"><span id="assistantNativeUser">Colaborador</span><button type="button" onclick="fecharAssistenteJuridico()" aria-label="Fechar IA Cartório Dias de Castro">×</button></div>
       </header>
       <div class="assistant-native-content">
+        <aside class="assistant-native-history" aria-label="Histórico de conversas da IA">
+          <div class="assistant-native-history-head"><div><strong>Histórico</strong><small>Somente suas conversas</small></div></div>
+          <input id="assistantNativeHistorySearch" type="search" placeholder="Buscar conversa" oninput="filtrarHistoricoAssistenteNativo()" />
+          <div class="assistant-native-history-list" id="assistantNativeHistoryList"><span>Carregando histórico...</span></div>
+        </aside>
         <section class="assistant-native-chat" aria-label="Conversa com a IA Cartório Dias de Castro">
           <div class="assistant-native-chat-info"><span class="assistant-native-status"></span><div><strong>Conversa privada de trabalho</strong><small>Respostas devem ser revisadas antes de serem utilizadas.</small></div><button type="button" onclick="novaConversaAssistente()">+ Nova conversa</button></div>
           <div class="assistant-native-messages" id="assistantNativeMessages" aria-live="polite"></div>
@@ -838,6 +843,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.min.js?v=20260812-chat-ia"></script>
+  <script src="/assets/app.min.js?v=20260812-historico-ia"></script>
 </body>
 </html>
