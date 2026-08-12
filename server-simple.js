@@ -14,6 +14,9 @@ const sharp = require('sharp');
 const pdfParse = require('pdf-parse');
 
 const app = express();
+// A aplicação fica atrás do proxy reverso da Railway. Isso permite que os
+// limitadores usem corretamente o IP encaminhado pela plataforma.
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const DEFAULT_APP_ORIGINS = [
   'https://chat-interno-production-d45a.up.railway.app',
@@ -2111,17 +2114,47 @@ async function consultarOpenAiCartorio(system, pergunta) {
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-      body: JSON.stringify({ model: process.env.OPENAI_MODEL || 'gpt-5-mini', instructions: system, input: pergunta, max_output_tokens: 900, text: { format: { type: 'json_schema', name: 'resposta_juridica_cartorio', strict: true, schema: RESPOSTA_IA_SCHEMA } } }),
+      body: JSON.stringify({ model: process.env.OPENAI_MODEL || 'gpt-5.6-luna', instructions: system, input: pergunta, max_output_tokens: 900, store: false, text: { format: { type: 'json_schema', name: 'resposta_juridica_cartorio', strict: true, schema: RESPOSTA_IA_SCHEMA } } }),
       signal: controller.signal
     });
     const payload = await response.json();
-    if (!response.ok) throw new Error(`OpenAI ${response.status}`);
+    if (!response.ok) throw new Error(`OpenAI ${response.status}: ${payload?.error?.code || payload?.error?.type || 'erro'} — ${payload?.error?.message || 'Falha ao processar a consulta'}`);
     const text = String(payload.output_text || (payload.output || []).flatMap((item) => item.content || []).filter((item) => item.type === 'output_text').map((item) => item.text).join('\n')).trim();
     if (!text) throw new Error('Resposta vazia da OpenAI');
     return JSON.parse(text);
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function consultarOpenAiCartorioTexto(system, pergunta) {
+  if (!process.env.OPENAI_API_KEY) throw new Error('OpenAI sem chave configurada');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45000);
+  try {
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      body: JSON.stringify({ model: process.env.OPENAI_MODEL || 'gpt-5.6-luna', instructions: `${system}\n\nRetorne somente o texto final da orientação, sem JSON.`, input: pergunta, max_output_tokens: 900, store: false }),
+      signal: controller.signal
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(`OpenAI ${response.status}: ${payload?.error?.code || payload?.error?.type || 'erro'} — ${payload?.error?.message || 'Falha ao processar a consulta'}`);
+    const texto = String(payload.output_text || (payload.output || []).flatMap((item) => item.content || []).filter((item) => item.type === 'output_text').map((item) => item.text).join('\n')).trim();
+    if (!texto) throw new Error(`OpenAI ${payload.status || 'sem resposta'}: resposta vazia`);
+    return { classificacao: 'ATENCAO', resposta: texto, fundamentos: [], orientacao_interna: null, alertas: [], motivo_escalonamento: null };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function mensagemFalhaIaParaUsuario(error) {
+  const detalhe = normalizarTextoIa(error?.message || '');
+  if (/insufficient_quota|quota|billing|credit|429/.test(detalhe)) return 'A IA está sem créditos disponíveis na conta da API. Avise o administrador para verificar o faturamento da OpenAI.';
+  if (/invalid_api_key|incorrect api key|401|authentication/.test(detalhe)) return 'A chave da OpenAI não foi aceita. O administrador deve conferir a configuração no Railway.';
+  if (/model.*not found|model_not_found|404/.test(detalhe)) return 'O modelo configurado para a IA não está disponível na conta. O administrador deve conferir a configuração no Railway.';
+  if (/abort|timeout|timed out/.test(detalhe)) return 'A IA demorou mais do que o esperado para responder. Tente novamente em alguns instantes.';
+  return 'A IA não conseguiu responder agora. Tente novamente ou encaminhe o caso ao Oficial.';
 }
 
 async function consultarClaudeCartorio(system, pergunta) {
@@ -2193,7 +2226,18 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
     let respostaEstruturada = null;
     let provider = '';
     if (process.env.OPENAI_API_KEY) {
-      try { respostaEstruturada = await consultarOpenAiCartorio(system, pergunta); provider = 'OpenAI'; } catch (error) { errors.push(error?.message || 'Falha OpenAI'); }
+      try {
+        respostaEstruturada = await consultarOpenAiCartorio(system, pergunta);
+        provider = 'OpenAI';
+      } catch (error) {
+        errors.push(error?.message || 'Falha OpenAI estruturada');
+        try {
+          respostaEstruturada = await consultarOpenAiCartorioTexto(system, pergunta);
+          provider = 'OpenAI';
+        } catch (fallbackError) {
+          errors.push(fallbackError?.message || 'Falha OpenAI simples');
+        }
+      }
     }
     if (!respostaEstruturada?.resposta) throw new Error(errors.join(' | ') || 'Nenhuma provedora disponível');
     const classificacao = fundamentosPesquisa.length && respostaEstruturada.classificacao === 'ROTINA' ? 'ROTINA' : (respostaEstruturada.classificacao === 'OFICIAL' ? 'OFICIAL' : 'ATENCAO');
@@ -2204,7 +2248,7 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
     return res.json({ ...resposta, historicoId: registro.id });
   } catch (error) {
     console.error('Falha IA Cartório Dias:', error?.message || error);
-    return res.status(502).json({ erro: 'A IA não conseguiu responder agora. Tente novamente ou encaminhe o caso ao Oficial.' });
+    return res.status(502).json({ erro: mensagemFalhaIaParaUsuario(error) });
   }
 });
 
