@@ -55,9 +55,9 @@ const THUMBNAIL_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif'])
 const THUMBNAIL_MAX_WIDTH = 480;
 const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
-// A IA é liberada quando as chaves estiverem configuradas. Para uma suspensão
-// imediata, defina IA_CARTORIO_ENABLED=false no Railway.
-const IA_CARTORIO_ENABLED = String(process.env.IA_CARTORIO_ENABLED || 'true').toLowerCase() === 'true';
+// As chaves podem permanecer cadastradas, mas a IA fica bloqueada por padrão.
+// A liberação exige IA_CARTORIO_ENABLED=true no Railway e autorização do administrador.
+const IA_CARTORIO_ENABLED = String(process.env.IA_CARTORIO_ENABLED || 'false').toLowerCase() === 'true';
 const IA_CARTORIO_DAILY_LIMIT = Math.max(1, Math.min(50, Number(process.env.IA_CARTORIO_DAILY_LIMIT || 12)));
 // Janela de agrupamento das gravacoes em disco (debounce). Mudancas em rajada
 // sao persistidas em uma unica escrita assincrona dentro deste intervalo.
@@ -1974,9 +1974,9 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
 
   const respostaLocal = respostaLocalBaseIa(mensagem) || respostaPadraoGratuitaIa(mensagem, modo);
   if (respostaLocal) {
-    salvarHistoricoIa(usuario, mensagem, modo, respostaLocal);
+    const registro = salvarHistoricoIa(usuario, mensagem, modo, respostaLocal);
     registrarAuditoria({ acao: 'ia_cartorio_base_interna', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: `${respostaLocal.provider}:${modo}`, req });
-    return res.json(respostaLocal);
+    return res.json({ ...respostaLocal, historicoId: registro.id });
   }
 
   const usadasHoje = consultasPagasHoje(usuario.id);
@@ -1999,9 +1999,9 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
     }
     if (!text) throw new Error(errors.join(' | ') || 'Nenhuma provedora disponível');
     const resposta = { level: 'IA CARTÓRIO DIAS DE CASTRO', title: modo === 'email' ? 'Minuta para revisão' : modo === 'nota' ? 'Minuta de nota para revisão' : 'Orientação da IA Cartório Dias de Castro', text, basis: 'Resposta gerada com apoio da Base Interna. Confirme legislação e procedimento vigente antes de concluir o ato.', nextStep: `Revise a orientação e encaminhe ao Oficial se houver situação excepcional ou risco registral. Restam ${Math.max(0, IA_CARTORIO_DAILY_LIMIT - usadasHoje - 1)} consultas de IA hoje.`, provider, consultasRestantes: Math.max(0, IA_CARTORIO_DAILY_LIMIT - usadasHoje - 1) };
-    salvarHistoricoIa(usuario, mensagem, modo, resposta);
+    const registro = salvarHistoricoIa(usuario, mensagem, modo, resposta);
     registrarAuditoria({ acao: 'ia_cartorio_consulta', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: `${provider.toLowerCase()}:${modo}`, req });
-    return res.json(resposta);
+    return res.json({ ...resposta, historicoId: registro.id });
   } catch (error) {
     console.error('Falha IA Cartório Dias:', error?.message || error);
     return res.status(502).json({ erro: 'A IA não conseguiu responder agora. Tente novamente ou encaminhe o caso ao Oficial.' });
@@ -2016,6 +2016,17 @@ app.get('/api/ia-cartorio/historico', verificarToken, (req, res) => {
     .slice(0, IA_HISTORY_PER_USER_LIMIT)
     .map(({ usuario_id, ...item }) => item);
   res.json(itens);
+});
+
+app.delete('/api/ia-cartorio/historico/:id', verificarToken, (req, res) => {
+  const id = String(req.params.id || '').trim();
+  const usuario = findActiveUserById(req.userId);
+  const item = (db.ia_historico || []).find((registro) => String(registro.id) === id && Number(registro.usuario_id) === Number(req.userId));
+  if (!item) return res.status(404).json({ erro: 'Consulta não encontrada.' });
+  db.ia_historico = (db.ia_historico || []).filter((registro) => String(registro.id) !== id || Number(registro.usuario_id) !== Number(req.userId));
+  db.saveFile('ia-historico.json', db.ia_historico);
+  registrarAuditoria({ acao: 'ia_cartorio_historico_excluido', usuarioId: req.userId, usuarioNome: usuario?.nome || '', detalhe: id, req });
+  res.json({ ok: true });
 });
 
 app.post('/api/login', loginLimiter, async (req, res) => {
