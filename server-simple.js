@@ -1802,11 +1802,15 @@ function normalizarTextoIa(texto) {
   return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
+function mensagemPessoalIa(mensagem) {
+  const texto = normalizarTextoIa(mensagem);
+  return /\b(receita|namorad|casamento pessoal|relacionamento|horoscopo|filme|serie|jogo|viagem|dieta|academia|fofoca|conselho pessoal|vida pessoal)\b/.test(texto);
+}
+
 function mensagemForaDoEscopoIa(mensagem) {
   const texto = normalizarTextoIa(mensagem);
-  const pessoal = /\b(receita|namorad|casamento pessoal|relacionamento|horoscopo|filme|serie|jogo|viagem|dieta|academia|fofoca|conselho pessoal|vida pessoal)\b/.test(texto);
   const cartorio = /cartorio|registro|registral|certidao|casamento|nascimento|obito|averbacao|emancipacao|pacto|protesto|rtd|rcpn|rcpj|estatuto|associacao|ata|documento|reconhecimento de firma|autenticacao|nota devolutiva|exigencia|oficial|habilitacao|protocolo|pessoa juridica|atendimento|email|e-mail/.test(texto);
-  return pessoal || !cartorio;
+  return mensagemPessoalIa(mensagem) || !cartorio;
 }
 
 function perguntaExigeOficial(mensagem) {
@@ -2189,7 +2193,15 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
   if (!usuario) return res.status(404).json({ erro: 'Usuário não encontrado' });
   if (!mensagem) return res.status(400).json({ erro: 'Escreva uma pergunta para a IA Cartório Dias de Castro.' });
   if (!iaCartorioEstaLiberada()) return res.status(423).json({ erro: 'A IA Cartório Dias de Castro estará em teste a partir das 13h25, após a liberação do administrador.' });
-  if (mensagemForaDoEscopoIa(mensagem)) {
+  const conversaAnterior = conversaId
+    ? (db.ia_historico || []).find((item) => Number(item.usuario_id) === Number(usuario.id) && String(item.conversa_id || '') === conversaId)
+    : null;
+  if (conversaId && !conversaAnterior) return res.status(400).json({ erro: 'Não foi possível localizar a conversa anterior. Inicie uma nova consulta.' });
+  // Ajustes como “deixe mais curto” ou “mais cordial” dependem da resposta
+  // anterior e não trazem, isoladamente, palavras do contexto cartorário.
+  // Eles são permitidos somente em uma conversa já registrada para o próprio
+  // colaborador; uma nova pergunta continua passando pelo bloqueio de escopo.
+  if (mensagemPessoalIa(mensagem) || (!conversaAnterior && mensagemForaDoEscopoIa(mensagem))) {
     registrarAuditoria({ acao: 'assistente_escopo_bloqueado', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: 'assunto-pessoal-ou-fora-do-escopo', req });
     return res.json({ bloqueado: true, level: 'ESCOPO INTERNO', title: 'Assunto fora do escopo da IA Cartório Dias de Castro', text: 'Essa pergunta é pessoal ou não está ligada à rotina do cartório e não pode ser atendida.', basis: 'Assuntos pessoais e gerais não são enviados à IA.', nextStep: 'A tentativa foi registrada para ciência do administrador. Reformule a dúvida com o ato ou documento do cartório.' });
   }
