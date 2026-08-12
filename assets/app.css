@@ -11565,4 +11565,69 @@ body.theme-dark .main-content {
  .assistant-header-btn { border-color:#a9dfc0; background:#edfdf3; color:#176c55; }
  .assistant-header-btn:hover { border-color:#6ec594; background:#e3f7ea; }
  .assistant-header-spark { color:#b77e39; font-size:16px; line-height:1; }
- .assistant-header-badge { border-radius:999px; padding:2px 5px; background:#176c55; color:#fff; font-size:7px; font-weight:900; letter-spacing:.6px; }
+.assistant-header-badge { border-radius:999px; padding:2px 5px; background:#176c55; color:#fff; font-size:7px; font-weight:900; letter-spacing:.6px; }
+
+/* Cartão “Em breve”: uma escala tipográfica única, independente de regras
+   antigas do dashboard que alteravam elementos span e label. */
+.dashboard-assistant-card.is-coming-soon .dashboard-assistant-knowledge {
+  margin: 2px 0 15px;
+  padding: 12px;
+  font-family: inherit;
+}
+
+.dashboard-assistant-card.is-coming-soon .dashboard-assistant-knowledge > strong {
+  margin: 0 0 9px;
+  color: #5e624f;
+  font-size: 12px !important;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.dashboard-assistant-card.is-coming-soon .dashboard-assistant-knowledge > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.dashboard-assistant-card.is-coming-soon .dashboard-assistant-knowledge > div > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 5px 9px;
+  border: 1px solid #eadfbd;
+  border-radius: 999px;
+  background: #fffdf7;
+  color: #6f694f;
+  font-size: 10px !important;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.dashboard-assistant-card.is-coming-soon > label {
+  margin: 0 0 7px;
+  color: #426353;
+  font-size: 11px !important;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.dashboard-assistant-card.is-coming-soon .dashboard-assistant-input input {
+  font-size: 11px !important;
+  line-height: 1.25;
+}
+
+.dashboard-assistant-card.is-coming-soon .dashboard-assistant-disclaimer {
+  margin-top: 10px;
+  color: #657268;
+  font-size: 10px !important;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+
+body.theme-dark .dashboard-assistant-card.is-coming-soon .dashboard-assistant-knowledge > strong { color: #ead49b; }
+body.theme-dark .dashboard-assistant-card.is-coming-soon .dashboard-assistant-knowledge > div > span { border-color: #74613c; background: rgba(116,97,60,.32); color: #ead49b; }
