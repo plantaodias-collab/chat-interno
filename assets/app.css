@@ -11648,6 +11648,58 @@ body.theme-dark .main-content {
 body.theme-dark .dashboard-assistant-card.is-coming-soon .dashboard-assistant-knowledge > strong { color: #ead49b; }
 body.theme-dark .dashboard-assistant-card.is-coming-soon .dashboard-assistant-knowledge > div > span { border-color: #74613c; background: rgba(116,97,60,.32); color: #ead49b; }
 
+.dashboard-assistant-use-actions,
+.dashboard-assistant-feedback {
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px dashed #cde4d5;
+}
+
+.dashboard-assistant-use-actions > strong,
+.dashboard-assistant-feedback > span {
+  display: block;
+  margin-bottom: 7px;
+  color: #49745f;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.dashboard-assistant-use-actions > div,
+.dashboard-assistant-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.dashboard-assistant-use-actions > div { margin-top: 0; }
+.dashboard-assistant-use-actions button,
+.dashboard-assistant-feedback button {
+  border: 1px solid #c6e3d0;
+  border-radius: 7px;
+  background: #f7fcf8;
+  color: #246a53;
+  padding: 6px 8px;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dashboard-assistant-use-actions button:hover,
+.dashboard-assistant-feedback button:hover,
+.dashboard-assistant-answer-actions button.is-favorite {
+  border-color: #d1a84b;
+  background: #fff7df;
+  color: #895f18;
+}
+
+body.theme-dark .dashboard-assistant-use-actions,
+body.theme-dark .dashboard-assistant-feedback { border-color: #356f59; }
+body.theme-dark .dashboard-assistant-use-actions > strong,
+body.theme-dark .dashboard-assistant-feedback > span { color: #a8d8bb; }
+body.theme-dark .dashboard-assistant-use-actions button,
+body.theme-dark .dashboard-assistant-feedback button { border-color: #356f59; background: #132b24; color: #c7ead5; }
+
 /* Central compacta: prioriza o espaço de trabalho da IA sem perder o resumo essencial. */
 @media (min-width: 1121px) {
   .dashboard-split {

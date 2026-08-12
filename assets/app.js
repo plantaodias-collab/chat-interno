@@ -3115,13 +3115,98 @@ function preencherRespostaDashboard(response, question = '', historicoId = '') {
     answerLink.classList.add('hidden');
   }
   historicoIaAbertoId = historicoId || response.historicoId || null;
+  atualizarAcaoFavoritaDashboard(Boolean(response.favorita));
   answer.classList.remove('hidden');
 }
 
 function abrirHistoricoIa(id) {
   const item = historicoIaCache.find((registro) => String(registro.id) === String(id));
   if (!item) return;
-  preencherRespostaDashboard({ level: item.nivel, title: item.titulo, text: item.resposta, basis: item.base, nextStep: item.proximo_passo, provider: item.provider }, item.pergunta, item.id);
+  preencherRespostaDashboard({ level: item.nivel, title: item.titulo, text: item.resposta, basis: item.base, nextStep: item.proximo_passo, provider: item.provider, favorita: item.favorita }, item.pergunta, item.id);
+}
+
+function textoRespostaDashboard() {
+  return [
+    document.getElementById('dashboardAssistantTitle')?.textContent,
+    document.getElementById('dashboardAssistantText')?.textContent,
+    document.getElementById('dashboardAssistantBasis')?.textContent,
+    document.getElementById('dashboardAssistantNext')?.textContent
+  ].filter(Boolean).join('\n\n').trim();
+}
+
+async function copiarTextoDaIa(texto, mensagemSucesso) {
+  if (!texto) return;
+  try {
+    await navigator.clipboard.writeText(texto);
+    mostrarNotificacao(mensagemSucesso, 'success');
+  } catch (_error) {
+    mostrarNotificacao('Não foi possível copiar automaticamente. Selecione e copie o texto da resposta.', 'warning');
+  }
+}
+
+function copiarRespostaDashboard() {
+  copiarTextoDaIa(`REVISAR ANTES DE UTILIZAR\n\n${textoRespostaDashboard()}`, 'Resposta copiada para revisão.');
+}
+
+function prepararRespostaDashboard(canal) {
+  const titulo = document.getElementById('dashboardAssistantTitle')?.textContent || 'Orientação';
+  const texto = document.getElementById('dashboardAssistantText')?.textContent || '';
+  const aviso = 'Mensagem preparada pela IA CDC. Revise informações, documentos e fundamento antes de enviar.';
+  const conteudo = canal === 'whatsapp'
+    ? `Olá!\n\n${texto}\n\n${aviso}`
+    : `Assunto: ${titulo}\n\nOlá,\n\n${texto}\n\nAtenciosamente,\nCartório Dias de Castro\n\n${aviso}`;
+  copiarTextoDaIa(conteudo, `Versão para ${canal === 'whatsapp' ? 'WhatsApp' : 'e-mail'} copiada para revisão.`);
+}
+
+async function salvarRascunhoNotaDashboard() {
+  const texto = textoRespostaDashboard();
+  if (!texto) return;
+  try {
+    const response = await fetch('/api/ia-cartorio/rascunhos', {
+      method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ titulo: document.getElementById('dashboardAssistantTitle')?.textContent || 'Rascunho de nota devolutiva', texto: `RASCUNHO — REVISAR ANTES DE UTILIZAR\n\n${texto}`, historico_id: historicoIaAbertoId })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.erro || 'Falha ao salvar rascunho');
+    mostrarNotificacao('Rascunho de nota devolutiva salvo para revisão.', 'success');
+  } catch (error) {
+    mostrarNotificacao(error.message, 'error');
+  }
+}
+
+function atualizarAcaoFavoritaDashboard(favorita) {
+  const button = document.getElementById('dashboardAssistantFavoriteBtn');
+  if (!button) return;
+  button.textContent = favorita ? '★ Favorita' : '☆ Favoritar';
+  button.classList.toggle('is-favorite', favorita);
+}
+
+async function alternarFavoritoDashboard() {
+  if (!historicoIaAbertoId) return;
+  const item = historicoIaCache.find((registro) => String(registro.id) === String(historicoIaAbertoId));
+  const favorita = !Boolean(item?.favorita);
+  try {
+    const response = await fetch(`/api/ia-cartorio/historico/${encodeURIComponent(historicoIaAbertoId)}/favorito`, { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ favorita }) });
+    if (!response.ok) throw new Error('Falha ao atualizar favorito');
+    if (item) item.favorita = favorita;
+    atualizarAcaoFavoritaDashboard(favorita);
+    renderHistoricoIa();
+    mostrarNotificacao(favorita ? 'Consulta adicionada aos favoritos.' : 'Consulta removida dos favoritos.', 'success');
+  } catch (_error) {
+    mostrarNotificacao('Não foi possível atualizar o favorito.', 'error');
+  }
+}
+
+async function enviarFeedbackIaDashboard(tipo) {
+  if (!historicoIaAbertoId) return;
+  try {
+    const response = await fetch('/api/ia-cartorio/feedback', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ tipo, historico_id: historicoIaAbertoId }) });
+    if (!response.ok) throw new Error('Falha ao registrar feedback');
+    const mensagem = { ajudou: 'Obrigado pelo feedback.', desatualizada: 'Sinalização enviada para revisão da base.', revisao_oficial: 'Solicitação encaminhada para a fila de revisão do Oficial.' }[tipo];
+    mostrarNotificacao(mensagem, 'success');
+  } catch (_error) {
+    mostrarNotificacao('Não foi possível registrar o feedback.', 'error');
+  }
 }
 
 function voltarParaConsultaDashboard() {
@@ -3295,6 +3380,11 @@ window.abrirHistoricoIa = abrirHistoricoIa;
 window.filtrarHistoricoIa = filtrarHistoricoIa;
 window.voltarParaConsultaDashboard = voltarParaConsultaDashboard;
 window.excluirHistoricoIa = excluirHistoricoIa;
+window.copiarRespostaDashboard = copiarRespostaDashboard;
+window.prepararRespostaDashboard = prepararRespostaDashboard;
+window.salvarRascunhoNotaDashboard = salvarRascunhoNotaDashboard;
+window.alternarFavoritoDashboard = alternarFavoritoDashboard;
+window.enviarFeedbackIaDashboard = enviarFeedbackIaDashboard;
 
 async function carregarWorkflow() {
   try {
@@ -3611,7 +3701,7 @@ function getWelcomeStateHtml() {
           <label for="dashboardAssistantQuestion">Pergunta ou dúvida</label>
           <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" ${iaEmBreve ? 'disabled' : 'onkeydown="enviarPerguntaDashboard(event)"'} placeholder="${iaEmBreve ? 'Consultas disponíveis em breve' : 'Ex.: quais documentos preciso para habilitação de casamento?'}" /><button type="button" ${iaEmBreve ? 'disabled' : 'onclick="responderPerguntaDashboard()"'} aria-label="Consultar IA Cartório Dias de Castro">→</button></div>
           <p class="dashboard-assistant-disclaimer">A IA CDC pode cometer erros. Por isso, lembre-se de conferir informações relevantes.</p>
-          ${iaEmBreve ? '' : '<div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div class="dashboard-assistant-answer-actions"><button type="button" onclick="voltarParaConsultaDashboard()">← Nova consulta</button><button class="danger" type="button" onclick="excluirHistoricoIa()">Excluir consulta</button></div><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><strong id="dashboardAssistantTitle" class="dashboard-assistant-answer-title"></strong><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div><div class="dashboard-assistant-next"><strong>Próximo passo</strong><span id="dashboardAssistantNext"></span></div><a class="assistant-response-link hidden" id="dashboardAssistantLink" target="_blank" rel="noopener noreferrer"></a></div><section class="dashboard-assistant-history" aria-label="Histórico de consultas"><div class="dashboard-assistant-history-head"><div><strong>Histórico de consultas</strong><small>Somente suas consultas</small></div></div><input id="dashboardAssistantHistorySearch" type="search" placeholder="Buscar no histórico" oninput="filtrarHistoricoIa()" /><div class="dashboard-assistant-history-list" id="dashboardAssistantHistoryList"><div class="dashboard-assistant-history-empty">Carregando histórico...</div></div></section>'}
+          ${iaEmBreve ? '' : '<div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div class="dashboard-assistant-answer-actions"><button type="button" onclick="voltarParaConsultaDashboard()">← Nova consulta</button><button id="dashboardAssistantFavoriteBtn" type="button" onclick="alternarFavoritoDashboard()">☆ Favoritar</button><button class="danger" type="button" onclick="excluirHistoricoIa()">Excluir consulta</button></div><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><strong id="dashboardAssistantTitle" class="dashboard-assistant-answer-title"></strong><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div><div class="dashboard-assistant-next"><strong>Próximo passo</strong><span id="dashboardAssistantNext"></span></div><a class="assistant-response-link hidden" id="dashboardAssistantLink" target="_blank" rel="noopener noreferrer"></a><div class="dashboard-assistant-use-actions"><strong>Preparar para uso — revise antes de utilizar</strong><div><button type="button" onclick="copiarRespostaDashboard()">Copiar resposta</button><button type="button" onclick="prepararRespostaDashboard(\'email\')">E-mail</button><button type="button" onclick="prepararRespostaDashboard(\'whatsapp\')">WhatsApp</button><button type="button" onclick="salvarRascunhoNotaDashboard()">Salvar rascunho de nota</button></div></div><div class="dashboard-assistant-feedback"><span>A resposta ajudou?</span><button type="button" onclick="enviarFeedbackIaDashboard(\'ajudou\')">Sim</button><button type="button" onclick="enviarFeedbackIaDashboard(\'desatualizada\')">Está desatualizada</button><button type="button" onclick="enviarFeedbackIaDashboard(\'revisao_oficial\')">Revisão do Oficial</button></div></div><section class="dashboard-assistant-history" aria-label="Histórico de consultas"><div class="dashboard-assistant-history-head"><div><strong>Histórico de consultas</strong><small>Somente suas consultas</small></div></div><input id="dashboardAssistantHistorySearch" type="search" placeholder="Buscar no histórico" oninput="filtrarHistoricoIa()" /><div class="dashboard-assistant-history-list" id="dashboardAssistantHistoryList"><div class="dashboard-assistant-history-empty">Carregando histórico...</div></div></section>'}
         </aside>
       </div>
     </div>
@@ -6020,6 +6110,7 @@ function abrirPainelAdmin() {
   carregarMensagensApagadasAdmin();
   carregarTemplatesAdmin();
   carregarBaseIaAdmin();
+  carregarFeedbackIaAdmin();
   document.getElementById('adminModal').classList.add('active');
 }
 
@@ -6608,6 +6699,24 @@ async function carregarBaseIaAdmin() {
     renderBaseIaAdmin();
   } catch (_err) {
     if (list) list.innerHTML = '<p style="color:#ef4444;font-size:13px;">Erro ao carregar a Base Interna.</p>';
+  }
+}
+
+async function carregarFeedbackIaAdmin() {
+  const list = document.getElementById('adminIaFeedbackList');
+  if (!list) return;
+  try {
+    const response = await fetch('/api/admin/ia-feedback', { headers: authHeaders() });
+    if (!response.ok) throw new Error('Falha ao carregar feedback');
+    const itens = await response.json();
+    if (!itens.length) {
+      list.innerHTML = '<p style="color:#64748b;font-size:12px;">Nenhuma sinalização recebida.</p>';
+      return;
+    }
+    const labels = { ajudou: 'Ajudou', desatualizada: 'Possível desatualização', revisao_oficial: 'Revisão do Oficial' };
+    list.innerHTML = itens.map((item) => `<div style="padding:10px;border:1px solid #dbe4ee;border-radius:9px;background:#fff;"><strong style="font-size:12px;color:#334155;">${escapeHtml(labels[item.tipo] || item.tipo)}</strong><span style="margin-left:7px;color:#64748b;font-size:11px;">${escapeHtml(item.titulo_consulta || 'Consulta da IA')}</span><small style="display:block;margin-top:4px;color:#94a3b8;font-size:10px;">${escapeHtml(item.usuario_nome || 'Colaborador')} · ${escapeHtml(formatarDataHistoricoIa(item.criado_em))}</small></div>`).join('');
+  } catch (_error) {
+    list.innerHTML = '<p style="color:#dc2626;font-size:12px;">Não foi possível carregar os feedbacks.</p>';
   }
 }
 

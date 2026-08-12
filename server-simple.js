@@ -83,7 +83,7 @@ const ALLOWED_MIME_EXTENSIONS = {
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
 };
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
-const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'notas-conversa.json', 'etiquetas-conversa.json', 'responsavel-conversa.json', 'mensagens-agendadas.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'base-ia.json', 'base-ia-versoes.json', 'ia-historico.json', 'codigo-normas-extrajudicial-tjsc-2026.pdf', 'codigo-normas-extrajudicial-tjsc-2026.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json'];
+const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'notas-conversa.json', 'etiquetas-conversa.json', 'responsavel-conversa.json', 'mensagens-agendadas.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'base-ia.json', 'base-ia-versoes.json', 'ia-historico.json', 'ia-feedback.json', 'ia-rascunhos.json', 'codigo-normas-extrajudicial-tjsc-2026.pdf', 'codigo-normas-extrajudicial-tjsc-2026.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json'];
 
 // Conteúdo inicial público e aprovado. Depois da primeira edição pelo painel,
 // a cópia persistida no armazenamento do Railway passa a prevalecer.
@@ -233,6 +233,8 @@ class SimpleDB {
     this.base_ia = this.loadFile('base-ia.json', DEFAULT_BASE_IA).map(normalizarFonteLegadaIa);
     this.base_ia_versoes = this.loadFile('base-ia-versoes.json', []);
     this.ia_historico = this.loadFile('ia-historico.json', []);
+    this.ia_feedback = this.loadFile('ia-feedback.json', []);
+    this.ia_rascunhos = this.loadFile('ia-rascunhos.json', []);
     this.auditoria = this.loadFile('auditoria.json', []);
     this.push_subscriptions = this.loadFile('push-subscriptions.json', []);
     this.escala_plantao = this.loadFile('escala-plantao.json', {
@@ -305,6 +307,8 @@ class SimpleDB {
       ['base-ia.json', this.base_ia],
       ['base-ia-versoes.json', this.base_ia_versoes],
       ['ia-historico.json', this.ia_historico],
+      ['ia-feedback.json', this.ia_feedback],
+      ['ia-rascunhos.json', this.ia_rascunhos],
       ['push-subscriptions.json', this.push_subscriptions],
       ['escala-plantao.json', this.escala_plantao]
     ];
@@ -2110,6 +2114,49 @@ app.delete('/api/ia-cartorio/historico/:id', verificarToken, (req, res) => {
   db.saveFile('ia-historico.json', db.ia_historico);
   registrarAuditoria({ acao: 'ia_cartorio_historico_excluido', usuarioId: req.userId, usuarioNome: usuario?.nome || '', detalhe: id, req });
   res.json({ ok: true });
+});
+
+app.patch('/api/ia-cartorio/historico/:id/favorito', verificarToken, (req, res) => {
+  const item = (db.ia_historico || []).find((registro) => String(registro.id) === String(req.params.id || '') && Number(registro.usuario_id) === Number(req.userId));
+  if (!item) return res.status(404).json({ erro: 'Consulta não encontrada.' });
+  item.favorita = Boolean(req.body?.favorita);
+  item.favorita_em = item.favorita ? new Date().toISOString() : null;
+  db.saveFile('ia-historico.json', db.ia_historico);
+  registrarAuditoria({ acao: item.favorita ? 'ia_cartorio_favoritada' : 'ia_cartorio_desfavoritada', usuarioId: req.userId, usuarioNome: findActiveUserById(req.userId)?.nome, detalhe: String(item.id), req });
+  res.json({ id: item.id, favorita: item.favorita });
+});
+
+app.post('/api/ia-cartorio/rascunhos', verificarToken, (req, res) => {
+  const usuario = findActiveUserById(req.userId);
+  const texto = String(req.body?.texto || '').trim().slice(0, 12000);
+  const titulo = String(req.body?.titulo || 'Rascunho de nota devolutiva').trim().slice(0, 240);
+  const historicoId = String(req.body?.historico_id || '').trim().slice(0, 80);
+  if (!usuario || !texto) return res.status(400).json({ erro: 'Rascunho vazio.' });
+  const rascunho = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, usuario_id: Number(usuario.id), titulo, texto, historico_id: historicoId || null, criado_em: new Date().toISOString() };
+  db.ia_rascunhos = [rascunho, ...(db.ia_rascunhos || [])].slice(0, 500);
+  db.saveFile('ia-rascunhos.json', db.ia_rascunhos);
+  registrarAuditoria({ acao: 'ia_cartorio_rascunho_nota', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: rascunho.id, req });
+  res.json({ ok: true, id: rascunho.id });
+});
+
+app.post('/api/ia-cartorio/feedback', verificarToken, (req, res) => {
+  const usuario = findActiveUserById(req.userId);
+  const tipo = String(req.body?.tipo || '').trim();
+  const historicoId = String(req.body?.historico_id || '').trim().slice(0, 80);
+  if (!usuario || !['ajudou', 'desatualizada', 'revisao_oficial'].includes(tipo) || !historicoId) return res.status(400).json({ erro: 'Feedback inválido.' });
+  const consulta = (db.ia_historico || []).find((item) => String(item.id) === historicoId && Number(item.usuario_id) === Number(usuario.id));
+  if (!consulta) return res.status(404).json({ erro: 'Consulta não encontrada.' });
+  db.ia_feedback = (db.ia_feedback || []).filter((item) => !(String(item.historico_id) === historicoId && Number(item.usuario_id) === Number(usuario.id)));
+  db.ia_feedback.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, usuario_id: Number(usuario.id), usuario_nome: usuario.nome, historico_id: historicoId, tipo, titulo_consulta: String(consulta.titulo || '').slice(0, 240), criado_em: new Date().toISOString() });
+  db.ia_feedback = db.ia_feedback.slice(0, 1000);
+  db.saveFile('ia-feedback.json', db.ia_feedback);
+  registrarAuditoria({ acao: `ia_cartorio_feedback_${tipo}`, usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: historicoId, req });
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/ia-feedback', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  res.json((db.ia_feedback || []).slice(0, 100));
 });
 
 app.post('/api/login', loginLimiter, async (req, res) => {
