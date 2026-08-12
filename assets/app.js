@@ -3143,6 +3143,7 @@ function abrirConversaAssistenteNativa(conversaId) {
   const itens = historicoIaCache.filter((item) => String(item.conversa_id || '') === String(conversaId)).slice().reverse();
   if (!itens.length) return;
   conversaIaNativaId = String(conversaId);
+  atualizarTituloConversaAssistente(itens[itens.length - 1]?.pergunta || 'Conversa anterior');
   const mensagens = document.getElementById('assistantNativeMessages');
   if (mensagens) mensagens.innerHTML = '';
   itens.forEach((item) => {
@@ -3333,6 +3334,13 @@ function rolarConversaAssistente() {
   if (mensagens) mensagens.scrollTop = mensagens.scrollHeight;
 }
 
+function atualizarTituloConversaAssistente(texto = '') {
+  const titulo = document.getElementById('assistantNativeConversationTitle');
+  if (!titulo) return;
+  const valor = String(texto || '').replace(/\s+/g, ' ').trim();
+  titulo.textContent = valor ? `${valor.slice(0, 62)}${valor.length > 62 ? '…' : ''}` : 'Nova conversa';
+}
+
 function adicionarMensagemAssistente(tipo, conteudo) {
   const mensagens = document.getElementById('assistantNativeMessages');
   if (!mensagens) return;
@@ -3405,6 +3413,7 @@ function adicionarMensagemAssistente(tipo, conteudo) {
 function iniciarConversaAssistente() {
   const mensagens = document.getElementById('assistantNativeMessages');
   if (!mensagens || mensagens.childElementCount) return;
+  atualizarTituloConversaAssistente();
   adicionarMensagemAssistente('assistant', {
     level: 'EM TESTE',
     title: 'Olá! Como posso ajudar?',
@@ -3419,6 +3428,7 @@ function novaConversaAssistente() {
   const mensagens = document.getElementById('assistantNativeMessages');
   if (mensagens) mensagens.innerHTML = '';
   iniciarConversaAssistente();
+  atualizarTituloConversaAssistente();
   renderHistoricoAssistenteNativo();
   document.getElementById('assistantQuestion')?.focus();
 }
@@ -3439,6 +3449,7 @@ async function responderPerguntaAssistente() {
     mostrarNotificacao('Escreva uma pergunta para o Assistente.', 'warning');
     return;
   }
+  if (!conversaIaNativaId) atualizarTituloConversaAssistente(question);
   const button = document.querySelector('.assistant-native-input-row button');
   const nativeButton = document.querySelector('.assistant-native-composer button');
   const sendButton = nativeButton || button;
