@@ -2047,9 +2047,6 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
     if (process.env.OPENAI_API_KEY) {
       try { text = await consultarOpenAiCartorio(system, pergunta); provider = 'OpenAI'; } catch (error) { errors.push(error?.message || 'Falha OpenAI'); }
     }
-    if (!text && process.env.ANTHROPIC_API_KEY) {
-      try { text = await consultarClaudeCartorio(system, pergunta); provider = 'Claude (reserva)'; } catch (error) { errors.push(error?.message || 'Falha Claude'); }
-    }
     if (!text) throw new Error(errors.join(' | ') || 'Nenhuma provedora disponível');
     const resposta = { level: 'IA CARTÓRIO DIAS DE CASTRO', title: modo === 'email' ? 'Minuta para revisão' : modo === 'nota' ? 'Minuta de nota para revisão' : 'Orientação da IA Cartório Dias de Castro', text, basis: 'Resposta gerada com apoio da Base Interna. Confirme legislação e procedimento vigente antes de concluir o ato.', nextStep: `Revise a orientação e encaminhe ao Oficial se houver situação excepcional ou risco registral. Restam ${Math.max(0, IA_CARTORIO_DAILY_LIMIT - usadasHoje - 1)} consultas de IA hoje.`, provider, consultasRestantes: Math.max(0, IA_CARTORIO_DAILY_LIMIT - usadasHoje - 1) };
     const registro = salvarHistoricoIa(usuario, mensagem, modo, resposta);
