@@ -59,6 +59,8 @@ const AUTOMATIC_BACKUP_RETENTION = 3;
 // A liberação exige IA_CARTORIO_ENABLED=true no Railway e autorização do administrador.
 const IA_CARTORIO_ENABLED = String(process.env.IA_CARTORIO_ENABLED || 'false').toLowerCase() === 'true';
 const IA_CARTORIO_DAILY_LIMIT = Math.max(1, Math.min(50, Number(process.env.IA_CARTORIO_DAILY_LIMIT || 12)));
+const TIPOS_FONTE_IA = new Set(['LEGISLACAO', 'NORMA_CGJSC', 'NORMA_CNJ', 'CIRCULAR', 'ORIENTACAO_ADMINISTRATIVA', 'ORIENTACAO_OFICIAL', 'MODELO_INTERNO', 'FAQ', 'PRECEDENTE', 'PROCEDIMENTO']);
+const STATUS_FONTE_IA = new Set(['VIGENTE', 'SUBSTITUIDO', 'REVOGADO', 'ARQUIVADO', 'EM_REVISAO', 'RASCUNHO', 'APROVADA', 'SUBSTITUIDA']);
 // Janela de agrupamento das gravacoes em disco (debounce). Mudancas em rajada
 // sao persistidas em uma unica escrita assincrona dentro deste intervalo.
 const SAVE_DEBOUNCE_MS = 1000;
@@ -81,7 +83,7 @@ const ALLOWED_MIME_EXTENSIONS = {
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
 };
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
-const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'notas-conversa.json', 'etiquetas-conversa.json', 'responsavel-conversa.json', 'mensagens-agendadas.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'base-ia.json', 'ia-historico.json', 'codigo-normas-extrajudicial-tjsc-2026.pdf', 'codigo-normas-extrajudicial-tjsc-2026.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json'];
+const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'notas-conversa.json', 'etiquetas-conversa.json', 'responsavel-conversa.json', 'mensagens-agendadas.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'base-ia.json', 'base-ia-versoes.json', 'ia-historico.json', 'codigo-normas-extrajudicial-tjsc-2026.pdf', 'codigo-normas-extrajudicial-tjsc-2026.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json'];
 
 // Conteúdo inicial público e aprovado. Depois da primeira edição pelo painel,
 // a cópia persistida no armazenamento do Railway passa a prevalecer.
@@ -228,7 +230,8 @@ class SimpleDB {
     this.mensagens_prioritarias = this.loadFile('mensagens-prioritarias.json', []);
     this.mensagens_fixadas = this.loadFile('mensagens-fixadas.json', []);
     this.templates = this.loadFile('templates.json', []);
-    this.base_ia = this.loadFile('base-ia.json', DEFAULT_BASE_IA);
+    this.base_ia = this.loadFile('base-ia.json', DEFAULT_BASE_IA).map(normalizarFonteLegadaIa);
+    this.base_ia_versoes = this.loadFile('base-ia-versoes.json', []);
     this.ia_historico = this.loadFile('ia-historico.json', []);
     this.auditoria = this.loadFile('auditoria.json', []);
     this.push_subscriptions = this.loadFile('push-subscriptions.json', []);
@@ -300,6 +303,7 @@ class SimpleDB {
       ['backup-agendamento.json', this.backup_agendamento],
       ['templates.json', this.templates],
       ['base-ia.json', this.base_ia],
+      ['base-ia-versoes.json', this.base_ia_versoes],
       ['ia-historico.json', this.ia_historico],
       ['push-subscriptions.json', this.push_subscriptions],
       ['escala-plantao.json', this.escala_plantao]
@@ -1758,13 +1762,15 @@ function mensagemForaDoEscopoIa(mensagem) {
 
 function montarReferenciaBaseIa(pergunta = '') {
   const palavras = obterPalavrasRelevantesIa(pergunta);
-  const itens = (db.base_ia || []).map((item) => ({
+  const itens = (db.base_ia || []).filter(fonteEstaElegivelIa).map((item) => ({
     item,
-    relevancia: palavras.filter((palavra) => normalizarTextoIa(`${item.area} ${item.titulo} ${item.procedimento}`).includes(palavra)).length
+    relevancia: palavras.filter((palavra) => normalizarTextoIa(`${item.area} ${item.titulo} ${item.procedimento} ${item.assunto} ${item.palavras_chave} ${item.fundamento}`).includes(palavra)).length
   })).sort((a, b) => b.relevancia - a.relevancia).slice(0, 4).map(({ item }) => ({
+    id: String(item.id), tipo_fonte: item.tipo_fonte, status: item.status, versao: item.versao,
     area: String(item.area || '').slice(0, 80),
     titulo: String(item.titulo || '').slice(0, 160),
     procedimento: String(item.procedimento || '').slice(0, 700),
+    fundamento: String(item.fundamento || '').slice(0, 500), artigo_item: String(item.artigo_item || '').slice(0, 160), pagina_trecho: String(item.pagina_trecho || '').slice(0, 400),
     checklist: (item.checklist || []).slice(0, 8).map((check) => String(check || '').slice(0, 180))
   }));
   return itens.length ? JSON.stringify(itens) : 'Nenhum procedimento interno cadastrado ainda.';
@@ -1850,8 +1856,8 @@ function respostaLocalBaseIa(mensagem) {
   const palavras = obterPalavrasRelevantesIa(mensagem);
   let melhor = null;
   let maiorPontuacao = 0;
-  for (const item of (db.base_ia || [])) {
-    const fonte = normalizarTextoIa(`${item.area} ${item.titulo} ${item.procedimento} ${(item.checklist || []).join(' ')}`);
+  for (const item of (db.base_ia || []).filter(fonteEstaElegivelIa)) {
+    const fonte = normalizarTextoIa(`${item.area} ${item.titulo} ${item.procedimento} ${item.assunto} ${item.palavras_chave} ${(item.checklist || []).join(' ')}`);
     const pontuacao = palavras.filter((palavra) => fonte.includes(palavra)).length;
     if (pontuacao > maiorPontuacao) {
       maiorPontuacao = pontuacao;
@@ -1860,23 +1866,46 @@ function respostaLocalBaseIa(mensagem) {
   }
   if (!melhor || maiorPontuacao < 2) return null;
   const checklist = (melhor.checklist || []).length ? `\n\nChecklist de conferência:\n${melhor.checklist.map((item) => `• ${item}`).join('\n')}` : '';
+  const fundamentoEstruturado = { documento_id: melhor.id, documento: melhor.titulo, tipo_fonte: melhor.tipo_fonte, artigo_item: melhor.artigo_item || null, pagina_trecho: melhor.pagina_trecho || null, status_vigencia: melhor.status, versao: melhor.versao };
   return {
-    level: 'BASE INTERNA',
+    level: melhor.tipo_fonte === 'ORIENTACAO_OFICIAL' ? 'ROTINA' : 'ATENCAO',
     title: melhor.titulo,
     text: `${melhor.procedimento}${checklist}`,
     basis: `Procedimento interno aprovado — ${melhor.area}.`,
     nextStep: 'Use este procedimento como referência e encaminhe ao Oficial em situações excepcionais ou de risco registral.',
     provider: 'Base Interna',
-    gratuita: true
+    gratuita: true,
+    classificacao: melhor.tipo_fonte === 'ORIENTACAO_OFICIAL' ? 'ROTINA' : 'ATENCAO',
+    resposta: `${melhor.procedimento}${checklist}`,
+    fundamentos: [fundamentoEstruturado],
+    orientacao_interna: melhor.tipo_fonte === 'ORIENTACAO_OFICIAL' ? melhor.titulo : null,
+    alertas: ['A fonte utilizada é apresentada abaixo; modelo, FAQ e precedente não constituem norma.'],
+    motivo_escalonamento: null
+  };
+}
+
+function respostaSemFundamentoSuficiente() {
+  const texto = 'Não localizei fundamento suficiente na base atualmente disponível para responder esta questão com segurança.';
+  return {
+    level: 'OFICIAL', classificacao: 'OFICIAL', title: 'Encaminhamento ao Oficial', text: texto, resposta: texto,
+    basis: 'Nenhuma fonte vigente ou orientação do Oficial aprovada foi localizada para sustentar a orientação.',
+    nextStep: 'Encaminhe a questão ao Oficial, com os documentos e o contexto do caso.',
+    fundamentos: [], orientacao_interna: null,
+    alertas: ['A IA não completou a resposta com conhecimento geral do modelo.'],
+    motivo_escalonamento: 'Ausência de fundamento suficiente na base vigente.'
   };
 }
 
 function respostaPadraoGratuitaIa(mensagem, modo) {
+  // Respostas avulsas por palavra-chave não têm fonte individual identificável.
+  // Mantemos a função apenas por compatibilidade, mas nunca a usamos como fundamento.
+  return null;
+  /*
   const texto = normalizarTextoIa(mensagem);
   if (modo === 'nota') return { level: 'MODELO INTERNO', title: 'Estrutura segura para nota devolutiva', text: '1. Identifique objetivamente o ato ou documento apresentado.\n2. Descreva a inconsistência encontrada.\n3. Indique a providência necessária para o prosseguimento.\n4. Confirme a base legal ou normativa antes de citá-la.\n\nModelo: “Verificou-se a necessidade de [providência]. Para o prosseguimento do pedido, solicita-se [documento/retificação], observada a norma aplicável ao caso.”', basis: 'Modelo interno: não emitir exigência sem fundamento confirmado.', nextStep: 'Revise a clareza, o prazo e a identificação do protocolo antes da emissão.', provider: 'Modelo interno', gratuita: true };
   if (/casamento|habilitacao/.test(texto)) return { level: 'MODELO INTERNO', title: 'Habilitação de casamento — triagem inicial', text: 'Confira a identificação dos nubentes, as certidões compatíveis com o estado civil e o comprovante de residência. A conferência final depende da documentação apresentada e das averbações cabíveis.', basis: 'Lei nº 6.015/1973 e Código de Normas da CGJ/SC: confirmar a redação vigente.', nextStep: 'Identifique o estado civil de cada nubente antes de informar a relação final de documentos.', provider: 'Modelo interno', gratuita: true };
   if (/certidao|segunda via|2a via/.test(texto)) return { level: 'MODELO INTERNO', title: 'Certidões — orientação ao atendimento', text: 'Identifique a certidão desejada e os dados disponíveis para localizar o registro. Para solicitação online, oriente o usuário ao portal oficial. Não confirme prazo, valor ou existência do registro antes da consulta apropriada.', basis: 'Orientação interna de atendimento e canal oficial de solicitação.', nextStep: 'Confirme se a certidão exige dados complementares.', provider: 'Modelo interno', gratuita: true, link: { href: 'https://serp.registros.org.br/', label: 'Abrir solicitações de certidões (SERP)' } };
-  return null;
+  return null; */
 }
 
 function consultasPagasHoje(usuarioId) {
@@ -1899,6 +1928,9 @@ function salvarHistoricoIa(usuario, pergunta, modo, resposta) {
     base: String(resposta.basis || '').slice(0, 1000),
     proximo_passo: String(resposta.nextStep || '').slice(0, 1000),
     provider: String(resposta.provider || 'Base Interna').slice(0, 80),
+    fundamentos: Array.isArray(resposta.fundamentos) ? resposta.fundamentos.slice(0, 8) : [],
+    classificacao: String(resposta.classificacao || resposta.level || 'OFICIAL').slice(0, 30),
+    motivo_escalonamento: String(resposta.motivo_escalonamento || '').slice(0, 1000),
     criado_em: new Date().toISOString()
   };
   const doUsuario = (db.ia_historico || []).filter((item) => Number(item.usuario_id) === Number(usuario.id));
@@ -1917,6 +1949,19 @@ function montarContextoHistoricoIa(usuarioId) {
   return recentes.length ? recentes.join('\n\n') : 'Sem consultas anteriores deste colaborador.';
 }
 
+const RESPOSTA_IA_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['classificacao', 'resposta', 'fundamentos', 'orientacao_interna', 'alertas', 'motivo_escalonamento'],
+  properties: {
+    classificacao: { type: 'string', enum: ['ROTINA', 'ATENCAO', 'OFICIAL'] },
+    resposta: { type: 'string' },
+    fundamentos: { type: 'array', items: { type: 'string' } },
+    orientacao_interna: { type: ['string', 'null'] },
+    alertas: { type: 'array', items: { type: 'string' } },
+    motivo_escalonamento: { type: ['string', 'null'] }
+  }
+};
+
 async function consultarOpenAiCartorio(system, pergunta) {
   if (!process.env.OPENAI_API_KEY) throw new Error('OpenAI sem chave configurada');
   const controller = new AbortController();
@@ -1925,14 +1970,14 @@ async function consultarOpenAiCartorio(system, pergunta) {
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-      body: JSON.stringify({ model: process.env.OPENAI_MODEL || 'gpt-5-mini', instructions: system, input: pergunta, max_output_tokens: 900 }),
+      body: JSON.stringify({ model: process.env.OPENAI_MODEL || 'gpt-5-mini', instructions: system, input: pergunta, max_output_tokens: 900, text: { format: { type: 'json_schema', name: 'resposta_juridica_cartorio', strict: true, schema: RESPOSTA_IA_SCHEMA } } }),
       signal: controller.signal
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(`OpenAI ${response.status}`);
     const text = String(payload.output_text || (payload.output || []).flatMap((item) => item.content || []).filter((item) => item.type === 'output_text').map((item) => item.text).join('\n')).trim();
     if (!text) throw new Error('Resposta vazia da OpenAI');
-    return text;
+    return JSON.parse(text);
   } finally {
     clearTimeout(timeout);
   }
@@ -1970,14 +2015,22 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
     registrarAuditoria({ acao: 'assistente_escopo_bloqueado', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: 'assunto-pessoal-ou-fora-do-escopo', req });
     return res.json({ bloqueado: true, level: 'ESCOPO INTERNO', title: 'Assunto fora do escopo da IA Cartório Dias de Castro', text: 'Essa pergunta é pessoal ou não está ligada à rotina do cartório e não pode ser atendida.', basis: 'Assuntos pessoais e gerais não são enviados à IA.', nextStep: 'A tentativa foi registrada para ciência do administrador. Reformule a dúvida com o ato ou documento do cartório.' });
   }
-  if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) return res.status(503).json({ erro: 'A IA Cartório Dias de Castro ainda não está configurada no servidor.' });
-
   const respostaLocal = respostaLocalBaseIa(mensagem) || respostaPadraoGratuitaIa(mensagem, modo);
   if (respostaLocal) {
     const registro = salvarHistoricoIa(usuario, mensagem, modo, respostaLocal);
     registrarAuditoria({ acao: 'ia_cartorio_base_interna', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: `${respostaLocal.provider}:${modo}`, req });
     return res.json({ ...respostaLocal, historicoId: registro.id });
   }
+
+  // Sem evidência aprovada e vigente, não há consulta ao modelo nem orientação por hipótese.
+  const semFundamento = respostaSemFundamentoSuficiente();
+  const registroSemFundamento = salvarHistoricoIa(usuario, mensagem, modo, semFundamento);
+  registrarAuditoria({ acao: 'ia_cartorio_escalonada_sem_fundamento', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: 'sem-fonte-vigente-ou-orientacao-aprovada', req });
+  return res.json({ ...semFundamento, historicoId: registroSemFundamento.id });
+
+  /* Fluxo de API reservado para a etapa em que fontes normativas versionadas
+     estiverem cadastradas com evidência suficiente para o caso concreto. */
+  if (!process.env.OPENAI_API_KEY) return res.status(503).json({ erro: 'A IA Cartório Dias de Castro ainda não está configurada no servidor.' });
 
   const usadasHoje = consultasPagasHoje(usuario.id);
   if (usadasHoje >= IA_CARTORIO_DAILY_LIMIT) {
@@ -3789,8 +3842,44 @@ function normalizarItemBaseIa(body = {}) {
   const checklist = Array.isArray(body.checklist)
     ? body.checklist.map((item) => String(item || '').trim().slice(0, 500)).filter(Boolean).slice(0, 30)
     : [];
-  if (!area || !titulo || !procedimento) return null;
-  return { area, titulo, procedimento, checklist };
+  const tipo_fonte = String(body.tipo_fonte || 'PROCEDIMENTO').trim().toUpperCase();
+  const status = String(body.status || (tipo_fonte === 'ORIENTACAO_OFICIAL' ? 'RASCUNHO' : 'VIGENTE')).trim().toUpperCase();
+  if (!area || !titulo || !procedimento || !TIPOS_FONTE_IA.has(tipo_fonte) || !STATUS_FONTE_IA.has(status)) return null;
+  if (tipo_fonte === 'ORIENTACAO_OFICIAL' && (!body.assunto || !body.atribuicao || !body.fundamento || !body.palavras_chave || !body.data_orientacao || !body.responsavel)) return null;
+  return {
+    area, titulo, procedimento, checklist, tipo_fonte, status,
+    versao: String(body.versao || '1.0').trim().slice(0, 50),
+    vigente_desde: String(body.vigente_desde || '').slice(0, 10),
+    vigente_ate: String(body.vigente_ate || '').slice(0, 10),
+    substitui_documento_id: body.substitui_documento_id ? Number(body.substitui_documento_id) : null,
+    assunto: String(body.assunto || '').trim().slice(0, 180),
+    atribuicao: String(body.atribuicao || '').trim().slice(0, 180),
+    fundamento: String(body.fundamento || '').trim().slice(0, 1200),
+    palavras_chave: String(body.palavras_chave || '').trim().slice(0, 800),
+    responsavel: String(body.responsavel || '').trim().slice(0, 160),
+    data_orientacao: String(body.data_orientacao || '').slice(0, 10),
+    artigo_item: String(body.artigo_item || '').trim().slice(0, 160),
+    pagina_trecho: String(body.pagina_trecho || '').trim().slice(0, 400)
+  };
+}
+
+function normalizarFonteLegadaIa(item = {}) {
+  const tipo_fonte = TIPOS_FONTE_IA.has(String(item.tipo_fonte || '').toUpperCase()) ? String(item.tipo_fonte).toUpperCase() : 'PROCEDIMENTO';
+  const status = STATUS_FONTE_IA.has(String(item.status || '').toUpperCase()) ? String(item.status).toUpperCase() : (tipo_fonte === 'ORIENTACAO_OFICIAL' ? 'APROVADA' : 'VIGENTE');
+  return { ...item, tipo_fonte, status, versao: item.versao || '1.0', vigente_desde: item.vigente_desde || '', vigente_ate: item.vigente_ate || '', substitui_documento_id: item.substitui_documento_id || null, assunto: item.assunto || '', atribuicao: item.atribuicao || '', fundamento: item.fundamento || '', palavras_chave: item.palavras_chave || '', responsavel: item.responsavel || '', data_orientacao: item.data_orientacao || '', artigo_item: item.artigo_item || '', pagina_trecho: item.pagina_trecho || '' };
+}
+
+function fonteEstaElegivelIa(fonte) {
+  const item = normalizarFonteLegadaIa(fonte);
+  const hoje = new Date().toISOString().slice(0, 10);
+  const statusPermitido = item.tipo_fonte === 'ORIENTACAO_OFICIAL' ? item.status === 'APROVADA' : item.status === 'VIGENTE';
+  return statusPermitido && (!item.vigente_desde || item.vigente_desde <= hoje) && (!item.vigente_ate || item.vigente_ate >= hoje);
+}
+
+function registrarVersaoFonteIa(fonte, acao, usuarioId) {
+  db.base_ia_versoes.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, documento_id: fonte.id, acao, usuario_id: usuarioId, em: new Date().toISOString(), fonte: normalizarFonteLegadaIa(fonte) });
+  db.base_ia_versoes = db.base_ia_versoes.slice(0, 2000);
+  db.saveFile('base-ia-versoes.json', db.base_ia_versoes);
 }
 
 app.get('/api/base-ia', verificarToken, (_req, res) => {
@@ -3804,6 +3893,7 @@ app.post('/api/admin/base-ia', verificarToken, (req, res) => {
   const registro = { id: Date.now(), ...item, criado_em: new Date().toISOString(), atualizado_em: new Date().toISOString(), atualizado_por: req.userId };
   db.base_ia.unshift(registro);
   db.saveFile('base-ia.json', db.base_ia);
+  registrarVersaoFonteIa(registro, 'CRIADA', req.userId);
   registrarAuditoria({ acao: 'base_ia_criada', usuarioId: req.userId, usuarioNome: findActiveUserById(req.userId)?.nome, detalhe: registro.titulo, req });
   res.json(registro);
 });
@@ -3817,6 +3907,7 @@ app.put('/api/admin/base-ia/:id', verificarToken, (req, res) => {
   if (index < 0) return res.status(404).json({ erro: 'Procedimento não encontrado' });
   db.base_ia[index] = { ...db.base_ia[index], ...item, atualizado_em: new Date().toISOString(), atualizado_por: req.userId };
   db.saveFile('base-ia.json', db.base_ia);
+  registrarVersaoFonteIa(db.base_ia[index], 'ATUALIZADA', req.userId);
   registrarAuditoria({ acao: 'base_ia_atualizada', usuarioId: req.userId, usuarioNome: findActiveUserById(req.userId)?.nome, detalhe: db.base_ia[index].titulo, req });
   res.json(db.base_ia[index]);
 });
@@ -3827,7 +3918,10 @@ app.delete('/api/admin/base-ia/:id', verificarToken, (req, res) => {
   const item = db.base_ia.find((registro) => registro.id === id);
   db.base_ia = db.base_ia.filter((registro) => registro.id !== id);
   db.saveFile('base-ia.json', db.base_ia);
-  if (item) registrarAuditoria({ acao: 'base_ia_excluida', usuarioId: req.userId, usuarioNome: findActiveUserById(req.userId)?.nome, detalhe: item.titulo, req });
+  if (item) {
+    registrarVersaoFonteIa(item, 'EXCLUIDA', req.userId);
+    registrarAuditoria({ acao: 'base_ia_excluida', usuarioId: req.userId, usuarioNome: findActiveUserById(req.userId)?.nome, detalhe: item.titulo, req });
+  }
   res.json({ ok: true });
 });
 

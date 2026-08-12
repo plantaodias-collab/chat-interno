@@ -671,6 +671,11 @@
               <option value="Outro">Outro</option>
             </select>
           </div>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+            <div class="form-group"><label for="baseIaTipoFonteInput">Tipo de fonte</label><select class="field" id="baseIaTipoFonteInput"><option value="PROCEDIMENTO">PROCEDIMENTO</option><option value="ORIENTACAO_OFICIAL">ORIENTAÇÃO DO OFICIAL</option><option value="ORIENTACAO_ADMINISTRATIVA">ORIENTAÇÃO ADMINISTRATIVA</option><option value="LEGISLACAO">LEGISLAÇÃO</option><option value="NORMA_CGJSC">NORMA CGJ/SC</option><option value="NORMA_CNJ">NORMA CNJ</option><option value="CIRCULAR">CIRCULAR</option><option value="MODELO_INTERNO">MODELO INTERNO</option><option value="FAQ">FAQ</option><option value="PRECEDENTE">PRECEDENTE</option></select></div>
+            <div class="form-group"><label for="baseIaStatusInput">Status</label><select class="field" id="baseIaStatusInput"><option value="VIGENTE">VIGENTE</option><option value="RASCUNHO">RASCUNHO</option><option value="APROVADA">APROVADA</option><option value="EM_REVISAO">EM REVISÃO</option><option value="SUBSTITUIDO">SUBSTITUÍDO</option><option value="REVOGADO">REVOGADO</option><option value="ARQUIVADO">ARQUIVADO</option></select></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;"><div class="form-group"><label for="baseIaVersaoInput">Versão</label><input class="field" id="baseIaVersaoInput" value="1.0" /></div><div class="form-group"><label for="baseIaVigenteDesdeInput">Vigente desde</label><input class="field" id="baseIaVigenteDesdeInput" type="date" /></div><div class="form-group"><label for="baseIaVigenteAteInput">Vigente até</label><input class="field" id="baseIaVigenteAteInput" type="date" /></div><div class="form-group"><label for="baseIaSubstituiInput">Substitui doc. ID</label><input class="field" id="baseIaSubstituiInput" type="number" min="1" /></div></div>
           <div class="form-group">
             <label for="baseIaTituloInput">Título do procedimento</label>
             <input class="field" id="baseIaTituloInput" maxlength="160" placeholder="Ex.: Habilitação de casamento — triagem inicial" />
@@ -683,6 +688,9 @@
             <label for="baseIaChecklistInput">Checklist de conferência</label>
             <textarea class="field" id="baseIaChecklistInput" rows="4" maxlength="8000" placeholder="Um item por linha. Ex.: Documento de identificação apresentado"></textarea>
           </div>
+          <div class="form-group"><label for="baseIaFundamentoInput">Fundamento / artigo / página ou trecho</label><textarea class="field" id="baseIaFundamentoInput" rows="3" placeholder="Ex.: Código de Normas CGJ/SC, art. X, p. Y. Para orientação do Oficial, informe a aprovação."></textarea></div>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;"><div class="form-group"><label for="baseIaAssuntoInput">Assunto</label><input class="field" id="baseIaAssuntoInput" /></div><div class="form-group"><label for="baseIaAtribuicaoInput">Atribuição</label><input class="field" id="baseIaAtribuicaoInput" /></div><div class="form-group"><label for="baseIaDataOrientacaoInput">Data da orientação</label><input class="field" id="baseIaDataOrientacaoInput" type="date" /></div></div>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;"><div class="form-group"><label for="baseIaResponsavelInput">Responsável / Oficial</label><input class="field" id="baseIaResponsavelInput" /></div><div class="form-group"><label for="baseIaPalavrasChaveInput">Palavras-chave</label><input class="field" id="baseIaPalavrasChaveInput" placeholder="separadas por vírgula" /></div></div>
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:18px;">
             <button class="btn btn-primary" style="width:auto;" type="button" onclick="salvarBaseIaAdmin()">Salvar procedimento</button>
             <button class="btn btn-secondary hidden" id="baseIaCancelBtn" type="button" onclick="cancelarEdicaoBaseIa()">Cancelar edição</button>
@@ -840,6 +848,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.min.js?v=20260812-ia-em-breve"></script>
+  <script src="/assets/app.min.js?v=20260812-governanca-ia"></script>
 </body>
 </html>

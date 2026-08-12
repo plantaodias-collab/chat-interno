@@ -3100,7 +3100,10 @@ function preencherRespostaDashboard(response, question = '', historicoId = '') {
   level.className = `dashboard-assistant-level ${String(response.level || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
   document.getElementById('dashboardAssistantTitle').textContent = response.title || question || 'Orientação';
   document.getElementById('dashboardAssistantText').textContent = textoExibicaoIa(response.text);
-  document.getElementById('dashboardAssistantBasis').textContent = textoExibicaoIa(response.basis);
+  const fontes = Array.isArray(response.fundamentos) && response.fundamentos.length
+    ? response.fundamentos.map((fonte) => `${fonte.tipo_fonte || 'FONTE'}: ${fonte.documento || fonte.titulo || 'Documento'}${fonte.artigo_item ? `, ${fonte.artigo_item}` : ''}${fonte.pagina_trecho ? `, ${fonte.pagina_trecho}` : ''}${fonte.status_vigencia ? ` (${fonte.status_vigencia})` : ''}`).join('\n')
+    : '';
+  document.getElementById('dashboardAssistantBasis').textContent = [textoExibicaoIa(response.basis), fontes, ...(response.alertas || [])].filter(Boolean).join('\n');
   document.getElementById('dashboardAssistantNext').textContent = textoExibicaoIa(response.nextStep);
   const answerLink = document.getElementById('dashboardAssistantLink');
   if (response.link?.href && answerLink) {
@@ -6633,7 +6636,7 @@ function renderBaseIaAdmin() {
       : '<div style="margin-top:8px;font-size:11px;color:#94a3b8;">Sem checklist cadastrado.</div>';
     return `<article style="padding:14px;border:1px solid #dbe4ee;border-radius:12px;background:rgba(248,250,252,.78);">
       <div style="display:flex;gap:10px;justify-content:space-between;align-items:flex-start;">
-        <div><span style="display:inline-block;padding:3px 7px;border-radius:999px;background:#e8f5ed;color:#26745c;font-size:9px;font-weight:900;">${escapeHtml(item.area)}</span><strong style="display:block;margin-top:7px;font-size:13px;color:#1e3b31;">${escapeHtml(item.titulo)}</strong></div>
+        <div><span style="display:inline-block;padding:3px 7px;border-radius:999px;background:#e8f5ed;color:#26745c;font-size:9px;font-weight:900;">${escapeHtml(item.area)}</span><span style="display:inline-block;margin-left:5px;padding:3px 7px;border-radius:999px;background:#eef2ff;color:#465b9b;font-size:9px;font-weight:900;">${escapeHtml(item.tipo_fonte || 'PROCEDIMENTO')} · ${escapeHtml(item.status || 'VIGENTE')}</span><strong style="display:block;margin-top:7px;font-size:13px;color:#1e3b31;">${escapeHtml(item.titulo)}</strong><small style="display:block;margin-top:4px;color:#64748b;">Versão ${escapeHtml(item.versao || '1.0')}${item.fundamento ? ` · ${escapeHtml(item.fundamento)}` : ''}</small></div>
         <div style="display:flex;gap:6px;"><button class="btn btn-secondary" style="width:auto;padding:6px 9px;font-size:11px;" type="button" onclick="editarBaseIaAdmin(${item.id})">Editar</button><button style="border:0;background:none;color:#dc2626;cursor:pointer;font-size:12px;" type="button" onclick="excluirBaseIaAdmin(${item.id})">Excluir</button></div>
       </div>
       <div style="margin-top:9px;font-size:12px;color:#475569;line-height:1.55;white-space:pre-line;">${escapeHtml(item.procedimento)}</div>
@@ -6657,7 +6660,21 @@ async function salvarBaseIaAdmin() {
     mostrarNotificacao('Preencha área, título e orientação aprovada.', 'warning');
     return;
   }
-  const payload = { area, titulo, procedimento, checklist: checklistBaseIaDoFormulario() };
+  const payload = {
+    area, titulo, procedimento, checklist: checklistBaseIaDoFormulario(),
+    tipo_fonte: document.getElementById('baseIaTipoFonteInput')?.value || 'PROCEDIMENTO',
+    status: document.getElementById('baseIaStatusInput')?.value || 'VIGENTE',
+    versao: document.getElementById('baseIaVersaoInput')?.value || '1.0',
+    vigente_desde: document.getElementById('baseIaVigenteDesdeInput')?.value || '',
+    vigente_ate: document.getElementById('baseIaVigenteAteInput')?.value || '',
+    substitui_documento_id: document.getElementById('baseIaSubstituiInput')?.value || null,
+    fundamento: document.getElementById('baseIaFundamentoInput')?.value || '',
+    assunto: document.getElementById('baseIaAssuntoInput')?.value || '',
+    atribuicao: document.getElementById('baseIaAtribuicaoInput')?.value || '',
+    data_orientacao: document.getElementById('baseIaDataOrientacaoInput')?.value || '',
+    responsavel: document.getElementById('baseIaResponsavelInput')?.value || '',
+    palavras_chave: document.getElementById('baseIaPalavrasChaveInput')?.value || ''
+  };
   const editing = Boolean(baseIaEditandoId);
   try {
     const response = await fetch(editing ? `/api/admin/base-ia/${baseIaEditandoId}` : '/api/admin/base-ia', {
@@ -6682,18 +6699,33 @@ function editarBaseIaAdmin(id) {
   document.getElementById('baseIaTituloInput').value = item.titulo;
   document.getElementById('baseIaProcedimentoInput').value = item.procedimento;
   document.getElementById('baseIaChecklistInput').value = (item.checklist || []).join('\n');
+  document.getElementById('baseIaTipoFonteInput').value = item.tipo_fonte || 'PROCEDIMENTO';
+  document.getElementById('baseIaStatusInput').value = item.status || 'VIGENTE';
+  document.getElementById('baseIaVersaoInput').value = item.versao || '1.0';
+  document.getElementById('baseIaVigenteDesdeInput').value = item.vigente_desde || '';
+  document.getElementById('baseIaVigenteAteInput').value = item.vigente_ate || '';
+  document.getElementById('baseIaSubstituiInput').value = item.substitui_documento_id || '';
+  document.getElementById('baseIaFundamentoInput').value = item.fundamento || '';
+  document.getElementById('baseIaAssuntoInput').value = item.assunto || '';
+  document.getElementById('baseIaAtribuicaoInput').value = item.atribuicao || '';
+  document.getElementById('baseIaDataOrientacaoInput').value = item.data_orientacao || '';
+  document.getElementById('baseIaResponsavelInput').value = item.responsavel || '';
+  document.getElementById('baseIaPalavrasChaveInput').value = item.palavras_chave || '';
   document.getElementById('baseIaCancelBtn')?.classList.remove('hidden');
   document.getElementById('baseIaTituloInput')?.focus();
 }
 
 function cancelarEdicaoBaseIa() {
   baseIaEditandoId = null;
-  ['baseIaTituloInput', 'baseIaProcedimentoInput', 'baseIaChecklistInput'].forEach((id) => {
+  ['baseIaTituloInput', 'baseIaProcedimentoInput', 'baseIaChecklistInput', 'baseIaFundamentoInput', 'baseIaAssuntoInput', 'baseIaAtribuicaoInput', 'baseIaDataOrientacaoInput', 'baseIaResponsavelInput', 'baseIaPalavrasChaveInput', 'baseIaVigenteDesdeInput', 'baseIaVigenteAteInput', 'baseIaSubstituiInput'].forEach((id) => {
     const field = document.getElementById(id);
     if (field) field.value = '';
   });
   const area = document.getElementById('baseIaAreaInput');
   if (area) area.selectedIndex = 0;
+  const tipo = document.getElementById('baseIaTipoFonteInput'); if (tipo) tipo.value = 'PROCEDIMENTO';
+  const status = document.getElementById('baseIaStatusInput'); if (status) status.value = 'VIGENTE';
+  const versao = document.getElementById('baseIaVersaoInput'); if (versao) versao.value = '1.0';
   document.getElementById('baseIaCancelBtn')?.classList.add('hidden');
 }
 
