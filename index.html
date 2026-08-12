@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/app.min.css?v=20260812-conversa-ia" />
+  <link rel="stylesheet" href="/assets/app.min.css?v=20260812-chat-ia" />
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@17.0.3/dist/twemoji.min.js" crossorigin="anonymous" defer></script>
@@ -448,22 +448,11 @@
         <div class="assistant-native-user"><span id="assistantNativeUser">Colaborador</span><button type="button" onclick="fecharAssistenteJuridico()" aria-label="Fechar IA Cartório Dias de Castro">×</button></div>
       </header>
       <div class="assistant-native-content">
-        <section class="assistant-native-hero">
-          <div><span class="assistant-native-eyebrow">ATENDIMENTO INTERNO</span><h1>Olá, <span id="assistantFirstName">colaborador</span>.</h1><p>Faça uma pergunta sobre procedimentos, documentos ou atendimento do cartório.</p></div>
-          <div class="assistant-native-identity"><span>✓</span><div><strong>Você já está identificado</strong><small id="assistantNativeEmail"></small></div></div>
-        </section>
-        <section class="assistant-native-ask">
-          <label for="assistantQuestion">Pergunta ou dúvida</label>
-          <div class="assistant-native-input-row"><input id="assistantQuestion" type="text" placeholder="Ex.: quais documentos preciso para habilitação de casamento?" onkeydown="enviarPerguntaAssistente(event)" /><button type="button" onclick="responderPerguntaAssistente()">Consultar <span>→</span></button></div>
-          <small>Uso restrito à rotina do cartório. Assuntos sensíveis serão direcionados ao Oficial.</small>
-        </section>
-        <section class="assistant-native-answer hidden" id="assistantAnswer" aria-live="polite">
-          <div class="assistant-answer-top"><span id="assistantAnswerLevel">ROTINA</span><button type="button" onclick="copiarRespostaAssistente()">Copiar resposta</button></div>
-          <h2 id="assistantAnswerQuestion"></h2>
-          <p id="assistantAnswerText"></p>
-          <div class="assistant-answer-basis"><strong>Base e segurança</strong><span id="assistantAnswerBasis"></span></div>
-          <div class="assistant-answer-next"><strong>Próximo passo</strong><span id="assistantAnswerNext"></span></div>
-          <a class="assistant-response-link hidden" id="assistantAnswerLink" target="_blank" rel="noopener noreferrer"></a>
+        <section class="assistant-native-chat" aria-label="Conversa com a IA Cartório Dias de Castro">
+          <div class="assistant-native-chat-info"><span class="assistant-native-status"></span><div><strong>Conversa privada de trabalho</strong><small>Respostas devem ser revisadas antes de serem utilizadas.</small></div><button type="button" onclick="novaConversaAssistente()">+ Nova conversa</button></div>
+          <div class="assistant-native-messages" id="assistantNativeMessages" aria-live="polite"></div>
+          <div class="assistant-native-composer"><textarea id="assistantQuestion" rows="2" placeholder="Escreva sua dúvida ou cole a mensagem que precisa responder..." onkeydown="enviarPerguntaAssistente(event)"></textarea><button type="button" onclick="responderPerguntaAssistente()" aria-label="Enviar pergunta para a IA Cartório Dias de Castro">Enviar <span>→</span></button></div>
+          <p class="assistant-native-disclaimer">A IA CDC pode cometer erros. Confira informações relevantes, documentos e fundamentos antes de utilizar a resposta.</p>
         </section>
       </div>
     </section>
@@ -849,6 +838,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.min.js?v=20260812-conversa-ia"></script>
+  <script src="/assets/app.min.js?v=20260812-chat-ia"></script>
 </body>
 </html>

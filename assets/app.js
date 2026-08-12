@@ -2844,13 +2844,11 @@ function abrirAssistenteJuridico() {
   }
   if (!usuarioAtual) return;
   const panel = document.getElementById('assistantNativePanel');
-  const firstName = String(usuarioAtual.nome || usuarioAtual.email || 'colaborador').trim().split(/\s+/)[0];
   document.getElementById('assistantNativeUser').textContent = usuarioAtual.nome || usuarioAtual.email;
-  document.getElementById('assistantFirstName').textContent = firstName;
-  document.getElementById('assistantNativeEmail').textContent = usuarioAtual.email || 'Sessão do Chat Interno';
   panel?.classList.remove('hidden');
   document.body.classList.add('assistant-native-open');
   definirModoAssistente('orientacao');
+  iniciarConversaAssistente();
   setTimeout(() => document.getElementById('assistantQuestion')?.focus(), 80);
 }
 
@@ -2863,6 +2861,7 @@ let modoAssistente = 'orientacao';
 let historicoIaCache = [];
 let historicoIaAbertoId = null;
 let conversaIaAtualId = null;
+let conversaIaNativaId = null;
 
 function normalizarAssistente(texto) {
   return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -3265,26 +3264,83 @@ async function excluirHistoricoIa(id = historicoIaAbertoId) {
   }
 }
 
-function preencherRespostaAssistente(response, question) {
-  const answer = document.getElementById('assistantAnswer');
-  const level = document.getElementById('assistantAnswerLevel');
-  level.textContent = response.level;
-  level.className = `assistant-answer-level ${String(response.level || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
-  document.getElementById('assistantAnswerQuestion').textContent = response.title || question;
-  document.getElementById('assistantAnswerText').textContent = textoExibicaoIa(response.text);
-  document.getElementById('assistantAnswerBasis').textContent = textoExibicaoIa(response.basis);
-  document.getElementById('assistantAnswerNext').textContent = textoExibicaoIa(response.nextStep);
-  const answerLink = document.getElementById('assistantAnswerLink');
-  if (response.link?.href) {
-    answerLink.href = response.link.href;
-    answerLink.textContent = `↗ ${response.link.label}`;
-    answerLink.classList.remove('hidden');
+function rolarConversaAssistente() {
+  const mensagens = document.getElementById('assistantNativeMessages');
+  if (mensagens) mensagens.scrollTop = mensagens.scrollHeight;
+}
+
+function adicionarMensagemAssistente(tipo, conteudo) {
+  const mensagens = document.getElementById('assistantNativeMessages');
+  if (!mensagens) return;
+  const mensagem = document.createElement('article');
+  mensagem.className = `assistant-chat-message ${tipo}`;
+  const identificacao = document.createElement('span');
+  identificacao.className = 'assistant-chat-message-name';
+  identificacao.textContent = tipo === 'user' ? 'Você' : 'IA Cartório Dias de Castro';
+  const balao = document.createElement('div');
+  balao.className = 'assistant-chat-bubble';
+  if (tipo === 'user') {
+    balao.textContent = String(conteudo || '');
   } else {
-    answerLink.removeAttribute('href');
-    answerLink.classList.add('hidden');
+    const resposta = conteudo || {};
+    if (resposta.level) {
+      const nivel = document.createElement('span');
+      nivel.className = `assistant-chat-level ${String(resposta.level).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
+      nivel.textContent = resposta.level;
+      balao.appendChild(nivel);
+    }
+    if (resposta.title) {
+      const titulo = document.createElement('strong');
+      titulo.className = 'assistant-chat-title';
+      titulo.textContent = resposta.title;
+      balao.appendChild(titulo);
+    }
+    const texto = document.createElement('p');
+    texto.textContent = textoExibicaoIa(resposta.text || resposta.resposta || 'Não foi possível gerar uma resposta.');
+    balao.appendChild(texto);
+    if (resposta.basis) {
+      const base = document.createElement('details');
+      base.className = 'assistant-chat-details';
+      base.innerHTML = '<summary>Base e cuidados</summary>';
+      const baseTexto = document.createElement('div');
+      baseTexto.textContent = textoExibicaoIa(resposta.basis);
+      base.appendChild(baseTexto);
+      balao.appendChild(base);
+    }
+    if (resposta.nextStep) {
+      const proximo = document.createElement('div');
+      proximo.className = 'assistant-chat-next';
+      proximo.textContent = `Próximo passo: ${textoExibicaoIa(resposta.nextStep)}`;
+      balao.appendChild(proximo);
+    }
   }
-  answer?.classList.remove('hidden');
-  answer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  mensagem.append(identificacao, balao);
+  mensagens.appendChild(mensagem);
+  rolarConversaAssistente();
+}
+
+function iniciarConversaAssistente() {
+  const mensagens = document.getElementById('assistantNativeMessages');
+  if (!mensagens || mensagens.childElementCount) return;
+  adicionarMensagemAssistente('assistant', {
+    level: 'EM TESTE',
+    title: 'Olá! Como posso ajudar?',
+    text: 'Posso auxiliar com textos de atendimento, e-mails, minutas, procedimentos e dúvidas de trabalho. Você pode continuar a conversa normalmente para pedir ajustes ou acrescentar informações.',
+    basis: 'A IA CDC pode cometer erros. Revise informações relevantes antes de usar.',
+    nextStep: 'Escreva sua dúvida ou cole a mensagem recebida.'
+  });
+}
+
+function novaConversaAssistente() {
+  conversaIaNativaId = null;
+  const mensagens = document.getElementById('assistantNativeMessages');
+  if (mensagens) mensagens.innerHTML = '';
+  iniciarConversaAssistente();
+  document.getElementById('assistantQuestion')?.focus();
+}
+
+function preencherRespostaAssistente(response, question) {
+  adicionarMensagemAssistente('assistant', { ...response, title: response.title || question });
 }
 
 async function responderPerguntaAssistente() {
@@ -3300,21 +3356,29 @@ async function responderPerguntaAssistente() {
     return;
   }
   const button = document.querySelector('.assistant-native-input-row button');
-  button?.setAttribute('disabled', 'disabled');
-  if (button) button.textContent = 'Consultando...';
+  const nativeButton = document.querySelector('.assistant-native-composer button');
+  const sendButton = nativeButton || button;
+  sendButton?.setAttribute('disabled', 'disabled');
+  if (sendButton) sendButton.textContent = 'Enviando...';
+  adicionarMensagemAssistente('user', question);
+  if (input) input.value = '';
   try {
-    preencherRespostaAssistente(await consultarIaCartorio(question), question);
+    const response = await consultarIaCartorio(question, conversaIaNativaId);
+    conversaIaNativaId = response.conversaId || conversaIaNativaId;
+    adicionarMensagemAssistente('assistant', response);
     await carregarHistoricoIa();
   } catch (error) {
+    adicionarMensagemAssistente('assistant', { level: 'ATENÇÃO', title: 'Não foi possível concluir agora', text: error.message, nextStep: 'Tente novamente em alguns instantes ou encaminhe o caso ao Oficial.' });
     mostrarNotificacao(error.message, 'error');
   } finally {
-    button?.removeAttribute('disabled');
-    if (button) button.innerHTML = 'Consultar <span>→</span>';
+    sendButton?.removeAttribute('disabled');
+    if (sendButton) sendButton.innerHTML = 'Enviar <span>→</span>';
+    input?.focus();
   }
 }
 
 function enviarPerguntaAssistente(event) {
-  if (event.key === 'Enter') {
+  if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
     responderPerguntaAssistente();
   }
@@ -3423,6 +3487,7 @@ function consultarServicoDashboard(question) {
 // para funcionar também quando o bundle é servido em modo estrito/cacheado.
 window.abrirAssistenteJuridico = abrirAssistenteJuridico;
 window.fecharAssistenteJuridico = fecharAssistenteJuridico;
+window.novaConversaAssistente = novaConversaAssistente;
 window.enviarPerguntaAssistente = enviarPerguntaAssistente;
 window.responderPerguntaAssistente = responderPerguntaAssistente;
 window.usarAtalhoAssistente = usarAtalhoAssistente;
@@ -3753,14 +3818,13 @@ function getWelcomeStateHtml() {
             ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecer&atilde;o aqui.', 'chat')}
           </div>
         </section>
-        <aside class="dashboard-assistant-card ${iaEmBreve ? 'is-coming-soon' : ''}" aria-label="IA Cartório Dias de Castro${iaEmBreve ? ' em breve' : ''}">
-          <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge ${iaEmBreve ? 'coming-soon' : ''}">${iaEmBreve ? 'EM BREVE' : 'EM TESTE'}</span><h2>IA Cartório Dias de Castro</h2><p>${iaEmBreve ? 'Em preparação para atender com segurança a rotina do cartório.' : 'Teste supervisionado para RCPN, RCPJ, RTD, atendimento e minutas.'}</p></div></div>
-          <div class="dashboard-assistant-user"><span>✓</span> Você está identificado como <strong>${escapeHtml(nomeUsuario || emailUsuario || 'colaborador')}</strong>.</div>
-          ${iaEmBreve ? '<div class="dashboard-assistant-coming-notice"><span>◷</span><div><strong>Em breve</strong><small>As consultas serão liberadas após a validação final do administrador.</small></div></div><section class="dashboard-assistant-knowledge"><strong>Base de conhecimento em preparação</strong><div><span>Legislação</span><span>Código de Normas CGJ/SC</span><span>Atos CNJ</span><span>Circulares CGJ/SC</span><span>Orientações do Oficial</span><span>Modelos internos</span><span>Procedimentos e FAQs</span></div></section>' : ''}
-          <label for="dashboardAssistantQuestion">Pergunta ou dúvida</label>
-          <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" ${iaEmBreve ? 'disabled' : 'onkeydown="enviarPerguntaDashboard(event)"'} placeholder="${iaEmBreve ? 'Consultas disponíveis em breve' : 'Ex.: quais documentos preciso para habilitação de casamento?'}" /><button type="button" ${iaEmBreve ? 'disabled' : 'onclick="responderPerguntaDashboard()"'} aria-label="Consultar IA Cartório Dias de Castro">→</button></div>
-          <p class="dashboard-assistant-disclaimer">A IA CDC pode cometer erros. Por isso, lembre-se de conferir informações relevantes.</p>
-          ${iaEmBreve ? '' : '<div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div class="dashboard-assistant-answer-actions"><button type="button" onclick="voltarParaConsultaDashboard()">← Nova consulta</button><button id="dashboardAssistantFavoriteBtn" type="button" onclick="alternarFavoritoDashboard()">☆ Favoritar</button><button class="danger" type="button" onclick="excluirHistoricoIa()">Excluir consulta</button></div><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><strong id="dashboardAssistantTitle" class="dashboard-assistant-answer-title"></strong><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div><div class="dashboard-assistant-next"><strong>Próximo passo</strong><span id="dashboardAssistantNext"></span></div><div class="dashboard-assistant-followup"><strong>Continuar esta conversa</strong><small>Peça para ajustar, resumir ou complementar a resposta sem recomeçar.</small><div><input id="dashboardAssistantFollowup" type="text" placeholder="Ex.: deixe mais curto e cordial" onkeydown="enviarContinuidadeIaDashboard(event)" /><button id="dashboardAssistantFollowupSend" type="button" onclick="continuarConversaIaDashboard()" aria-label="Enviar continuação">→</button></div></div><a class="assistant-response-link hidden" id="dashboardAssistantLink" target="_blank" rel="noopener noreferrer"></a><div class="dashboard-assistant-use-actions"><strong>Preparar para uso — revise antes de utilizar</strong><div><button type="button" onclick="copiarRespostaDashboard()">Copiar resposta</button><button type="button" onclick="prepararRespostaDashboard(\'email\')">E-mail</button><button type="button" onclick="prepararRespostaDashboard(\'whatsapp\')">WhatsApp</button><button type="button" onclick="salvarRascunhoNotaDashboard()">Salvar rascunho de nota</button></div></div><div class="dashboard-assistant-feedback"><span>A resposta ajudou?</span><button type="button" onclick="enviarFeedbackIaDashboard(\'ajudou\')">Sim</button><button type="button" onclick="enviarFeedbackIaDashboard(\'desatualizada\')">Está desatualizada</button><button type="button" onclick="enviarFeedbackIaDashboard(\'revisao_oficial\')">Revisão do Oficial</button></div></div><section class="dashboard-assistant-history" aria-label="Histórico de consultas"><div class="dashboard-assistant-history-head"><div><strong>Histórico de consultas</strong><small>Somente suas consultas</small></div></div><input id="dashboardAssistantHistorySearch" type="search" placeholder="Buscar no histórico" oninput="filtrarHistoricoIa()" /><div class="dashboard-assistant-history-list" id="dashboardAssistantHistoryList"><div class="dashboard-assistant-history-empty">Carregando histórico...</div></div></section>'}
+        <aside class="dashboard-assistant-contact ${iaEmBreve ? 'is-coming-soon' : ''}" aria-label="IA Cartório Dias de Castro">
+          <button type="button" onclick="abrirAssistenteJuridico()" ${iaEmBreve ? 'disabled' : ''}>
+            <span class="dashboard-assistant-contact-avatar">✦<i></i></span>
+            <span class="dashboard-assistant-contact-copy"><span class="dashboard-assistant-badge ${iaEmBreve ? 'coming-soon' : ''}">${iaEmBreve ? 'EM BREVE' : 'EM TESTE'}</span><strong>IA Cartório Dias de Castro</strong><small>${iaEmBreve ? 'Em preparação para a equipe.' : 'Conversa privada para dúvidas e tarefas de trabalho.'}</small></span>
+            <span class="dashboard-assistant-contact-open">Abrir conversa →</span>
+          </button>
+          <p>Respostas geradas por IA devem ser revisadas antes de serem utilizadas.</p>
         </aside>
       </div>
     </div>
