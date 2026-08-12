@@ -1811,12 +1811,23 @@ function perguntaExigeOficial(mensagem) {
   return /\b(filiacao|paternidade|nome do pai|retirar.*pai|reconhecimento.*pai|socioafetiv|recusa|recusar|falsidade|fraude|documento adulterado|competencia|incapacidade|curatela|interdicao|direito de terceiro|suscitacao|duvida registral)\b/.test(texto);
 }
 
+function detectarModoIa(mensagem, modoSolicitado) {
+  if (modoSolicitado !== 'orientacao') return modoSolicitado;
+  const texto = normalizarTextoIa(mensagem);
+  return /\b(me ajuda( a)? responder|ajude( a)? responder|responder (esse|esta|esta) (email|e-mail)|minuta de (email|e-mail)|redigir (email|e-mail))\b/.test(texto)
+    ? 'email'
+    : modoSolicitado;
+}
+
 function montarReferenciaBaseIa(pergunta = '') {
   const palavras = obterPalavrasRelevantesIa(pergunta);
-  const itens = (db.base_ia || []).filter(fonteEstaElegivelIa).map((item) => ({
-    item,
-    relevancia: palavras.filter((palavra) => normalizarTextoIa(`${item.area} ${item.titulo} ${item.procedimento} ${item.assunto} ${item.palavras_chave} ${item.fundamento}`).includes(palavra)).length
-  })).sort((a, b) => b.relevancia - a.relevancia).slice(0, 4).map(({ item }) => ({
+  const itens = (db.base_ia || []).filter(fonteEstaElegivelIa).map((item) => {
+    const assunto = normalizarTextoIa(`${item.area} ${item.titulo} ${item.assunto} ${item.palavras_chave}`);
+    const detalhes = normalizarTextoIa(`${item.procedimento} ${item.fundamento} ${(item.checklist || []).join(' ')}`);
+    const relevanciaAssunto = palavras.filter((palavra) => assunto.includes(palavra)).length;
+    const relevanciaDetalhes = palavras.filter((palavra) => detalhes.includes(palavra)).length;
+    return { item, relevanciaAssunto, relevancia: relevanciaAssunto * 4 + relevanciaDetalhes };
+  }).filter((item) => item.relevanciaAssunto > 0).sort((a, b) => b.relevancia - a.relevancia).slice(0, 4).map(({ item }) => ({
     id: String(item.id), tipo_fonte: item.tipo_fonte, status: item.status, versao: item.versao,
     area: String(item.area || '').slice(0, 80),
     titulo: String(item.titulo || '').slice(0, 160),
@@ -1828,7 +1839,7 @@ function montarReferenciaBaseIa(pergunta = '') {
 }
 
 function obterPalavrasRelevantesIa(texto) {
-  const ignoradas = new Set(['para', 'com', 'sem', 'dos', 'das', 'que', 'uma', 'por', 'sobre', 'como', 'quais', 'preciso', 'quero', 'orientar', 'documentos', 'cartorio', 'registro']);
+  const ignoradas = new Set(['para', 'com', 'sem', 'dos', 'das', 'que', 'uma', 'por', 'sobre', 'como', 'quais', 'preciso', 'quero', 'orientar', 'documentos', 'cartorio', 'registro', 'responder', 'ajuda', 'gostaria', 'saber', 'qual', 'data', 'datas', 'dia', 'dias', 'uteis', 'formato', 'digital', 'aquisicao', 'solicitacao', 'solicitar', 'segunda', 'segundo']);
   return [...new Set(normalizarTextoIa(texto).match(/[a-z0-9]{4,}/g) || [])].filter((palavra) => !ignoradas.has(palavra));
 }
 
@@ -1979,14 +1990,21 @@ function respostaLocalBaseIa(mensagem) {
   let melhor = null;
   let maiorPontuacao = 0;
   for (const item of (db.base_ia || []).filter(fonteEstaElegivelIa)) {
-    const fonte = normalizarTextoIa(`${item.area} ${item.titulo} ${item.procedimento} ${item.assunto} ${item.palavras_chave} ${(item.checklist || []).join(' ')}`);
-    const pontuacao = palavras.filter((palavra) => fonte.includes(palavra)).length;
+    const tituloOuPalavrasChave = normalizarTextoIa(`${item.area} ${item.titulo} ${item.assunto} ${item.palavras_chave}`);
+    const procedimento = normalizarTextoIa(`${item.procedimento} ${(item.checklist || []).join(' ')}`);
+    const relevanciaAssunto = palavras.filter((palavra) => tituloOuPalavrasChave.includes(palavra)).length;
+    const relevanciaProcedimento = palavras.filter((palavra) => procedimento.includes(palavra)).length;
+    // A rotina só pode ser escolhida se o assunto aparecer no próprio título,
+    // área ou palavras-chave. Termos genéricos do texto do procedimento não
+    // bastam para vincular uma consulta a uma fonte interna.
+    if (!relevanciaAssunto) continue;
+    const pontuacao = relevanciaAssunto * 4 + relevanciaProcedimento;
     if (pontuacao > maiorPontuacao) {
       maiorPontuacao = pontuacao;
       melhor = item;
     }
   }
-  if (!melhor || maiorPontuacao < 2) return null;
+  if (!melhor || maiorPontuacao < 4) return null;
   const checklist = (melhor.checklist || []).length ? `\n\nChecklist de conferência:\n${melhor.checklist.map((item) => `• ${item}`).join('\n')}` : '';
   const fundamentoEstruturado = { documento_id: melhor.id, documento: melhor.titulo, tipo_fonte: melhor.tipo_fonte, artigo_item: melhor.artigo_item || null, pagina_trecho: melhor.pagina_trecho || null, status_vigencia: melhor.status, versao: melhor.versao };
   return {
@@ -2129,7 +2147,8 @@ async function consultarClaudeCartorio(system, pergunta) {
 app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res) => {
   const usuario = findActiveUserById(req.userId);
   const mensagem = String(req.body?.mensagem || '').trim().slice(0, 6000);
-  const modo = ['orientacao', 'email', 'nota'].includes(req.body?.modo) ? req.body.modo : 'orientacao';
+  const modoSolicitado = ['orientacao', 'email', 'nota'].includes(req.body?.modo) ? req.body.modo : 'orientacao';
+  const modo = detectarModoIa(mensagem, modoSolicitado);
   if (!usuario) return res.status(404).json({ erro: 'Usuário não encontrado' });
   if (!mensagem) return res.status(400).json({ erro: 'Escreva uma pergunta para a IA Cartório Dias de Castro.' });
   if (!iaCartorioEstaLiberada()) return res.status(423).json({ erro: 'A IA Cartório Dias de Castro estará em teste a partir das 13h25, após a liberação do administrador.' });
