@@ -2837,6 +2837,7 @@ function fecharAssistenteJuridico() {
 }
 
 let modoAssistente = 'orientacao';
+let historicoIaCache = [];
 
 function normalizarAssistente(texto) {
   return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -3044,15 +3045,87 @@ async function consultarIaCartorio(question) {
   return payload;
 }
 
+function textoExibicaoIa(texto) {
+  return String(texto || '')
+    .replace(/^\s{0,3}#{1,6}\s*/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/`([^`]+)`/g, '$1');
+}
+
+function formatarDataHistoricoIa(data) {
+  const valor = new Date(data || 0);
+  if (Number.isNaN(valor.getTime())) return '';
+  return valor.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function renderHistoricoIa() {
+  const busca = String(document.getElementById('dashboardAssistantHistorySearch')?.value || '').trim();
+  const termo = normalizarAssistente(busca);
+  const itens = historicoIaCache.filter((item) => !termo || normalizarAssistente(`${item.pergunta} ${item.titulo} ${item.resposta}`).includes(termo));
+  const lista = document.getElementById('dashboardAssistantHistoryList');
+  if (!lista) return;
+  if (!itens.length) {
+    lista.innerHTML = `<div class="dashboard-assistant-history-empty">${busca ? 'Nenhuma consulta encontrada.' : 'Suas consultas aparecerão aqui.'}</div>`;
+    return;
+  }
+  lista.innerHTML = itens.slice(0, 20).map((item) => `<button class="dashboard-assistant-history-item" type="button" onclick="abrirHistoricoIa('${escapeHtml(item.id)}')"><span>${escapeHtml(formatarDataHistoricoIa(item.criado_em))}</span><strong>${escapeHtml(item.pergunta)}</strong><small>${escapeHtml(item.titulo || 'Consulta ao assistente')}</small></button>`).join('');
+}
+
+async function carregarHistoricoIa() {
+  if (!usuarioAtual || !ASSISTENTE_JURIDICO_ATIVO) return;
+  try {
+    const response = await fetch('/api/ia-cartorio/historico', { headers: authHeaders() });
+    if (!response.ok) throw new Error('Falha ao carregar histórico');
+    historicoIaCache = await response.json();
+    renderHistoricoIa();
+  } catch (_error) {
+    const lista = document.getElementById('dashboardAssistantHistoryList');
+    if (lista) lista.innerHTML = '<div class="dashboard-assistant-history-empty">Histórico indisponível no momento.</div>';
+  }
+}
+
+function filtrarHistoricoIa() {
+  renderHistoricoIa();
+}
+
+function preencherRespostaDashboard(response, question = '') {
+  const answer = document.getElementById('dashboardAssistantAnswer');
+  const level = document.getElementById('dashboardAssistantLevel');
+  if (!answer || !level) return;
+  level.textContent = response.level;
+  level.className = `dashboard-assistant-level ${String(response.level || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
+  document.getElementById('dashboardAssistantTitle').textContent = response.title || question || 'Orientação';
+  document.getElementById('dashboardAssistantText').textContent = textoExibicaoIa(response.text);
+  document.getElementById('dashboardAssistantBasis').textContent = textoExibicaoIa(response.basis);
+  document.getElementById('dashboardAssistantNext').textContent = textoExibicaoIa(response.nextStep);
+  const answerLink = document.getElementById('dashboardAssistantLink');
+  if (response.link?.href && answerLink) {
+    answerLink.href = response.link.href;
+    answerLink.textContent = `↗ ${response.link.label}`;
+    answerLink.classList.remove('hidden');
+  } else if (answerLink) {
+    answerLink.removeAttribute('href');
+    answerLink.classList.add('hidden');
+  }
+  answer.classList.remove('hidden');
+}
+
+function abrirHistoricoIa(id) {
+  const item = historicoIaCache.find((registro) => String(registro.id) === String(id));
+  if (!item) return;
+  preencherRespostaDashboard({ level: item.nivel, title: item.titulo, text: item.resposta, basis: item.base, nextStep: item.proximo_passo, provider: item.provider }, item.pergunta);
+}
+
 function preencherRespostaAssistente(response, question) {
   const answer = document.getElementById('assistantAnswer');
   const level = document.getElementById('assistantAnswerLevel');
   level.textContent = response.level;
   level.className = `assistant-answer-level ${String(response.level || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
   document.getElementById('assistantAnswerQuestion').textContent = response.title || question;
-  document.getElementById('assistantAnswerText').textContent = response.text;
-  document.getElementById('assistantAnswerBasis').textContent = response.basis || '';
-  document.getElementById('assistantAnswerNext').textContent = response.nextStep || '';
+  document.getElementById('assistantAnswerText').textContent = textoExibicaoIa(response.text);
+  document.getElementById('assistantAnswerBasis').textContent = textoExibicaoIa(response.basis);
+  document.getElementById('assistantAnswerNext').textContent = textoExibicaoIa(response.nextStep);
   const answerLink = document.getElementById('assistantAnswerLink');
   if (response.link?.href) {
     answerLink.href = response.link.href;
@@ -3083,6 +3156,7 @@ async function responderPerguntaAssistente() {
   if (button) button.textContent = 'Consultando...';
   try {
     preencherRespostaAssistente(await consultarIaCartorio(question), question);
+    await carregarHistoricoIa();
   } catch (error) {
     mostrarNotificacao(error.message, 'error');
   } finally {
@@ -3136,24 +3210,8 @@ async function responderPerguntaDashboard() {
   if (button) button.textContent = '…';
   try {
     const response = await consultarIaCartorio(question);
-    const answer = document.getElementById('dashboardAssistantAnswer');
-    const level = document.getElementById('dashboardAssistantLevel');
-    level.textContent = response.level;
-    level.className = `dashboard-assistant-level ${String(response.level || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
-    document.getElementById('dashboardAssistantTitle').textContent = response.title || 'Orientação';
-    document.getElementById('dashboardAssistantText').textContent = response.text;
-    document.getElementById('dashboardAssistantBasis').textContent = response.basis || '';
-    document.getElementById('dashboardAssistantNext').textContent = response.nextStep || '';
-    const answerLink = document.getElementById('dashboardAssistantLink');
-    if (response.link?.href && answerLink) {
-      answerLink.href = response.link.href;
-      answerLink.textContent = `↗ ${response.link.label}`;
-      answerLink.classList.remove('hidden');
-    } else if (answerLink) {
-      answerLink.removeAttribute('href');
-      answerLink.classList.add('hidden');
-    }
-    answer?.classList.remove('hidden');
+    preencherRespostaDashboard(response, question);
+    await carregarHistoricoIa();
   } catch (error) {
     mostrarNotificacao(error.message, 'error');
   } finally {
@@ -3521,6 +3579,7 @@ function getWelcomeStateHtml() {
           <label for="dashboardAssistantQuestion">Pergunta ou dúvida</label>
           <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" onkeydown="enviarPerguntaDashboard(event)" placeholder="Ex.: quais documentos preciso para habilitação de casamento?" /><button type="button" onclick="responderPerguntaDashboard()" aria-label="Consultar IA Cartório Dias de Castro">→</button></div>
           <div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><strong id="dashboardAssistantTitle" class="dashboard-assistant-answer-title"></strong><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div><div class="dashboard-assistant-next"><strong>Próximo passo</strong><span id="dashboardAssistantNext"></span></div><a class="assistant-response-link hidden" id="dashboardAssistantLink" target="_blank" rel="noopener noreferrer"></a></div>
+          <section class="dashboard-assistant-history" aria-label="Histórico de consultas"><div class="dashboard-assistant-history-head"><div><strong>Histórico de consultas</strong><small>Somente suas consultas</small></div></div><input id="dashboardAssistantHistorySearch" type="search" placeholder="Buscar no histórico" oninput="filtrarHistoricoIa()" /><div class="dashboard-assistant-history-list" id="dashboardAssistantHistoryList"><div class="dashboard-assistant-history-empty">Carregando histórico...</div></div></section>
         </aside>
       </div>
     </div>
@@ -3531,6 +3590,7 @@ function renderWelcomeState() {
   atualizarModoTelaInicial();
   document.getElementById('messagesContainer').innerHTML = getWelcomeStateHtml();
   atualizarBotaoTema();
+  carregarHistoricoIa();
 }
 
 function atualizarPainelInicialSeAberto() {
