@@ -69,6 +69,12 @@ function iaCartorioEstaLiberada() {
   return IA_CARTORIO_ENABLED_OVERRIDE !== 'false' && Date.now() >= IA_CARTORIO_RELEASE_AT;
 }
 const IA_CARTORIO_DAILY_LIMIT = Math.max(1, Math.min(50, Number(process.env.IA_CARTORIO_DAILY_LIMIT || 20)));
+// Coleta curta de impressões durante o piloto. O prazo pode ser ajustado no
+// Railway sem publicar código; o envio é anônimo e não registra o colaborador.
+const IA_CARTORIO_FEEDBACK_ATE = new Date(process.env.IA_CARTORIO_FEEDBACK_ATE || '2026-08-18T23:59:59-03:00').getTime();
+function solicitarFeedbackIaCartorio() {
+  return Number.isFinite(IA_CARTORIO_FEEDBACK_ATE) && Date.now() <= IA_CARTORIO_FEEDBACK_ATE;
+}
 const TIPOS_FONTE_IA = new Set(['LEGISLACAO', 'NORMA_CGJSC', 'NORMA_CNJ', 'CIRCULAR', 'ORIENTACAO_ADMINISTRATIVA', 'ORIENTACAO_OFICIAL', 'MODELO_INTERNO', 'FAQ', 'PRECEDENTE', 'PROCEDIMENTO']);
 const STATUS_FONTE_IA = new Set(['VIGENTE', 'SUBSTITUIDO', 'REVOGADO', 'ARQUIVADO', 'EM_REVISAO', 'RASCUNHO', 'APROVADA', 'SUBSTITUIDA']);
 // Janela de agrupamento das gravacoes em disco (debounce). Mudancas em rajada
@@ -2244,7 +2250,7 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
     encaminhamento.motivo_escalonamento = 'Tema sensível identificado pelo protocolo de segurança registral.';
     const registro = salvarHistoricoIa(usuario, mensagem, modo, encaminhamento, conversaId);
     registrarAuditoria({ acao: 'ia_cartorio_escalonada_sensivel', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: 'tema-sensivel', req });
-    return res.json({ ...encaminhamento, historicoId: registro.id, conversaId: registro.conversa_id });
+    return res.json({ ...encaminhamento, historicoId: registro.id, conversaId: registro.conversa_id, solicitarFeedback: solicitarFeedbackIaCartorio() });
   }
   // Quando o colaborador pede uma minuta, a IA precisa redigir a resposta ao
   // destinatário. Não se deve devolver apenas uma rotina de triagem mesmo que
@@ -2254,7 +2260,7 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
   if (respostaLocal) {
     const registro = salvarHistoricoIa(usuario, mensagem, modo, respostaLocal, conversaId);
     registrarAuditoria({ acao: 'ia_cartorio_base_interna', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: `${respostaLocal.provider}:${modo}`, req });
-    return res.json({ ...respostaLocal, historicoId: registro.id, conversaId: registro.conversa_id });
+    return res.json({ ...respostaLocal, historicoId: registro.id, conversaId: registro.conversa_id, solicitarFeedback: solicitarFeedbackIaCartorio() });
   }
 
   if (!process.env.OPENAI_API_KEY) return res.status(503).json({ erro: 'A IA Cartório Dias de Castro ainda não está configurada no servidor.' });
@@ -2293,7 +2299,7 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
     const resposta = { level: classificacao, classificacao, title: modo === 'email' ? 'Minuta para revisão' : modo === 'nota' ? 'Minuta de nota para revisão' : 'Orientação da IA Cartório Dias de Castro — teste', text: respostaEstruturada.resposta, resposta: respostaEstruturada.resposta, basis: fontesUtilizadas.length ? `Fontes consultadas: ${fontesUtilizadas.map((fonte) => fonte.documento).join(' e ')}.` : 'Resposta operacional em teste, sem evidência normativa específica localizada.', nextStep: respostaEstruturada.motivo_escalonamento || `Revise a orientação e encaminhe ao Oficial se houver situação excepcional ou risco registral. Restam ${Math.max(0, IA_CARTORIO_DAILY_LIMIT - usadasHoje - 1)} consultas de IA hoje.`, provider, consultasRestantes: Math.max(0, IA_CARTORIO_DAILY_LIMIT - usadasHoje - 1), fundamentos: fontesUtilizadas, orientacao_interna: respostaEstruturada.orientacao_interna || null, alertas, motivo_escalonamento: respostaEstruturada.motivo_escalonamento || null, pesquisa_web: usarPesquisaWeb };
     const registro = salvarHistoricoIa(usuario, mensagem, modo, resposta, conversaId);
     registrarAuditoria({ acao: 'ia_cartorio_consulta', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: `${provider.toLowerCase()}:${modo}`, req });
-    return res.json({ ...resposta, historicoId: registro.id, conversaId: registro.conversa_id });
+    return res.json({ ...resposta, historicoId: registro.id, conversaId: registro.conversa_id, solicitarFeedback: solicitarFeedbackIaCartorio() });
   } catch (error) {
     console.error('Falha IA Cartório Dias:', error?.message || error);
     return res.status(502).json({ erro: mensagemFalhaIaParaUsuario(error) });
@@ -2348,20 +2354,32 @@ app.post('/api/ia-cartorio/feedback', verificarToken, (req, res) => {
   const usuario = findActiveUserById(req.userId);
   const tipo = String(req.body?.tipo || '').trim();
   const historicoId = String(req.body?.historico_id || '').trim().slice(0, 80);
-  if (!usuario || !['ajudou', 'desatualizada', 'revisao_oficial'].includes(tipo) || !historicoId) return res.status(400).json({ erro: 'Feedback inválido.' });
+  const comentario = String(req.body?.comentario || '').trim().slice(0, 1500);
+  const tiposPermitidos = new Set(['ajudou', 'desatualizada', 'revisao_oficial', 'gostou', 'melhoria', 'implementacao']);
+  if (!usuario || !tiposPermitidos.has(tipo) || !historicoId) return res.status(400).json({ erro: 'Feedback inválido.' });
+  if (['melhoria', 'implementacao'].includes(tipo) && comentario.length < 3) return res.status(400).json({ erro: 'Descreva brevemente sua sugestão.' });
   const consulta = (db.ia_historico || []).find((item) => String(item.id) === historicoId && Number(item.usuario_id) === Number(usuario.id));
   if (!consulta) return res.status(404).json({ erro: 'Consulta não encontrada.' });
-  db.ia_feedback = (db.ia_feedback || []).filter((item) => !(String(item.historico_id) === historicoId && Number(item.usuario_id) === Number(usuario.id)));
-  db.ia_feedback.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, usuario_id: Number(usuario.id), usuario_nome: usuario.nome, historico_id: historicoId, tipo, titulo_consulta: String(consulta.titulo || '').slice(0, 240), criado_em: new Date().toISOString() });
+  // A consulta apenas comprova que o remetente pode opinar sobre a própria
+  // interação. Nenhum identificador, pergunta ou histórico é guardado junto
+  // ao feedback que será exibido ao ADM.
+  db.ia_feedback.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, tipo, comentario: comentario || null, anonimo: true, criado_em: new Date().toISOString() });
   db.ia_feedback = db.ia_feedback.slice(0, 1000);
   db.saveFile('ia-feedback.json', db.ia_feedback);
-  registrarAuditoria({ acao: `ia_cartorio_feedback_${tipo}`, usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: historicoId, req });
-  res.json({ ok: true });
+  res.json({ ok: true, anonimo: true });
 });
 
 app.get('/api/admin/ia-feedback', verificarToken, (req, res) => {
   if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
-  res.json((db.ia_feedback || []).slice(0, 100));
+  // A fila administrativa nunca recebe campos de identificação, inclusive em
+  // registros antigos que possam ter sido criados antes da coleta anônima.
+  res.json((db.ia_feedback || []).slice(0, 100).map((item) => ({
+    id: item.id,
+    tipo: item.tipo,
+    comentario: item.comentario || null,
+    anonimo: true,
+    criado_em: item.criado_em
+  })));
 });
 
 app.post('/api/login', loginLimiter, async (req, res) => {

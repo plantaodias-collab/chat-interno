@@ -11804,3 +11804,20 @@ body.theme-dark .assistant-native-panel,body.theme-dark .assistant-native-chat,b
     width: min(1160px, calc(100% - 56px));
   }
 }
+
+/* Coleta anônima de melhorias durante o piloto da IA. */
+.assistant-chat-feedback { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; padding: 14px; border: 1px solid #bcdcc8; border-radius: 12px; background: #f5fbf7; color: #244a39; }
+.assistant-chat-feedback > strong { font-size: 14px; }
+.assistant-chat-feedback > p { margin: 0; font-size: 13px; line-height: 1.45; }
+.assistant-chat-feedback-options { display: flex; flex-wrap: wrap; gap: 7px; }
+.assistant-chat-feedback-options button { border: 1px solid #9ac8ac; border-radius: 999px; background: #fff; color: #226748; padding: 7px 10px; font: 700 12px/1.2 inherit; cursor: pointer; }
+.assistant-chat-feedback-options button:hover,.assistant-chat-feedback-options button.active { border-color: #176c55; background: #dff3e6; color: #124b34; }
+.assistant-chat-feedback textarea { width: 100%; min-height: 62px; box-sizing: border-box; resize: vertical; border: 1px solid #afd2bc; border-radius: 8px; background: #fff; color: #1d382c; padding: 9px 10px; font: 13px/1.45 inherit; outline: none; }
+.assistant-chat-feedback textarea:focus { border-color: #176c55; box-shadow: 0 0 0 3px rgba(23,108,85,.12); }
+.assistant-chat-feedback-send { align-self: flex-start; border: 0; border-radius: 8px; background: #176c55; color: #fff; padding: 9px 12px; font: 800 12px/1.2 inherit; cursor: pointer; }
+.assistant-chat-feedback-send:hover { background: #105840; }.assistant-chat-feedback-send:disabled { opacity: .7; cursor: wait; }
+.assistant-chat-feedback > small { color: #567164; font-size: 11px; line-height: 1.4; }
+.assistant-chat-feedback.sent { border-color: #a9d9b9; background: #e9f7ed; }
+body.theme-dark .assistant-chat-feedback { border-color: #3c765d; background: #1c3429; color: #dcf1e3; }
+body.theme-dark .assistant-chat-feedback-options button,body.theme-dark .assistant-chat-feedback textarea { border-color: #467d62; background: #14291f; color: #e3f4e9; }
+body.theme-dark .assistant-chat-feedback > small { color: #b4d4c0; }

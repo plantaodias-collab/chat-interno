@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/app.min.css?v=20260812-chat-wide" />
+  <link rel="stylesheet" href="/assets/app.min.css?v=20260812-ia-feedback-anonimo" />
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@17.0.3/dist/twemoji.min.js" crossorigin="anonymous" defer></script>
@@ -691,7 +691,7 @@
             <button class="btn btn-secondary hidden" id="baseIaCancelBtn" type="button" onclick="cancelarEdicaoBaseIa()">Cancelar edição</button>
           </div>
           <div id="adminBaseIaList" style="display:flex;flex-direction:column;gap:10px;">Carregando...</div>
-          <section style="margin-top:24px;padding-top:18px;border-top:1px solid #dbe4ee;"><h4 style="margin-bottom:6px;">Fila de feedback da IA</h4><p style="font-size:12px;color:#64748b;margin-bottom:10px;">Sinalizações de respostas desatualizadas ou que exigem revisão do Oficial.</p><div id="adminIaFeedbackList" style="display:flex;flex-direction:column;gap:8px;">Carregando...</div></section>
+          <section style="margin-top:24px;padding-top:18px;border-top:1px solid #dbe4ee;"><h4 style="margin-bottom:6px;">Fila anônima de feedback da IA</h4><p style="font-size:12px;color:#64748b;margin-bottom:10px;">Impressões do piloto, sugestões de melhoria e pedidos de implementação. Nome, perfil, pergunta e histórico não são exibidos ao ADM.</p><div id="adminIaFeedbackList" style="display:flex;flex-direction:column;gap:8px;">Carregando...</div></section>
         </section>
 
         <!-- TAB: AUDITORIA -->
@@ -844,6 +844,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.min.js?v=20260812-chat-wide"></script>
+  <script src="/assets/app.min.js?v=20260812-ia-feedback-anonimo"></script>
 </body>
 </html>

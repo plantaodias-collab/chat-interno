@@ -3371,6 +3371,86 @@ async function copiarMensagemAssistente(texto) {
   }
 }
 
+function criarFeedbackAssistente(historicoId) {
+  const painel = document.createElement('section');
+  painel.className = 'assistant-chat-feedback';
+  painel.dataset.historicoId = String(historicoId || '');
+
+  const titulo = document.createElement('strong');
+  titulo.textContent = 'Ajude a melhorar a IA';
+  const descricao = document.createElement('p');
+  descricao.textContent = 'O que você gostou nesta resposta ou o que pode melhorar?';
+  const opcoes = document.createElement('div');
+  opcoes.className = 'assistant-chat-feedback-options';
+  const campo = document.createElement('textarea');
+  campo.rows = 2;
+  campo.maxLength = 1500;
+  campo.placeholder = 'Escolha uma opção acima. Seu comentário é opcional para “Gostei”.';
+  const enviar = document.createElement('button');
+  enviar.type = 'button';
+  enviar.className = 'assistant-chat-feedback-send';
+  enviar.textContent = 'Enviar feedback anônimo';
+  const privacidade = document.createElement('small');
+  privacidade.textContent = 'O ADM receberá somente a categoria e o comentário. Nome, perfil, pergunta e histórico não são enviados.';
+
+  const textos = {
+    gostou: { botao: 'Gostei', placeholder: 'Se quiser, conte o que funcionou bem.' },
+    melhoria: { botao: 'Pode melhorar', placeholder: 'Descreva o que ficou confuso, incompleto ou incorreto.' },
+    implementacao: { botao: 'Sugestão de implementação', placeholder: 'Qual recurso ou melhoria você gostaria de ter?' }
+  };
+  Object.entries(textos).forEach(([tipo, config]) => {
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.textContent = config.botao;
+    botao.addEventListener('click', () => {
+      painel.dataset.tipo = tipo;
+      opcoes.querySelectorAll('button').forEach((item) => item.classList.toggle('active', item === botao));
+      campo.placeholder = config.placeholder;
+      campo.focus();
+    });
+    opcoes.appendChild(botao);
+  });
+
+  enviar.addEventListener('click', async () => {
+    const tipo = painel.dataset.tipo || '';
+    const comentario = String(campo.value || '').trim();
+    if (!tipo) {
+      mostrarNotificacao('Escolha uma opção de feedback.', 'warning');
+      return;
+    }
+    if (['melhoria', 'implementacao'].includes(tipo) && comentario.length < 3) {
+      mostrarNotificacao('Descreva brevemente sua sugestão.', 'warning');
+      campo.focus();
+      return;
+    }
+    enviar.disabled = true;
+    enviar.textContent = 'Enviando...';
+    try {
+      const response = await fetch('/api/ia-cartorio/feedback', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ tipo, comentario, historico_id: painel.dataset.historicoId })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.erro || 'Não foi possível enviar o feedback.');
+      painel.classList.add('sent');
+      painel.replaceChildren();
+      const confirmado = document.createElement('strong');
+      confirmado.textContent = 'Obrigado pela contribuição.';
+      const detalhe = document.createElement('p');
+      detalhe.textContent = 'Seu feedback anônimo foi encaminhado ao ADM para aperfeiçoar a IA.';
+      painel.append(confirmado, detalhe);
+    } catch (error) {
+      enviar.disabled = false;
+      enviar.textContent = 'Enviar feedback anônimo';
+      mostrarNotificacao(error.message || 'Não foi possível enviar o feedback.', 'error');
+    }
+  });
+
+  painel.append(titulo, descricao, opcoes, campo, enviar, privacidade);
+  return painel;
+}
+
 function adicionarMensagemAssistente(tipo, conteudo) {
   const mensagens = document.getElementById('assistantNativeMessages');
   if (!mensagens) return;
@@ -3442,6 +3522,9 @@ function adicionarMensagemAssistente(tipo, conteudo) {
     copiar.addEventListener('click', () => copiarMensagemAssistente(resposta.text || resposta.resposta));
     acoes.appendChild(copiar);
     balao.appendChild(acoes);
+    if (resposta.solicitarFeedback && resposta.historicoId) {
+      balao.appendChild(criarFeedbackAssistente(resposta.historicoId));
+    }
   }
   mensagem.append(identificacao, balao);
   mensagens.appendChild(mensagem);
@@ -6977,8 +7060,8 @@ async function carregarFeedbackIaAdmin() {
       list.innerHTML = '<p style="color:#64748b;font-size:12px;">Nenhuma sinalização recebida.</p>';
       return;
     }
-    const labels = { ajudou: 'Ajudou', desatualizada: 'Possível desatualização', revisao_oficial: 'Revisão do Oficial' };
-    list.innerHTML = itens.map((item) => `<div style="padding:10px;border:1px solid #dbe4ee;border-radius:9px;background:#fff;"><strong style="font-size:12px;color:#334155;">${escapeHtml(labels[item.tipo] || item.tipo)}</strong><span style="margin-left:7px;color:#64748b;font-size:11px;">${escapeHtml(item.titulo_consulta || 'Consulta da IA')}</span><small style="display:block;margin-top:4px;color:#94a3b8;font-size:10px;">${escapeHtml(item.usuario_nome || 'Colaborador')} · ${escapeHtml(formatarDataHistoricoIa(item.criado_em))}</small></div>`).join('');
+    const labels = { ajudou: 'Ajudou', desatualizada: 'Possível desatualização', revisao_oficial: 'Revisão do Oficial', gostou: 'Gostou da resposta', melhoria: 'Sugestão de melhoria', implementacao: 'Sugestão de implementação' };
+    list.innerHTML = itens.map((item) => `<div style="padding:10px;border:1px solid #dbe4ee;border-radius:9px;background:#fff;"><strong style="font-size:12px;color:#334155;">${escapeHtml(labels[item.tipo] || item.tipo)}</strong>${item.comentario ? `<p style="margin:7px 0 0;color:#475569;font-size:12px;line-height:1.45;white-space:pre-wrap;">${escapeHtml(item.comentario)}</p>` : ''}<small style="display:block;margin-top:6px;color:#94a3b8;font-size:10px;">Feedback anônimo · ${escapeHtml(formatarDataHistoricoIa(item.criado_em))}</small></div>`).join('');
   } catch (_error) {
     list.innerHTML = '<p style="color:#dc2626;font-size:12px;">Não foi possível carregar os feedbacks.</p>';
   }
