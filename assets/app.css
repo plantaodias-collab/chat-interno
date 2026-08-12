@@ -11188,6 +11188,22 @@ body.theme-dark .welcome-state.dashboard-home {
   width: min(1120px, calc(100% - 44px));
 }
 
+/* Aproveita a largura livre da área de trabalho mantendo os dois painéis equilibrados. */
+.welcome-state.dashboard-home,
+body:not(.theme-dark) .welcome-state.dashboard-home,
+body.theme-dark .welcome-state.dashboard-home {
+  width: min(1400px, calc(100% - 36px));
+  max-width: none;
+}
+
+@media (max-width: 1240px) {
+  .welcome-state.dashboard-home,
+  body:not(.theme-dark) .welcome-state.dashboard-home,
+  body.theme-dark .welcome-state.dashboard-home {
+    width: min(1120px, calc(100% - 28px));
+  }
+}
+
 .dashboard-home .welcome-copy {
   max-width: 760px;
   font-size: 13.5px;
