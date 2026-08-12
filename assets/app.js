@@ -2850,7 +2850,7 @@ function abrirAssistenteJuridico() {
   definirModoAssistente('orientacao');
   iniciarConversaAssistente();
   carregarHistoricoIa();
-  setTimeout(() => document.getElementById('assistantQuestion')?.focus(), 80);
+  setTimeout(() => { ajustarAlturaInputAssistente(); document.getElementById('assistantQuestion')?.focus(); }, 80);
 }
 
 function fecharAssistenteJuridico() {
@@ -3341,6 +3341,36 @@ function atualizarTituloConversaAssistente(texto = '') {
   titulo.textContent = valor ? `${valor.slice(0, 62)}${valor.length > 62 ? '…' : ''}` : 'Nova conversa';
 }
 
+function ajustarAlturaInputAssistente(input = document.getElementById('assistantQuestion')) {
+  if (!input) return;
+  input.style.height = 'auto';
+  input.style.height = `${Math.min(Math.max(input.scrollHeight, 54), 170)}px`;
+}
+
+function mostrarAssistenteDigitando() {
+  const mensagens = document.getElementById('assistantNativeMessages');
+  if (!mensagens || document.getElementById('assistantTyping')) return;
+  const mensagem = document.createElement('article');
+  mensagem.id = 'assistantTyping';
+  mensagem.className = 'assistant-chat-message assistant assistant-chat-thinking';
+  mensagem.innerHTML = '<span class="assistant-chat-message-name">IA Cartório Dias de Castro</span><div class="assistant-chat-bubble"><span></span><span></span><span></span></div>';
+  mensagens.appendChild(mensagem);
+  rolarConversaAssistente();
+}
+
+function removerAssistenteDigitando() {
+  document.getElementById('assistantTyping')?.remove();
+}
+
+async function copiarMensagemAssistente(texto) {
+  try {
+    await navigator.clipboard.writeText(String(texto || '').trim());
+    mostrarNotificacao('Resposta copiada.', 'success');
+  } catch (_error) {
+    mostrarNotificacao('Não foi possível copiar a resposta.', 'warning');
+  }
+}
+
 function adicionarMensagemAssistente(tipo, conteudo) {
   const mensagens = document.getElementById('assistantNativeMessages');
   if (!mensagens) return;
@@ -3404,6 +3434,14 @@ function adicionarMensagemAssistente(tipo, conteudo) {
       proximo.textContent = `Próximo passo: ${textoExibicaoIa(resposta.nextStep)}`;
       balao.appendChild(proximo);
     }
+    const acoes = document.createElement('div');
+    acoes.className = 'assistant-chat-actions';
+    const copiar = document.createElement('button');
+    copiar.type = 'button';
+    copiar.textContent = 'Copiar resposta';
+    copiar.addEventListener('click', () => copiarMensagemAssistente(resposta.text || resposta.resposta));
+    acoes.appendChild(copiar);
+    balao.appendChild(acoes);
   }
   mensagem.append(identificacao, balao);
   mensagens.appendChild(mensagem);
@@ -3456,13 +3494,19 @@ async function responderPerguntaAssistente() {
   sendButton?.setAttribute('disabled', 'disabled');
   if (sendButton) sendButton.textContent = 'Enviando...';
   adicionarMensagemAssistente('user', question);
-  if (input) input.value = '';
+  if (input) {
+    input.value = '';
+    ajustarAlturaInputAssistente(input);
+  }
+  mostrarAssistenteDigitando();
   try {
     const response = await consultarIaCartorio(question, conversaIaNativaId);
     conversaIaNativaId = response.conversaId || conversaIaNativaId;
+    removerAssistenteDigitando();
     adicionarMensagemAssistente('assistant', response);
     await carregarHistoricoIa();
   } catch (error) {
+    removerAssistenteDigitando();
     adicionarMensagemAssistente('assistant', { level: 'ATENÇÃO', title: 'Não foi possível concluir agora', text: error.message, nextStep: 'Tente novamente em alguns instantes ou encaminhe o caso ao Oficial.' });
     mostrarNotificacao(error.message, 'error');
   } finally {
@@ -3584,6 +3628,7 @@ window.abrirAssistenteJuridico = abrirAssistenteJuridico;
 window.fecharAssistenteJuridico = fecharAssistenteJuridico;
 window.novaConversaAssistente = novaConversaAssistente;
 window.filtrarHistoricoAssistenteNativo = filtrarHistoricoAssistenteNativo;
+window.ajustarAlturaInputAssistente = ajustarAlturaInputAssistente;
 window.enviarPerguntaAssistente = enviarPerguntaAssistente;
 window.responderPerguntaAssistente = responderPerguntaAssistente;
 window.usarAtalhoAssistente = usarAtalhoAssistente;
