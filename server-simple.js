@@ -53,6 +53,7 @@ const AUTOMATIC_BACKUP_RETENTION = 3;
 // A integração pode estar configurada, mas só é liberada aos colaboradores
 // quando esta variável for ativada explicitamente no Railway.
 const IA_CARTORIO_ENABLED = String(process.env.IA_CARTORIO_ENABLED || '').toLowerCase() === 'true';
+const IA_CARTORIO_DAILY_LIMIT = Math.max(1, Math.min(50, Number(process.env.IA_CARTORIO_DAILY_LIMIT || 12)));
 // Janela de agrupamento das gravacoes em disco (debounce). Mudancas em rajada
 // sao persistidas em uma unica escrita assincrona dentro deste intervalo.
 const SAVE_DEBOUNCE_MS = 1000;
@@ -1734,6 +1735,50 @@ function montarReferenciaBaseIa() {
   return itens.length ? JSON.stringify(itens) : 'Nenhum procedimento interno cadastrado ainda.';
 }
 
+function obterPalavrasRelevantesIa(texto) {
+  const ignoradas = new Set(['para', 'com', 'sem', 'dos', 'das', 'que', 'uma', 'por', 'sobre', 'como', 'quais', 'preciso', 'quero', 'orientar', 'documentos', 'cartorio', 'registro']);
+  return [...new Set(normalizarTextoIa(texto).match(/[a-z0-9]{4,}/g) || [])].filter((palavra) => !ignoradas.has(palavra));
+}
+
+function respostaLocalBaseIa(mensagem) {
+  const palavras = obterPalavrasRelevantesIa(mensagem);
+  let melhor = null;
+  let maiorPontuacao = 0;
+  for (const item of (db.base_ia || [])) {
+    const fonte = normalizarTextoIa(`${item.area} ${item.titulo} ${item.procedimento} ${(item.checklist || []).join(' ')}`);
+    const pontuacao = palavras.filter((palavra) => fonte.includes(palavra)).length;
+    if (pontuacao > maiorPontuacao) {
+      maiorPontuacao = pontuacao;
+      melhor = item;
+    }
+  }
+  if (!melhor || maiorPontuacao < 2) return null;
+  const checklist = (melhor.checklist || []).length ? `\n\nChecklist de conferência:\n${melhor.checklist.map((item) => `• ${item}`).join('\n')}` : '';
+  return {
+    level: 'BASE INTERNA',
+    title: melhor.titulo,
+    text: `${melhor.procedimento}${checklist}`,
+    basis: `Procedimento interno aprovado — ${melhor.area}.`,
+    nextStep: 'Use este procedimento como referência e encaminhe ao Oficial em situações excepcionais ou de risco registral.',
+    provider: 'Base Interna',
+    gratuita: true
+  };
+}
+
+function respostaPadraoGratuitaIa(mensagem, modo) {
+  const texto = normalizarTextoIa(mensagem);
+  if (modo === 'nota') return { level: 'MODELO INTERNO', title: 'Estrutura segura para nota devolutiva', text: '1. Identifique objetivamente o ato ou documento apresentado.\n2. Descreva a inconsistência encontrada.\n3. Indique a providência necessária para o prosseguimento.\n4. Confirme a base legal ou normativa antes de citá-la.\n\nModelo: “Verificou-se a necessidade de [providência]. Para o prosseguimento do pedido, solicita-se [documento/retificação], observada a norma aplicável ao caso.”', basis: 'Modelo interno: não emitir exigência sem fundamento confirmado.', nextStep: 'Revise a clareza, o prazo e a identificação do protocolo antes da emissão.', provider: 'Modelo interno', gratuita: true };
+  if (/casamento|habilitacao/.test(texto)) return { level: 'MODELO INTERNO', title: 'Habilitação de casamento — triagem inicial', text: 'Confira a identificação dos nubentes, as certidões compatíveis com o estado civil e o comprovante de residência. A conferência final depende da documentação apresentada e das averbações cabíveis.', basis: 'Lei nº 6.015/1973 e Código de Normas da CGJ/SC: confirmar a redação vigente.', nextStep: 'Identifique o estado civil de cada nubente antes de informar a relação final de documentos.', provider: 'Modelo interno', gratuita: true };
+  if (/certidao|segunda via|2a via/.test(texto)) return { level: 'MODELO INTERNO', title: 'Certidões — orientação ao atendimento', text: 'Identifique a certidão desejada e os dados disponíveis para localizar o registro. Para solicitação online, oriente o usuário ao portal oficial. Não confirme prazo, valor ou existência do registro antes da consulta apropriada.', basis: 'Orientação interna de atendimento e canal oficial de solicitação.', nextStep: 'Confirme se a certidão exige dados complementares.', provider: 'Modelo interno', gratuita: true, link: { href: 'https://serp.registros.org.br/', label: 'Abrir solicitações de certidões (SERP)' } };
+  return null;
+}
+
+function consultasPagasHoje(usuarioId) {
+  const inicio = new Date();
+  inicio.setHours(0, 0, 0, 0);
+  return (db.auditoria || []).filter((item) => item.acao === 'ia_cartorio_consulta' && Number(item.usuario_id) === Number(usuarioId) && new Date(item.em || 0) >= inicio).length;
+}
+
 async function consultarOpenAiCartorio(system, pergunta) {
   if (!process.env.OPENAI_API_KEY) throw new Error('OpenAI sem chave configurada');
   const controller = new AbortController();
@@ -1789,6 +1834,17 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
   }
   if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) return res.status(503).json({ erro: 'A IA Cartório Dias de Castro ainda não está configurada no servidor.' });
 
+  const respostaLocal = respostaLocalBaseIa(mensagem) || respostaPadraoGratuitaIa(mensagem, modo);
+  if (respostaLocal) {
+    registrarAuditoria({ acao: 'ia_cartorio_base_interna', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: `${respostaLocal.provider}:${modo}`, req });
+    return res.json(respostaLocal);
+  }
+
+  const usadasHoje = consultasPagasHoje(usuario.id);
+  if (usadasHoje >= IA_CARTORIO_DAILY_LIMIT) {
+    return res.status(429).json({ erro: `Seu limite diário de ${IA_CARTORIO_DAILY_LIMIT} consultas à IA foi atingido. Consulte a Base Interna ou encaminhe o caso ao Oficial.` });
+  }
+
   const system = `Você é a IA Cartório Dias de Castro, assistente interno do Cartório Dias de Castro, em Chapecó/SC. Responda somente sobre rotina cartorária: RCPN, RCPJ, RTD, documentos, atendimento, e-mails e notas devolutivas. Use português do Brasil claro e profissional. Nunca invente norma, prazo, valor ou requisito. Não dê conclusão definitiva quando houver competência, fraude, falsidade, filiação, estado civil, incapacidade ou impacto a terceiros: oriente encaminhar ao Oficial. A resposta deve conter: orientação direta; cautela/base; próximo passo. Para modo email, entregue uma minuta pronta para copiar. Para modo nota, entregue estrutura de exigência prudente, sem citar norma não confirmada. Base interna aprovada: ${montarReferenciaBaseIa()}`;
   const pergunta = `Modo: ${modo}\n\nPergunta do colaborador:\n${mensagem}`;
   const errors = [];
@@ -1803,7 +1859,7 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
     }
     if (!text) throw new Error(errors.join(' | ') || 'Nenhuma provedora disponível');
     registrarAuditoria({ acao: 'ia_cartorio_consulta', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: `${provider.toLowerCase()}:${modo}`, req });
-    return res.json({ level: 'IA CARTÓRIO DIAS DE CASTRO', title: modo === 'email' ? 'Minuta para revisão' : modo === 'nota' ? 'Minuta de nota para revisão' : 'Orientação da IA Cartório Dias de Castro', text, basis: 'Resposta gerada com apoio da Base Interna. Confirme legislação e procedimento vigente antes de concluir o ato.', nextStep: 'Revise a orientação e encaminhe ao Oficial se houver situação excepcional ou risco registral.', provider });
+    return res.json({ level: 'IA CARTÓRIO DIAS DE CASTRO', title: modo === 'email' ? 'Minuta para revisão' : modo === 'nota' ? 'Minuta de nota para revisão' : 'Orientação da IA Cartório Dias de Castro', text, basis: 'Resposta gerada com apoio da Base Interna. Confirme legislação e procedimento vigente antes de concluir o ato.', nextStep: `Revise a orientação e encaminhe ao Oficial se houver situação excepcional ou risco registral. Restam ${Math.max(0, IA_CARTORIO_DAILY_LIMIT - usadasHoje - 1)} consultas de IA hoje.`, provider, consultasRestantes: Math.max(0, IA_CARTORIO_DAILY_LIMIT - usadasHoje - 1) });
   } catch (error) {
     console.error('Falha IA Cartório Dias:', error?.message || error);
     return res.status(502).json({ erro: 'A IA não conseguiu responder agora. Tente novamente ou encaminhe o caso ao Oficial.' });
