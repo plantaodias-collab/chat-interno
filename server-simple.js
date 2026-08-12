@@ -50,9 +50,9 @@ const THUMBNAIL_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif'])
 const THUMBNAIL_MAX_WIDTH = 480;
 const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
-// A integração pode estar configurada, mas só é liberada aos colaboradores
-// quando esta variável for ativada explicitamente no Railway.
-const IA_CARTORIO_ENABLED = String(process.env.IA_CARTORIO_ENABLED || '').toLowerCase() === 'true';
+// A IA é liberada quando as chaves estiverem configuradas. Para uma suspensão
+// imediata, defina IA_CARTORIO_ENABLED=false no Railway.
+const IA_CARTORIO_ENABLED = String(process.env.IA_CARTORIO_ENABLED || 'true').toLowerCase() === 'true';
 const IA_CARTORIO_DAILY_LIMIT = Math.max(1, Math.min(50, Number(process.env.IA_CARTORIO_DAILY_LIMIT || 12)));
 // Janela de agrupamento das gravacoes em disco (debounce). Mudancas em rajada
 // sao persistidas em uma unica escrita assincrona dentro deste intervalo.
@@ -75,6 +75,23 @@ const ALLOWED_MIME_EXTENSIONS = {
 };
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'notas-conversa.json', 'etiquetas-conversa.json', 'responsavel-conversa.json', 'mensagens-agendadas.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'base-ia.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json'];
+
+// Conteúdo inicial público e aprovado. Depois da primeira edição pelo painel,
+// a cópia persistida no armazenamento do Railway passa a prevalecer.
+const DEFAULT_BASE_IA = [
+  { id: 1001, area: 'Atendimento e canais oficiais', titulo: 'Horários, localização e canais do cartório', procedimento: 'O Cartório Dias de Castro atende de segunda a sexta-feira, das 8h30 às 12h e das 13h30 às 18h, na Rua Assis Brasil, nº 305 E, salas 01 e 02, Edifício Acordes, Bairro Maria Goretti, Chapecó/SC. O plantão é destinado ao registro de óbito. Para orientações gerais, use os canais oficiais e não confirme existência de registro sem consulta apropriada.', checklist: ['Confirmar o ato pretendido', 'Informar o canal adequado', 'Usar o plantão somente para registro de óbito'] },
+  { id: 1002, area: 'RCPN — Nascimento', titulo: 'Registro de nascimento — documentos e prazo', procedimento: 'A triagem normalmente exige Declaração de Nascido Vivo original, documento de identificação com foto e CPF dos pais e comprovante de residência. O registro deve ser realizado na serventia do local de nascimento ou de residência dos pais. Em regra o prazo é de até 15 dias corridos; quando houver ausência ou impedimento de um dos pais, aplicar as regras específicas. O registro e a primeira certidão são gratuitos.', checklist: ['DNV original', 'Documento com foto e CPF dos pais', 'Comprovante de residência', 'Certidão de casamento ou prova de união estável, quando aplicável', 'Encaminhar divergências de filiação ao Oficial'] },
+  { id: 1003, area: 'RCPN — Casamento', titulo: 'Habilitação de casamento — orientação inicial', procedimento: 'O casamento civil é precedido de habilitação. Inicie com antecedência, porque há análise documental e publicação de edital de proclamas. Confira o estado civil de ambos os nubentes, documentos de identificação, certidões compatíveis com o estado civil e comprovante de residência. A lista final depende do caso concreto e das averbações existentes.', checklist: ['Identificação dos nubentes', 'Certidões atualizadas compatíveis com o estado civil', 'Comprovante de residência', 'Duas testemunhas maiores de 18 anos para a cerimônia', 'Não confirmar data antes da habilitação'] },
+  { id: 1004, area: 'RCPN — Óbito', titulo: 'Registro de óbito — triagem e plantão', procedimento: 'Para o registro de óbito, conferir a Declaração de Óbito original, documentos do falecido e do declarante e certidão de nascimento ou casamento do falecido, quando disponível. Reunir informações sobre filhos, bens, herdeiros menores ou interditos, condição eleitoral, testamento e local de sepultamento. O registro de óbito e a primeira certidão são gratuitos. Casos de morte violenta com cremação exigem cautela e análise do título judicial ou médico adequado.', checklist: ['Declaração de Óbito original', 'RG e CPF do falecido e do declarante', 'Certidão de nascimento ou casamento', 'Dados de filhos, bens, testamento e sepultamento', 'Encaminhar situação excepcional ao responsável pelo plantão'] },
+  { id: 1005, area: 'Certidões e serviços online', titulo: 'Segunda via de certidão e portal oficial', procedimento: 'A segunda via de certidão de nascimento, casamento ou óbito pode ser solicitada pelo portal oficial SERP, em formato físico ou digital conforme disponibilidade. No atendimento, identificar a certidão desejada e os dados disponíveis para localização. Não confirmar prazo, valor ou existência do registro antes da consulta apropriada.', checklist: ['Identificar tipo de certidão', 'Solicitar dados disponíveis para localização', 'Orientar o portal SERP quando adequado', 'Diferenciar breve relato e inteiro teor conforme a necessidade'] },
+  { id: 1006, area: 'RCPN — Anotações e averbações', titulo: 'Retificação, alteração de nome e averbações', procedimento: 'Anotações e averbações atualizam registros existentes com base em documentos, ordens judiciais, comunicações oficiais ou procedimentos administrativos admitidos. Em alterações de prenome, sobrenome, gênero, reconhecimento de filiação, divórcio ou óbito, identificar o assento, o título apresentado e os documentos exigidos. Não antecipar resultado de qualificação em caso concreto.', checklist: ['Certidão do registro a ser atualizado', 'Documento de identificação e CPF', 'Título que fundamenta a alteração', 'Documentos que comprovem a informação correta', 'Encaminhar competência, fraude ou divergência relevante ao Oficial'] },
+  { id: 1007, area: 'RCPJ — Associação', titulo: 'Constituição de associação', procedimento: 'Para o registro do ato constitutivo de associação, apresentar requerimento, estatuto social, ata de fundação e eleição da primeira diretoria, lista de presença, identificação e qualificação da diretoria e visto de advogado com regularidade na OAB. O estatuto deve conter os requisitos legais e as regras de funcionamento, assembleia, eleição, contas e dissolução.', checklist: ['Requerimento ao Oficial', 'Estatuto social', 'Ata de fundação, aprovação e eleição', 'Lista de presença com identificação', 'Qualificação e documentos da diretoria', 'Visto de advogado e regularidade OAB'] },
+  { id: 1008, area: 'RCPJ — Atas e estatutos', titulo: 'Eleição de diretoria e alteração de estatuto', procedimento: 'Para averbar eleição e posse ou alteração estatutária, conferir requerimento, edital de convocação conforme o estatuto vigente, ata assinada, lista de presença, qualificação dos eleitos e documentos exigidos pelo estatuto. Alteração estatutária normalmente requer estatuto consolidado numerado, rubricado e assinado, além do visto de advogado quando aplicável.', checklist: ['Conferir edital e prazo de convocação', 'Conferir quórum e lista de presença', 'Ata com presidente e secretário', 'Qualificação completa dos eleitos', 'Estatuto consolidado na alteração', 'Verificar prestações de contas anteriores, se exigidas'] },
+  { id: 1009, area: 'RCPJ — Sociedade simples e filial', titulo: 'Sociedade simples, alteração contratual e filial', procedimento: 'Sociedades simples podem exigir contrato social ou ato constitutivo, qualificação de sócios e administradores, identificação, visto de advogado quando aplicável e prova de regularidade profissional em atividade regulamentada. Não compete ao RCPJ registrar atos próprios da Junta Comercial ou hipóteses vedadas. Para filial, conferir ato de criação averbado na matriz e certidão atualizada do registro de origem.', checklist: ['Verificar competência do RCPJ', 'Contrato social ou ato constitutivo original', 'Qualificação e documentos dos sócios', 'Conselho profissional quando aplicável', 'Ato da matriz e certidão atualizada para filial'] },
+  { id: 1010, area: 'RTD — Títulos e Documentos', titulo: 'Publicidade, conservação e notificação extrajudicial', procedimento: 'O RTD pode registrar documentos para publicidade e eficácia perante terceiros ou para conservação. Registro para conservação não gera por si só publicidade ou eficácia contra terceiros. A notificação extrajudicial pressupõe protocolo, registro e arquivamento do título. Conferir finalidade, originalidade do documento, qualificação das partes, endereços e procuração quando houver representação.', checklist: ['Identificar a finalidade do registro', 'Documento original ou meio eletrônico admitido', 'Qualificação das partes', 'Requerimento do apresentante', 'Endereço completo de cada notificado, quando houver', 'Encaminhar dúvida de competência ao Oficial'] },
+  { id: 1011, area: 'Atendimento — competência', titulo: 'Atos que não pertencem a este cartório', procedimento: 'Escrituras públicas, inventários extrajudiciais, procurações, autenticações e reconhecimento de firma são atos próprios de Tabelionato de Notas. O Cartório Dias de Castro atua em Registro Civil das Pessoas Naturais, Registro Civil de Pessoas Jurídicas e Registro de Títulos e Documentos. Oriente com cordialidade e indique o órgão competente, sem dar parecer sobre o ato que não é da especialidade.', checklist: ['Confirmar o ato solicitado', 'Explicar a competência correta', 'Não prometer atendimento fora da especialidade', 'Registrar a necessidade de orientação adicional'] },
+  { id: 1012, area: 'Atendimento — segurança registral', titulo: 'Quando encaminhar ao Oficial', procedimento: 'Encaminhar ao Oficial antes de resposta definitiva os casos de dúvida de competência, falsidade, fraude, divergência relevante de dados, filiação, estado civil, incapacidade, risco a terceiros, interpretação normativa ou ausência de regra clara. A IA serve para triagem e minuta, não substitui qualificação registral nem decisão do Oficial.', checklist: ['Descrever objetivamente a divergência', 'Separar documentos apresentados', 'Não confirmar deferimento ao usuário', 'Registrar protocolo ou contexto', 'Encaminhar ao Oficial'] }
+];
 
 function getDefaultBackupSchedule() {
   return {
@@ -204,7 +221,7 @@ class SimpleDB {
     this.mensagens_prioritarias = this.loadFile('mensagens-prioritarias.json', []);
     this.mensagens_fixadas = this.loadFile('mensagens-fixadas.json', []);
     this.templates = this.loadFile('templates.json', []);
-    this.base_ia = this.loadFile('base-ia.json', []);
+    this.base_ia = this.loadFile('base-ia.json', DEFAULT_BASE_IA);
     this.auditoria = this.loadFile('auditoria.json', []);
     this.push_subscriptions = this.loadFile('push-subscriptions.json', []);
     this.escala_plantao = this.loadFile('escala-plantao.json', {
@@ -1725,12 +1742,16 @@ function mensagemForaDoEscopoIa(mensagem) {
   return pessoal || !cartorio;
 }
 
-function montarReferenciaBaseIa() {
-  const itens = (db.base_ia || []).slice(0, 12).map((item) => ({
+function montarReferenciaBaseIa(pergunta = '') {
+  const palavras = obterPalavrasRelevantesIa(pergunta);
+  const itens = (db.base_ia || []).map((item) => ({
+    item,
+    relevancia: palavras.filter((palavra) => normalizarTextoIa(`${item.area} ${item.titulo} ${item.procedimento}`).includes(palavra)).length
+  })).sort((a, b) => b.relevancia - a.relevancia).slice(0, 4).map(({ item }) => ({
     area: String(item.area || '').slice(0, 80),
     titulo: String(item.titulo || '').slice(0, 160),
-    procedimento: String(item.procedimento || '').slice(0, 1200),
-    checklist: (item.checklist || []).slice(0, 12).map((check) => String(check || '').slice(0, 220))
+    procedimento: String(item.procedimento || '').slice(0, 700),
+    checklist: (item.checklist || []).slice(0, 8).map((check) => String(check || '').slice(0, 180))
   }));
   return itens.length ? JSON.stringify(itens) : 'Nenhum procedimento interno cadastrado ainda.';
 }
@@ -1845,7 +1866,7 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
     return res.status(429).json({ erro: `Seu limite diário de ${IA_CARTORIO_DAILY_LIMIT} consultas à IA foi atingido. Consulte a Base Interna ou encaminhe o caso ao Oficial.` });
   }
 
-  const system = `Você é a IA Cartório Dias de Castro, assistente interno do Cartório Dias de Castro, em Chapecó/SC. Responda somente sobre rotina cartorária: RCPN, RCPJ, RTD, documentos, atendimento, e-mails e notas devolutivas. Use português do Brasil claro e profissional. Nunca invente norma, prazo, valor ou requisito. Não dê conclusão definitiva quando houver competência, fraude, falsidade, filiação, estado civil, incapacidade ou impacto a terceiros: oriente encaminhar ao Oficial. A resposta deve conter: orientação direta; cautela/base; próximo passo. Para modo email, entregue uma minuta pronta para copiar. Para modo nota, entregue estrutura de exigência prudente, sem citar norma não confirmada. Base interna aprovada: ${montarReferenciaBaseIa()}`;
+  const system = `Você é a IA Cartório Dias de Castro, assistente interno do Cartório Dias de Castro, em Chapecó/SC. Responda somente sobre rotina cartorária: RCPN, RCPJ, RTD, documentos, atendimento, e-mails e notas devolutivas. Use português do Brasil claro e profissional. Nunca invente norma, prazo, valor ou requisito. Não dê conclusão definitiva quando houver competência, fraude, falsidade, filiação, estado civil, incapacidade ou impacto a terceiros: oriente encaminhar ao Oficial. A resposta deve conter: orientação direta; cautela/base; próximo passo. Para modo email, entregue uma minuta pronta para copiar. Para modo nota, entregue estrutura de exigência prudente, sem citar norma não confirmada. Base interna relacionada à pergunta: ${montarReferenciaBaseIa(mensagem)}`;
   const pergunta = `Modo: ${modo}\n\nPergunta do colaborador:\n${mensagem}`;
   const errors = [];
   try {

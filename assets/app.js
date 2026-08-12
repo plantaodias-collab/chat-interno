@@ -2808,7 +2808,7 @@ function aplicarSessaoUsuario() {
   if (!tipoChat || !chatIdAtual) renderWelcomeState();
 }
 
-const ASSISTENTE_JURIDICO_ATIVO = false;
+const ASSISTENTE_JURIDICO_ATIVO = true;
 
 function avisarAssistenteEmBreve() {
   mostrarNotificacao('IA Cartório Dias de Castro ainda não está disponível.', 'info');
@@ -3004,6 +3004,9 @@ function definirModoAssistente(mode) {
   document.querySelectorAll('[data-assistant-mode]').forEach((button) => {
     button.classList.toggle('active', button.dataset.assistantMode === modoAssistente);
   });
+  document.querySelectorAll('[data-dashboard-assistant-mode]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.dashboardAssistantMode === modoAssistente);
+  });
   ['assistantQuestion', 'dashboardAssistantQuestion'].forEach((id) => {
     const input = document.getElementById(id);
     if (input) input.placeholder = config.placeholder;
@@ -3141,7 +3144,15 @@ async function responderPerguntaDashboard() {
     document.getElementById('dashboardAssistantText').textContent = response.text;
     document.getElementById('dashboardAssistantBasis').textContent = response.basis || '';
     document.getElementById('dashboardAssistantNext').textContent = response.nextStep || '';
-    document.getElementById('dashboardAssistantLink')?.classList.add('hidden');
+    const answerLink = document.getElementById('dashboardAssistantLink');
+    if (response.link?.href && answerLink) {
+      answerLink.href = response.link.href;
+      answerLink.textContent = `↗ ${response.link.label}`;
+      answerLink.classList.remove('hidden');
+    } else if (answerLink) {
+      answerLink.removeAttribute('href');
+      answerLink.classList.add('hidden');
+    }
     answer?.classList.remove('hidden');
   } catch (error) {
     mostrarNotificacao(error.message, 'error');
@@ -3158,7 +3169,8 @@ function enviarPerguntaDashboard(event) {
   }
 }
 
-function usarAtalhoDashboard(question) {
+function usarAtalhoDashboard(question, mode = 'orientacao') {
+  definirModoAssistente(mode);
   const input = document.getElementById('dashboardAssistantQuestion');
   input.value = question;
   responderPerguntaDashboard();
@@ -3503,16 +3515,17 @@ function getWelcomeStateHtml() {
             ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecer&atilde;o aqui.', 'chat')}
           </div>
         </section>
-        <aside class="dashboard-assistant-card is-coming-soon" aria-label="IA Cartório Dias de Castro em breve">
-          <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge coming-soon">EM BREVE</span><h2>IA Cartório Dias de Castro</h2><p>Preparada para atender a rotina do cartório assim que for liberada.</p></div></div>
+        <aside class="dashboard-assistant-card" aria-label="IA Cartório Dias de Castro">
+          <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge">ATIVA</span><h2>IA Cartório Dias de Castro</h2><p>Orientação interna para RCPN, RCPJ, RTD, atendimento e minutas.</p></div></div>
           <div class="dashboard-assistant-user"><span>✓</span> Você está identificado como <strong>${escapeHtml(nomeUsuario || emailUsuario || 'colaborador')}</strong>.</div>
-          <div class="dashboard-assistant-coming-notice"><span>◷</span><div><strong>Em breve</strong><small>As consultas serão liberadas após a autorização do administrador.</small></div></div>
+          <div class="dashboard-assistant-guide"><span>◈</span><div><strong>Comece por uma consulta rápida</strong><small>Primeiro pesquisamos a Base Interna; respostas já cadastradas não usam a API.</small></div></div>
           <label for="dashboardAssistantQuestion"><span data-assistant-mode-label>Orientação</span> do cartório</label>
-          <div class="assistant-mode-switch dashboard-mode-switch" role="group" aria-label="Tipo de ajuda"><button class="${modoAssistente === 'orientacao' ? 'active' : ''}" type="button" disabled>Orientação</button><button class="${modoAssistente === 'email' ? 'active' : ''}" type="button" disabled>E-mail / WhatsApp</button><button class="${modoAssistente === 'nota' ? 'active' : ''}" type="button" disabled>Nota</button></div>
-          <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" placeholder="Consultas disponíveis em breve" disabled /><button type="button" disabled aria-label="IA Cartório Dias de Castro indisponível">→</button></div>
-          <div class="dashboard-assistant-shortcuts"><button type="button" disabled>Casamento</button><button type="button" disabled>Certidões</button><button type="button" disabled>Pessoas Jurídicas</button><button type="button" disabled>Responder e-mail</button></div>
+          <div class="assistant-mode-switch dashboard-mode-switch" role="group" aria-label="Tipo de ajuda"><button class="${modoAssistente === 'orientacao' ? 'active' : ''}" data-dashboard-assistant-mode="orientacao" type="button" onclick="definirModoAssistente('orientacao')">Orientação</button><button class="${modoAssistente === 'email' ? 'active' : ''}" data-dashboard-assistant-mode="email" type="button" onclick="definirModoAssistente('email')">E-mail / WhatsApp</button><button class="${modoAssistente === 'nota' ? 'active' : ''}" data-dashboard-assistant-mode="nota" type="button" onclick="definirModoAssistente('nota')">Nota</button></div>
+          <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" onkeydown="enviarPerguntaDashboard(event)" placeholder="Ex.: quais documentos preciso para habilitação de casamento?" /><button type="button" onclick="responderPerguntaDashboard()" aria-label="Consultar IA Cartório Dias de Castro">→</button></div>
+          <div class="dashboard-assistant-shortcuts"><button type="button" onclick="usarAtalhoDashboard('Quais documentos preciso para habilitação de casamento?')">Casamento</button><button type="button" onclick="usarAtalhoDashboard('Como orientar a solicitação de segunda via de certidão?')">Certidões</button><button type="button" onclick="usarAtalhoDashboard('Quais documentos são necessários para constituir uma associação?')">Pessoas Jurídicas</button><button type="button" onclick="usarAtalhoDashboard('Preciso de uma minuta para responder um e-mail sobre documentos de casamento.', 'email')">Responder e-mail</button></div>
+          <div class="dashboard-assistant-topics"><span>Consultas sugeridas</span><button type="button" onclick="usarAtalhoDashboard('Como funciona o registro de óbito e quais documentos conferir?')">Óbito</button><button type="button" onclick="usarAtalhoDashboard('Explique a diferença entre certidão de breve relato e inteiro teor.')">Certidões</button><button type="button" onclick="usarAtalhoDashboard('Preciso estruturar uma nota devolutiva para documentos incompletos.', 'nota')">Nota devolutiva</button></div>
           <div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><strong id="dashboardAssistantTitle" class="dashboard-assistant-answer-title"></strong><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div><div class="dashboard-assistant-next"><strong>Próximo passo</strong><span id="dashboardAssistantNext"></span></div><a class="assistant-response-link hidden" id="dashboardAssistantLink" target="_blank" rel="noopener noreferrer"></a></div>
-          <button class="dashboard-assistant-expand" type="button" onclick="abrirAssistenteJuridico()">Disponível em breve <span>◷</span></button>
+          <button class="dashboard-assistant-expand" type="button" onclick="abrirAssistenteJuridico()">Abrir consulta ampliada <span>↗</span></button>
         </aside>
       </div>
     </div>
