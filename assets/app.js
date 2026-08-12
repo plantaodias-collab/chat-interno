@@ -2827,7 +2827,7 @@ function abrirAssistenteJuridico() {
   document.getElementById('assistantNativeEmail').textContent = usuarioAtual.email || 'Sessão do Chat Interno';
   panel?.classList.remove('hidden');
   document.body.classList.add('assistant-native-open');
-  definirModoAssistente(modoAssistente);
+  definirModoAssistente('orientacao');
   setTimeout(() => document.getElementById('assistantQuestion')?.focus(), 80);
 }
 
@@ -3518,14 +3518,9 @@ function getWelcomeStateHtml() {
         <aside class="dashboard-assistant-card" aria-label="IA Cartório Dias de Castro">
           <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge">ATIVA</span><h2>IA Cartório Dias de Castro</h2><p>Orientação interna para RCPN, RCPJ, RTD, atendimento e minutas.</p></div></div>
           <div class="dashboard-assistant-user"><span>✓</span> Você está identificado como <strong>${escapeHtml(nomeUsuario || emailUsuario || 'colaborador')}</strong>.</div>
-          <div class="dashboard-assistant-guide"><span>◈</span><div><strong>Comece por uma consulta rápida</strong><small>Primeiro pesquisamos a Base Interna; respostas já cadastradas não usam a API.</small></div></div>
-          <label for="dashboardAssistantQuestion"><span data-assistant-mode-label>Orientação</span> do cartório</label>
-          <div class="assistant-mode-switch dashboard-mode-switch" role="group" aria-label="Tipo de ajuda"><button class="${modoAssistente === 'orientacao' ? 'active' : ''}" data-dashboard-assistant-mode="orientacao" type="button" onclick="definirModoAssistente('orientacao')">Orientação</button><button class="${modoAssistente === 'email' ? 'active' : ''}" data-dashboard-assistant-mode="email" type="button" onclick="definirModoAssistente('email')">E-mail / WhatsApp</button><button class="${modoAssistente === 'nota' ? 'active' : ''}" data-dashboard-assistant-mode="nota" type="button" onclick="definirModoAssistente('nota')">Nota</button></div>
+          <label for="dashboardAssistantQuestion">Pergunta ou dúvida</label>
           <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" onkeydown="enviarPerguntaDashboard(event)" placeholder="Ex.: quais documentos preciso para habilitação de casamento?" /><button type="button" onclick="responderPerguntaDashboard()" aria-label="Consultar IA Cartório Dias de Castro">→</button></div>
-          <div class="dashboard-assistant-shortcuts"><button type="button" onclick="usarAtalhoDashboard('Quais documentos preciso para habilitação de casamento?')">Casamento</button><button type="button" onclick="usarAtalhoDashboard('Como orientar a solicitação de segunda via de certidão?')">Certidões</button><button type="button" onclick="usarAtalhoDashboard('Quais documentos são necessários para constituir uma associação?')">Pessoas Jurídicas</button><button type="button" onclick="usarAtalhoDashboard('Preciso de uma minuta para responder um e-mail sobre documentos de casamento.', 'email')">Responder e-mail</button></div>
-          <div class="dashboard-assistant-topics"><span>Consultas sugeridas</span><button type="button" onclick="usarAtalhoDashboard('Como funciona o registro de óbito e quais documentos conferir?')">Óbito</button><button type="button" onclick="usarAtalhoDashboard('Explique a diferença entre certidão de breve relato e inteiro teor.')">Certidões</button><button type="button" onclick="usarAtalhoDashboard('Preciso estruturar uma nota devolutiva para documentos incompletos.', 'nota')">Nota devolutiva</button></div>
           <div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><strong id="dashboardAssistantTitle" class="dashboard-assistant-answer-title"></strong><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div><div class="dashboard-assistant-next"><strong>Próximo passo</strong><span id="dashboardAssistantNext"></span></div><a class="assistant-response-link hidden" id="dashboardAssistantLink" target="_blank" rel="noopener noreferrer"></a></div>
-          <button class="dashboard-assistant-expand" type="button" onclick="abrirAssistenteJuridico()">Abrir consulta ampliada <span>↗</span></button>
         </aside>
       </div>
     </div>

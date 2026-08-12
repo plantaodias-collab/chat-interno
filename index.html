@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/app.min.css?v=20260811-ia-ativa" />
+  <link rel="stylesheet" href="/assets/app.min.css?v=20260811-consulta-simples" />
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@17.0.3/dist/twemoji.min.js" crossorigin="anonymous" defer></script>
@@ -453,21 +453,9 @@
           <div class="assistant-native-identity"><span>✓</span><div><strong>Você já está identificado</strong><small id="assistantNativeEmail"></small></div></div>
         </section>
         <section class="assistant-native-ask">
-          <label for="assistantQuestion"><span data-assistant-mode-label>Orientação</span> do cartório</label>
-          <div class="assistant-mode-switch" role="group" aria-label="Tipo de ajuda"><button class="active" type="button" data-assistant-mode="orientacao" onclick="definirModoAssistente('orientacao')">Orientação</button><button type="button" data-assistant-mode="email" onclick="definirModoAssistente('email')">E-mail / WhatsApp</button><button type="button" data-assistant-mode="nota" onclick="definirModoAssistente('nota')">Nota devolutiva</button></div>
+          <label for="assistantQuestion">Pergunta ou dúvida</label>
           <div class="assistant-native-input-row"><input id="assistantQuestion" type="text" placeholder="Ex.: quais documentos preciso para habilitação de casamento?" onkeydown="enviarPerguntaAssistente(event)" /><button type="button" onclick="responderPerguntaAssistente()">Consultar <span>→</span></button></div>
           <small>Uso restrito à rotina do cartório. Assuntos sensíveis serão direcionados ao Oficial.</small>
-          <a class="assistant-external-link" href="https://serp.registros.org.br/" target="_blank" rel="noopener noreferrer">↗ Solicitações online e certidões (SERP)</a>
-        </section>
-        <section class="assistant-native-shortcuts" aria-label="Atalhos do Assistente">
-          <button type="button" onclick="consultarServicoAssistente('Quais documentos são necessários para habilitação de casamento?')"><span>♡</span><div><strong>Habilitação de casamento</strong><small>Documentos e procedimento inicial</small></div></button>
-          <button type="button" onclick="consultarServicoAssistente('Quero orientar uma solicitação de certidão')"><span>▤</span><div><strong>Certidões</strong><small>2ª via e solicitação online</small></div></button>
-          <button type="button" onclick="consultarServicoAssistente('Quais documentos conferir para registro de nascimento?')"><span>✦</span><div><strong>Registro de nascimento</strong><small>Triagem e documentação inicial</small></div></button>
-          <button type="button" onclick="consultarServicoAssistente('Preciso orientar sobre registro de óbito e plantão')"><span>◐</span><div><strong>Óbito e plantão</strong><small>Atendimento e encaminhamento</small></div></button>
-          <button type="button" onclick="consultarServicoAssistente('Preciso orientar sobre anotação ou averbação')"><span>↻</span><div><strong>Anotações e averbações</strong><small>Conferência do título apresentado</small></div></button>
-          <button type="button" onclick="consultarServicoAssistente('Preciso analisar um estatuto para registro no RCPJ')"><span>▦</span><div><strong>Pessoas Jurídicas</strong><small>Quóruns, assinaturas e RCPJ</small></div></button>
-          <button type="button" onclick="consultarServicoAssistente('Preciso orientar um registro em Títulos e Documentos')"><span>▣</span><div><strong>Títulos e Documentos</strong><small>Triagem de instrumentos e RTD</small></div></button>
-          <button type="button" onclick="definirModoAssistente('email'); usarAtalhoAssistente('Preciso responder um e-mail sobre documentos de casamento')"><span>✉</span><div><strong>Responder e-mail</strong><small>Minuta para atendimento ao usuário</small></div></button>
         </section>
         <section class="assistant-native-answer hidden" id="assistantAnswer" aria-live="polite">
           <div class="assistant-answer-top"><span id="assistantAnswerLevel">ROTINA</span><button type="button" onclick="copiarRespostaAssistente()">Copiar resposta</button></div>
@@ -852,6 +840,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.min.js?v=20260811-ia-ativa"></script>
+  <script src="/assets/app.min.js?v=20260811-consulta-simples"></script>
 </body>
 </html>

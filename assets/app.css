@@ -5626,6 +5626,7 @@ body.theme-dark .assistant-header-badge { background:#3aa979; color:#092418; }
 .dashboard-assistant-topics { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 2px; padding-top: 11px; border-top: 1px dashed #cde4d5; }
 .dashboard-assistant-topics > span { margin-right: 3px; color: #628776; font-size: 9px; font-weight: 900; }.dashboard-assistant-topics button { border: 0; border-radius: 999px; background: #eaf6ee; color: #35745e; padding: 5px 8px; font-size: 9px; font-weight: 800; cursor: pointer; }.dashboard-assistant-topics button:hover { background: #d7efdf; }
 .dashboard-assistant-answer { min-height: 230px; margin-top: 16px; padding: 16px; border-radius: 12px; background: #fff; border: 1px solid #d7eadf; }
+.dashboard-assistant-card .dashboard-assistant-answer:not(.hidden) { flex: 1; }
 .dashboard-assistant-answer p { margin: 10px 0 13px; color: #587267; font-size: 12px; line-height: 1.65; white-space: pre-line; }
 .dashboard-assistant-answer-title { display: block; margin-top: 9px; color: #286750; font-size: 12px; line-height: 1.4; }
 .dashboard-assistant-level { display: inline-block; padding: 4px 7px; border-radius: 999px; background: #e6f6eb; color: #288252; font-size: 8px; font-weight: 900; letter-spacing: .4px; }
