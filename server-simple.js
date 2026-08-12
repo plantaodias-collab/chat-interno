@@ -60,7 +60,7 @@ const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
 // Piloto supervisionado: a IA fica bloqueada até o horário combinado. Para
 // interromper imediatamente, defina IA_CARTORIO_ENABLED=false no Railway.
-const IA_CARTORIO_RELEASE_AT = new Date(process.env.IA_CARTORIO_RELEASE_AT || '2026-08-12T13:25:00-03:00').getTime();
+const IA_CARTORIO_RELEASE_AT = new Date(process.env.IA_CARTORIO_RELEASE_AT || '2026-08-12T00:00:00-03:00').getTime();
 const IA_CARTORIO_ENABLED_OVERRIDE = String(process.env.IA_CARTORIO_ENABLED || '').toLowerCase();
 function iaCartorioEstaLiberada() {
   return IA_CARTORIO_ENABLED_OVERRIDE !== 'false' && Date.now() >= IA_CARTORIO_RELEASE_AT;

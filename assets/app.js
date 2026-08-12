@@ -2808,7 +2808,7 @@ function aplicarSessaoUsuario() {
   if (!tipoChat || !chatIdAtual) renderWelcomeState();
 }
 
-const ASSISTENTE_JURIDICO_LIBERACAO_EM = new Date('2026-08-12T13:25:00-03:00').getTime();
+const ASSISTENTE_JURIDICO_LIBERACAO_EM = new Date('2026-08-12T00:00:00-03:00').getTime();
 let ASSISTENTE_JURIDICO_ATIVO = Date.now() >= ASSISTENTE_JURIDICO_LIBERACAO_EM;
 
 function atualizarDisponibilidadeAssistente() {
