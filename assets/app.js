@@ -2808,12 +2808,33 @@ function aplicarSessaoUsuario() {
   if (!tipoChat || !chatIdAtual) renderWelcomeState();
 }
 
-// A estrutura fica pronta no ambiente, mas as consultas permanecem fechadas
-// ate a liberacao expressa do administrador.
-const ASSISTENTE_JURIDICO_ATIVO = false;
+const ASSISTENTE_JURIDICO_LIBERACAO_EM = new Date('2026-08-12T13:25:00-03:00').getTime();
+let ASSISTENTE_JURIDICO_ATIVO = Date.now() >= ASSISTENTE_JURIDICO_LIBERACAO_EM;
+
+function atualizarDisponibilidadeAssistente() {
+  const estavaAtivo = ASSISTENTE_JURIDICO_ATIVO;
+  ASSISTENTE_JURIDICO_ATIVO = Date.now() >= ASSISTENTE_JURIDICO_LIBERACAO_EM;
+  const badge = document.getElementById('assistantHeaderBadge');
+  if (badge) {
+    badge.textContent = ASSISTENTE_JURIDICO_ATIVO ? 'EM TESTE' : 'EM BREVE';
+    badge.classList.toggle('coming-soon', !ASSISTENTE_JURIDICO_ATIVO);
+  }
+  if (ASSISTENTE_JURIDICO_ATIVO && !estavaAtivo) {
+    atualizarPainelInicialSeAberto();
+    mostrarNotificacao('A IA Cartório Dias de Castro está em teste supervisionado.', 'info');
+  }
+}
+
+function agendarLiberacaoAssistente() {
+  atualizarDisponibilidadeAssistente();
+  const espera = ASSISTENTE_JURIDICO_LIBERACAO_EM - Date.now();
+  if (espera > 0) setTimeout(atualizarDisponibilidadeAssistente, espera + 250);
+}
+
+agendarLiberacaoAssistente();
 
 function avisarAssistenteEmBreve() {
-  mostrarNotificacao('IA Cartório Dias de Castro ainda não está disponível.', 'info');
+  mostrarNotificacao('IA Cartório Dias de Castro estará disponível em teste às 13h25.', 'info');
 }
 
 function abrirAssistenteJuridico() {
@@ -3695,7 +3716,7 @@ function getWelcomeStateHtml() {
           </div>
         </section>
         <aside class="dashboard-assistant-card ${iaEmBreve ? 'is-coming-soon' : ''}" aria-label="IA Cartório Dias de Castro${iaEmBreve ? ' em breve' : ''}">
-          <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge ${iaEmBreve ? 'coming-soon' : ''}">${iaEmBreve ? 'EM BREVE' : 'ATIVA'}</span><h2>IA Cartório Dias de Castro</h2><p>${iaEmBreve ? 'Em preparação para atender com segurança a rotina do cartório.' : 'Orientação interna para RCPN, RCPJ, RTD, atendimento e minutas.'}</p></div></div>
+          <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge ${iaEmBreve ? 'coming-soon' : ''}">${iaEmBreve ? 'EM BREVE' : 'EM TESTE'}</span><h2>IA Cartório Dias de Castro</h2><p>${iaEmBreve ? 'Em preparação para atender com segurança a rotina do cartório.' : 'Teste supervisionado para RCPN, RCPJ, RTD, atendimento e minutas.'}</p></div></div>
           <div class="dashboard-assistant-user"><span>✓</span> Você está identificado como <strong>${escapeHtml(nomeUsuario || emailUsuario || 'colaborador')}</strong>.</div>
           ${iaEmBreve ? '<div class="dashboard-assistant-coming-notice"><span>◷</span><div><strong>Em breve</strong><small>As consultas serão liberadas após a validação final do administrador.</small></div></div><section class="dashboard-assistant-knowledge"><strong>Base de conhecimento em preparação</strong><div><span>Legislação</span><span>Código de Normas CGJ/SC</span><span>Atos CNJ</span><span>Circulares CGJ/SC</span><span>Orientações do Oficial</span><span>Modelos internos</span><span>Procedimentos e FAQs</span></div></section>' : ''}
           <label for="dashboardAssistantQuestion">Pergunta ou dúvida</label>
