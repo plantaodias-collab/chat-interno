@@ -3123,6 +3123,8 @@ function renderHistoricoAssistenteNativo() {
   grupos.slice(0, 30).forEach(([conversaId, itens]) => {
     const primeiro = itens[itens.length - 1];
     const maisRecente = itens[0];
+    const linha = document.createElement('div');
+    linha.className = 'assistant-native-history-row';
     const botao = document.createElement('button');
     botao.type = 'button';
     botao.className = 'assistant-native-history-item';
@@ -3135,7 +3137,19 @@ function renderHistoricoAssistenteNativo() {
     meta.textContent = `${itens.length} ${itens.length === 1 ? 'mensagem' : 'mensagens'}`;
     botao.append(data, titulo, meta);
     botao.addEventListener('click', () => abrirConversaAssistenteNativa(conversaId));
-    lista.appendChild(botao);
+    const excluir = document.createElement('button');
+    excluir.type = 'button';
+    excluir.className = 'assistant-native-history-delete';
+    excluir.textContent = 'Excluir';
+    excluir.title = 'Excluir esta conversa do histórico';
+    excluir.setAttribute('aria-label', 'Excluir esta conversa do histórico');
+    excluir.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      excluirConversaAssistenteNativa(conversaId);
+    });
+    linha.append(botao, excluir);
+    lista.appendChild(linha);
   });
 }
 
@@ -3156,6 +3170,26 @@ function abrirConversaAssistenteNativa(conversaId) {
 
 function filtrarHistoricoAssistenteNativo() {
   renderHistoricoAssistenteNativo();
+}
+
+async function excluirConversaAssistenteNativa(conversaId) {
+  if (!conversaId) return;
+  if (!window.confirm('Excluir esta conversa do seu histórico? Esta ação remove todas as mensagens desta conversa.')) return;
+  try {
+    const response = await fetch(`/api/ia-cartorio/conversas/${encodeURIComponent(conversaId)}`, { method: 'DELETE', headers: authHeaders() });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.erro || 'Não foi possível excluir a conversa.');
+    if (String(conversaIaNativaId || '') === String(conversaId)) {
+      conversaIaNativaId = null;
+      const mensagens = document.getElementById('assistantNativeMessages');
+      if (mensagens) mensagens.innerHTML = '';
+      iniciarConversaAssistente();
+    }
+    await carregarHistoricoIa();
+    mostrarNotificacao('Conversa excluída do seu histórico.', 'success');
+  } catch (error) {
+    mostrarNotificacao(error.message || 'Não foi possível excluir a conversa.', 'error');
+  }
 }
 
 async function carregarHistoricoIa() {
@@ -6458,6 +6492,7 @@ function abrirPainelAdmin() {
   carregarTemplatesAdmin();
   carregarBaseIaAdmin();
   carregarFeedbackIaAdmin();
+  carregarRelatorioIaAdmin();
   document.getElementById('adminModal').classList.add('active');
 }
 
@@ -7064,6 +7099,25 @@ async function carregarFeedbackIaAdmin() {
     list.innerHTML = itens.map((item) => `<div style="padding:10px;border:1px solid #dbe4ee;border-radius:9px;background:#fff;"><strong style="font-size:12px;color:#334155;">${escapeHtml(labels[item.tipo] || item.tipo)}</strong>${item.comentario ? `<p style="margin:7px 0 0;color:#475569;font-size:12px;line-height:1.45;white-space:pre-wrap;">${escapeHtml(item.comentario)}</p>` : ''}<small style="display:block;margin-top:6px;color:#94a3b8;font-size:10px;">Feedback anônimo · ${escapeHtml(formatarDataHistoricoIa(item.criado_em))}</small></div>`).join('');
   } catch (_error) {
     list.innerHTML = '<p style="color:#dc2626;font-size:12px;">Não foi possível carregar os feedbacks.</p>';
+  }
+}
+
+async function carregarRelatorioIaAdmin() {
+  const container = document.getElementById('adminIaRelatorio');
+  if (!container) return;
+  try {
+    const response = await fetch('/api/admin/ia-relatorio', { headers: authHeaders() });
+    if (!response.ok) throw new Error('Falha ao carregar relatório');
+    const relatorio = await response.json();
+    if (!relatorio.total_consultas) {
+      container.innerHTML = '<p style="color:#64748b;font-size:12px;">Ainda não há consultas da IA nos últimos 30 dias.</p>';
+      return;
+    }
+    const temas = (relatorio.temas || []).slice(0, 6).map((item) => `<div style="padding:10px;border:1px solid #dbe4ee;border-radius:9px;background:#fff;"><strong style="color:#334155;font-size:12px;">${escapeHtml(item.tema)}</strong><span style="float:right;color:#0f766e;font-size:12px;font-weight:800;">${Number(item.total) || 0}</span>${(item.exemplos || []).length ? `<ul style="margin:7px 0 0;padding-left:17px;color:#64748b;font-size:11px;line-height:1.45;">${item.exemplos.map((exemplo) => `<li>${escapeHtml(exemplo)}</li>`).join('')}</ul>` : ''}</div>`).join('');
+    const recomendacoes = (relatorio.recomendacoes || []).map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+    container.innerHTML = `<div style="display:flex;gap:10px;align-items:baseline;margin-bottom:10px;"><strong style="font-size:20px;color:#0f766e;">${Number(relatorio.total_consultas) || 0}</strong><span style="color:#64748b;font-size:12px;">consultas nos últimos ${Number(relatorio.dias) || 30} dias</span></div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">${temas}</div>${recomendacoes ? `<div style="margin-top:10px;padding:10px;border-radius:9px;background:#eff8f3;color:#365548;font-size:12px;line-height:1.45;"><strong style="display:block;margin-bottom:5px;">Sugestões de treinamento</strong><ul style="margin:0;padding-left:17px;">${recomendacoes}</ul></div>` : ''}`;
+  } catch (_error) {
+    container.innerHTML = '<p style="color:#dc2626;font-size:12px;">Não foi possível carregar o relatório.</p>';
   }
 }
 

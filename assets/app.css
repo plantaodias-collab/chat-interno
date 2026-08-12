@@ -11821,3 +11821,9 @@ body.theme-dark .assistant-native-panel,body.theme-dark .assistant-native-chat,b
 body.theme-dark .assistant-chat-feedback { border-color: #3c765d; background: #1c3429; color: #dcf1e3; }
 body.theme-dark .assistant-chat-feedback-options button,body.theme-dark .assistant-chat-feedback textarea { border-color: #467d62; background: #14291f; color: #e3f4e9; }
 body.theme-dark .assistant-chat-feedback > small { color: #b4d4c0; }
+
+.assistant-native-history-row { display: flex; align-items: stretch; gap: 3px; }
+.assistant-native-history-row .assistant-native-history-item { min-width: 0; flex: 1; }
+.assistant-native-history-delete { align-self: center; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #c6dfd0; padding: 7px 6px; font: 700 10px/1.2 inherit; cursor: pointer; }
+.assistant-native-history-row:hover .assistant-native-history-delete,.assistant-native-history-delete:focus { border-color: #7d2f35; background: #3d2528; color: #ffd0d0; }
+body.theme-dark .assistant-native-history-delete { color: #c6dfd0; }

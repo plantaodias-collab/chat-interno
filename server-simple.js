@@ -2124,6 +2124,32 @@ function salvarHistoricoIa(usuario, pergunta, modo, resposta, conversaId = '') {
   return registro;
 }
 
+function temaRelatorioIa(pergunta) {
+  const texto = normalizarTextoIa(pergunta);
+  const temas = [
+    ['Certidões e segunda via', /certidao|segunda via|2a via|digitalizacao|inteiro teor/],
+    ['Registro de nascimento', /nascimento|dnv|recem nascid|registrad[oa]/],
+    ['Casamento e habilitação', /casamento|habilitacao|nubente|proclama/],
+    ['Registro de óbito', /obito|declaracao de obito|faleciment/],
+    ['Pessoas jurídicas', /rcpj|associacao|estatuto|fundacao|pessoa juridica/],
+    ['Títulos e documentos', /rtd|titulo.*documento|notificacao extrajudicial/],
+    ['Atendimento e minutas', /e-mail|email|whatsapp|responder|minuta|mensagem/],
+    ['Prazos e procedimentos', /prazo|protocolo|procedimento|andamento|exigencia/]
+  ];
+  return temas.find(([, padrao]) => padrao.test(texto))?.[0] || 'Outras dúvidas de trabalho';
+}
+
+function resumirPerguntaRelatorioIa(pergunta) {
+  return String(pergunta || '')
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[e-mail]')
+    .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[documento]')
+    .replace(/(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?(?:9\s?)?\d{4}[-\s]?\d{4}/g, '[telefone]')
+    .replace(/\b\d{6,}\b/g, '[número]')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 260);
+}
+
 function montarContextoHistoricoIa(usuarioId, conversaId = '') {
   const recentes = (db.ia_historico || [])
     .filter((item) => Number(item.usuario_id) === Number(usuarioId))
@@ -2327,6 +2353,19 @@ app.delete('/api/ia-cartorio/historico/:id', verificarToken, (req, res) => {
   res.json({ ok: true });
 });
 
+app.delete('/api/ia-cartorio/conversas/:id', verificarToken, (req, res) => {
+  const conversaId = String(req.params.id || '').trim().slice(0, 80);
+  const usuario = findActiveUserById(req.userId);
+  if (!conversaId) return res.status(400).json({ erro: 'Conversa inválida.' });
+  const antes = (db.ia_historico || []).length;
+  db.ia_historico = (db.ia_historico || []).filter((registro) => !(Number(registro.usuario_id) === Number(req.userId) && String(registro.conversa_id || '') === conversaId));
+  const removidas = antes - db.ia_historico.length;
+  if (!removidas) return res.status(404).json({ erro: 'Conversa não encontrada.' });
+  db.saveFile('ia-historico.json', db.ia_historico);
+  registrarAuditoria({ acao: 'ia_cartorio_conversa_excluida', usuarioId: req.userId, usuarioNome: usuario?.nome || '', detalhe: `${conversaId}:${removidas}`, req });
+  res.json({ ok: true, removidas });
+});
+
 app.patch('/api/ia-cartorio/historico/:id/favorito', verificarToken, (req, res) => {
   const item = (db.ia_historico || []).find((registro) => String(registro.id) === String(req.params.id || '') && Number(registro.usuario_id) === Number(req.userId));
   if (!item) return res.status(404).json({ erro: 'Consulta não encontrada.' });
@@ -2380,6 +2419,32 @@ app.get('/api/admin/ia-feedback', verificarToken, (req, res) => {
     anonimo: true,
     criado_em: item.criado_em
   })));
+});
+
+app.get('/api/admin/ia-relatorio', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const dias = 30;
+  const inicio = Date.now() - (dias * 24 * 60 * 60 * 1000);
+  const consultas = (db.ia_historico || [])
+    .filter((item) => new Date(item.criado_em || 0).getTime() >= inicio)
+    .sort((a, b) => new Date(b.criado_em || 0) - new Date(a.criado_em || 0));
+  const porTema = new Map();
+  consultas.forEach((item) => {
+    const tema = temaRelatorioIa(item.pergunta);
+    if (!porTema.has(tema)) porTema.set(tema, { tema, total: 0, exemplos: [] });
+    const grupo = porTema.get(tema);
+    grupo.total += 1;
+    const exemplo = resumirPerguntaRelatorioIa(item.pergunta);
+    if (exemplo && grupo.exemplos.length < 3 && !grupo.exemplos.includes(exemplo)) grupo.exemplos.push(exemplo);
+  });
+  const temas = [...porTema.values()].sort((a, b) => b.total - a.total || a.tema.localeCompare(b.tema));
+  const recentes = consultas.slice(0, 12).map((item) => ({
+    tema: temaRelatorioIa(item.pergunta),
+    pergunta: resumirPerguntaRelatorioIa(item.pergunta),
+    criado_em: item.criado_em
+  }));
+  const recomendacoes = temas.slice(0, 3).map((item) => `${item.tema}: preparar orientação rápida ou treinamento para ${item.total} consulta${item.total === 1 ? '' : 's'} no período.`);
+  res.json({ dias, inicio: new Date(inicio).toISOString(), total_consultas: consultas.length, temas, recentes, recomendacoes });
 });
 
 app.post('/api/login', loginLimiter, async (req, res) => {
