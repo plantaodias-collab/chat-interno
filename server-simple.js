@@ -2083,6 +2083,7 @@ function salvarHistoricoIa(usuario, pergunta, modo, resposta) {
 function montarContextoHistoricoIa(usuarioId) {
   const recentes = (db.ia_historico || [])
     .filter((item) => Number(item.usuario_id) === Number(usuarioId))
+    .filter((item) => !/base interna/i.test(String(item.provider || '')))
     .slice(0, 4)
     .reverse()
     .map((item) => `Pergunta anterior: ${String(item.pergunta || '').slice(0, 700)}\nResposta anterior: ${String(item.resposta || '').slice(0, 900)}`);
@@ -2166,7 +2167,10 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
     registrarAuditoria({ acao: 'ia_cartorio_escalonada_sensivel', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: 'tema-sensivel', req });
     return res.json({ ...encaminhamento, historicoId: registro.id });
   }
-  const respostaLocal = respostaLocalBaseIa(mensagem) || respostaPadraoGratuitaIa(mensagem, modo);
+  // Quando o colaborador pede uma minuta, a IA precisa redigir a resposta ao
+  // destinatário. Não se deve devolver apenas uma rotina de triagem mesmo que
+  // haja uma fonte interna relacionada ao assunto.
+  const respostaLocal = modo === 'orientacao' ? (respostaLocalBaseIa(mensagem) || respostaPadraoGratuitaIa(mensagem, modo)) : null;
   if (respostaLocal) {
     const registro = salvarHistoricoIa(usuario, mensagem, modo, respostaLocal);
     registrarAuditoria({ acao: 'ia_cartorio_base_interna', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: `${respostaLocal.provider}:${modo}`, req });
