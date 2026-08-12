@@ -50,6 +50,9 @@ const THUMBNAIL_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif'])
 const THUMBNAIL_MAX_WIDTH = 480;
 const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
+// A integração pode estar configurada, mas só é liberada aos colaboradores
+// quando esta variável for ativada explicitamente no Railway.
+const IA_CARTORIO_ENABLED = String(process.env.IA_CARTORIO_ENABLED || '').toLowerCase() === 'true';
 // Janela de agrupamento das gravacoes em disco (debounce). Mudancas em rajada
 // sao persistidas em uma unica escrita assincrona dentro deste intervalo.
 const SAVE_DEBOUNCE_MS = 1000;
@@ -1700,6 +1703,111 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { erro: 'Muitas tentativas de login. Tente novamente em alguns minutos.' }
+});
+
+const iaCartorioLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas consultas em pouco tempo. Aguarde alguns minutos.' }
+});
+
+function normalizarTextoIa(texto) {
+  return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function mensagemForaDoEscopoIa(mensagem) {
+  const texto = normalizarTextoIa(mensagem);
+  const pessoal = /\b(receita|namorad|casamento pessoal|relacionamento|horoscopo|filme|serie|jogo|viagem|dieta|academia|fofoca|conselho pessoal|vida pessoal)\b/.test(texto);
+  const cartorio = /cartorio|registro|registral|certidao|casamento|nascimento|obito|averbacao|emancipacao|pacto|protesto|rtd|rcpn|rcpj|estatuto|associacao|ata|documento|reconhecimento de firma|autenticacao|nota devolutiva|exigencia|oficial|habilitacao|protocolo|pessoa juridica|atendimento|email|e-mail/.test(texto);
+  return pessoal || !cartorio;
+}
+
+function montarReferenciaBaseIa() {
+  const itens = (db.base_ia || []).slice(0, 12).map((item) => ({
+    area: String(item.area || '').slice(0, 80),
+    titulo: String(item.titulo || '').slice(0, 160),
+    procedimento: String(item.procedimento || '').slice(0, 1200),
+    checklist: (item.checklist || []).slice(0, 12).map((check) => String(check || '').slice(0, 220))
+  }));
+  return itens.length ? JSON.stringify(itens) : 'Nenhum procedimento interno cadastrado ainda.';
+}
+
+async function consultarOpenAiCartorio(system, pergunta) {
+  if (!process.env.OPENAI_API_KEY) throw new Error('OpenAI sem chave configurada');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45000);
+  try {
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      body: JSON.stringify({ model: process.env.OPENAI_MODEL || 'gpt-5-mini', instructions: system, input: pergunta, max_output_tokens: 900 }),
+      signal: controller.signal
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(`OpenAI ${response.status}`);
+    const text = String(payload.output_text || (payload.output || []).flatMap((item) => item.content || []).filter((item) => item.type === 'output_text').map((item) => item.text).join('\n')).trim();
+    if (!text) throw new Error('Resposta vazia da OpenAI');
+    return text;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function consultarClaudeCartorio(system, pergunta) {
+  if (!process.env.ANTHROPIC_API_KEY) throw new Error('Claude sem chave configurada');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45000);
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001', max_tokens: 900, system, messages: [{ role: 'user', content: pergunta }] }),
+      signal: controller.signal
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(`Anthropic ${response.status}`);
+    const text = (payload.content || []).filter((item) => item.type === 'text').map((item) => item.text).join('\n').trim();
+    if (!text) throw new Error('Resposta vazia da Anthropic');
+    return text;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res) => {
+  const usuario = findActiveUserById(req.userId);
+  const mensagem = String(req.body?.mensagem || '').trim().slice(0, 6000);
+  const modo = ['orientacao', 'email', 'nota'].includes(req.body?.modo) ? req.body.modo : 'orientacao';
+  if (!usuario) return res.status(404).json({ erro: 'Usuário não encontrado' });
+  if (!mensagem) return res.status(400).json({ erro: 'Escreva uma pergunta para a IA Cartório Dias de Castro.' });
+  if (!IA_CARTORIO_ENABLED) return res.status(423).json({ erro: 'A IA Cartório Dias de Castro está em preparação e ainda não foi liberada pelo administrador.' });
+  if (mensagemForaDoEscopoIa(mensagem)) {
+    registrarAuditoria({ acao: 'assistente_escopo_bloqueado', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: 'assunto-pessoal-ou-fora-do-escopo', req });
+    return res.json({ bloqueado: true, level: 'ESCOPO INTERNO', title: 'Assunto fora do escopo da IA Cartório Dias de Castro', text: 'Essa pergunta é pessoal ou não está ligada à rotina do cartório e não pode ser atendida.', basis: 'Assuntos pessoais e gerais não são enviados à IA.', nextStep: 'A tentativa foi registrada para ciência do administrador. Reformule a dúvida com o ato ou documento do cartório.' });
+  }
+  if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) return res.status(503).json({ erro: 'A IA Cartório Dias de Castro ainda não está configurada no servidor.' });
+
+  const system = `Você é a IA Cartório Dias de Castro, assistente interno do Cartório Dias de Castro, em Chapecó/SC. Responda somente sobre rotina cartorária: RCPN, RCPJ, RTD, documentos, atendimento, e-mails e notas devolutivas. Use português do Brasil claro e profissional. Nunca invente norma, prazo, valor ou requisito. Não dê conclusão definitiva quando houver competência, fraude, falsidade, filiação, estado civil, incapacidade ou impacto a terceiros: oriente encaminhar ao Oficial. A resposta deve conter: orientação direta; cautela/base; próximo passo. Para modo email, entregue uma minuta pronta para copiar. Para modo nota, entregue estrutura de exigência prudente, sem citar norma não confirmada. Base interna aprovada: ${montarReferenciaBaseIa()}`;
+  const pergunta = `Modo: ${modo}\n\nPergunta do colaborador:\n${mensagem}`;
+  const errors = [];
+  try {
+    let text = '';
+    let provider = '';
+    if (process.env.OPENAI_API_KEY) {
+      try { text = await consultarOpenAiCartorio(system, pergunta); provider = 'OpenAI'; } catch (error) { errors.push(error?.message || 'Falha OpenAI'); }
+    }
+    if (!text && process.env.ANTHROPIC_API_KEY) {
+      try { text = await consultarClaudeCartorio(system, pergunta); provider = 'Claude (reserva)'; } catch (error) { errors.push(error?.message || 'Falha Claude'); }
+    }
+    if (!text) throw new Error(errors.join(' | ') || 'Nenhuma provedora disponível');
+    registrarAuditoria({ acao: 'ia_cartorio_consulta', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: `${provider.toLowerCase()}:${modo}`, req });
+    return res.json({ level: 'IA CARTÓRIO DIAS DE CASTRO', title: modo === 'email' ? 'Minuta para revisão' : modo === 'nota' ? 'Minuta de nota para revisão' : 'Orientação da IA Cartório Dias de Castro', text, basis: 'Resposta gerada com apoio da Base Interna. Confirme legislação e procedimento vigente antes de concluir o ato.', nextStep: 'Revise a orientação e encaminhe ao Oficial se houver situação excepcional ou risco registral.', provider });
+  } catch (error) {
+    console.error('Falha IA Cartório Dias:', error?.message || error);
+    return res.status(502).json({ erro: 'A IA não conseguiu responder agora. Tente novamente ou encaminhe o caso ao Oficial.' });
+  }
 });
 
 app.post('/api/login', loginLimiter, async (req, res) => {

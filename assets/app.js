@@ -2811,7 +2811,7 @@ function aplicarSessaoUsuario() {
 const ASSISTENTE_JURIDICO_ATIVO = false;
 
 function avisarAssistenteEmBreve() {
-  mostrarNotificacao('IA Cartório Dias em breve. Ela será liberada quando a IA estiver ativada pelo administrador.', 'info');
+  mostrarNotificacao('IA Cartório Dias de Castro ainda não está disponível.', 'info');
 }
 
 function abrirAssistenteJuridico() {
@@ -3030,27 +3030,25 @@ async function registrarUsoAssistenteBloqueado() {
   }
 }
 
-function responderPerguntaAssistente() {
-  if (!ASSISTENTE_JURIDICO_ATIVO) {
-    avisarAssistenteEmBreve();
-    return;
-  }
-  const input = document.getElementById('assistantQuestion');
-  const question = String(input?.value || '').trim();
-  if (!question) {
-    input?.focus();
-    mostrarNotificacao('Escreva uma pergunta para o Assistente.', 'warning');
-    return;
-  }
-  const response = getRespostaAssistente(question);
-  if (response.level === 'ESCOPO INTERNO') registrarUsoAssistenteBloqueado();
+async function consultarIaCartorio(question) {
+  const response = await fetch('/api/ia-cartorio', {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ mensagem: question, modo: modoAssistente })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.erro || 'Não foi possível consultar a IA Cartório Dias.');
+  return payload;
+}
+
+function preencherRespostaAssistente(response, question) {
   const answer = document.getElementById('assistantAnswer');
   const level = document.getElementById('assistantAnswerLevel');
   level.textContent = response.level;
-  level.className = `assistant-answer-level ${response.level.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
+  level.className = `assistant-answer-level ${String(response.level || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
   document.getElementById('assistantAnswerQuestion').textContent = response.title || question;
   document.getElementById('assistantAnswerText').textContent = response.text;
-  document.getElementById('assistantAnswerBasis').textContent = response.basis;
+  document.getElementById('assistantAnswerBasis').textContent = response.basis || '';
   document.getElementById('assistantAnswerNext').textContent = response.nextStep || '';
   const answerLink = document.getElementById('assistantAnswerLink');
   if (response.link?.href) {
@@ -3063,6 +3061,31 @@ function responderPerguntaAssistente() {
   }
   answer?.classList.remove('hidden');
   answer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function responderPerguntaAssistente() {
+  if (!ASSISTENTE_JURIDICO_ATIVO) {
+    avisarAssistenteEmBreve();
+    return;
+  }
+  const input = document.getElementById('assistantQuestion');
+  const question = String(input?.value || '').trim();
+  if (!question) {
+    input?.focus();
+    mostrarNotificacao('Escreva uma pergunta para o Assistente.', 'warning');
+    return;
+  }
+  const button = document.querySelector('.assistant-native-input-row button');
+  button?.setAttribute('disabled', 'disabled');
+  if (button) button.textContent = 'Consultando...';
+  try {
+    preencherRespostaAssistente(await consultarIaCartorio(question), question);
+  } catch (error) {
+    mostrarNotificacao(error.message, 'error');
+  } finally {
+    button?.removeAttribute('disabled');
+    if (button) button.innerHTML = 'Consultar <span>→</span>';
+  }
 }
 
 function enviarPerguntaAssistente(event) {
@@ -3094,7 +3117,7 @@ async function copiarRespostaAssistente() {
   }
 }
 
-function responderPerguntaDashboard() {
+async function responderPerguntaDashboard() {
   if (!ASSISTENTE_JURIDICO_ATIVO) {
     avisarAssistenteEmBreve();
     return;
@@ -3105,26 +3128,27 @@ function responderPerguntaDashboard() {
     input?.focus();
     return;
   }
-  const response = getRespostaAssistente(question);
-  if (response.level === 'ESCOPO INTERNO') registrarUsoAssistenteBloqueado();
-  const answer = document.getElementById('dashboardAssistantAnswer');
-  const level = document.getElementById('dashboardAssistantLevel');
-  level.textContent = response.level;
-  level.className = `dashboard-assistant-level ${response.level.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
-  document.getElementById('dashboardAssistantTitle').textContent = response.title || 'Orientação';
-  document.getElementById('dashboardAssistantText').textContent = response.text;
-  document.getElementById('dashboardAssistantBasis').textContent = response.basis;
-  document.getElementById('dashboardAssistantNext').textContent = response.nextStep || '';
-  const dashboardLink = document.getElementById('dashboardAssistantLink');
-  if (response.link?.href) {
-    dashboardLink.href = response.link.href;
-    dashboardLink.textContent = `↗ ${response.link.label}`;
-    dashboardLink.classList.remove('hidden');
-  } else {
-    dashboardLink.removeAttribute('href');
-    dashboardLink.classList.add('hidden');
+  const button = document.querySelector('.dashboard-assistant-input button');
+  button?.setAttribute('disabled', 'disabled');
+  if (button) button.textContent = '…';
+  try {
+    const response = await consultarIaCartorio(question);
+    const answer = document.getElementById('dashboardAssistantAnswer');
+    const level = document.getElementById('dashboardAssistantLevel');
+    level.textContent = response.level;
+    level.className = `dashboard-assistant-level ${String(response.level || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
+    document.getElementById('dashboardAssistantTitle').textContent = response.title || 'Orientação';
+    document.getElementById('dashboardAssistantText').textContent = response.text;
+    document.getElementById('dashboardAssistantBasis').textContent = response.basis || '';
+    document.getElementById('dashboardAssistantNext').textContent = response.nextStep || '';
+    document.getElementById('dashboardAssistantLink')?.classList.add('hidden');
+    answer?.classList.remove('hidden');
+  } catch (error) {
+    mostrarNotificacao(error.message, 'error');
+  } finally {
+    button?.removeAttribute('disabled');
+    if (button) button.textContent = '→';
   }
-  answer?.classList.remove('hidden');
 }
 
 function enviarPerguntaDashboard(event) {
@@ -3395,11 +3419,11 @@ function getLegacyWelcomeStateHtml() {
         </div>
       </div>
       ${getBrazilCheerCardHtml()}
-      <section class="assistant-promo" aria-label="IA Cartório Dias em breve">
+      <section class="assistant-promo" aria-label="IA Cartório Dias de Castro em breve">
         <div class="assistant-promo-icon">✦</div>
         <div class="assistant-promo-copy">
-          <div class="assistant-promo-title"><span class="assistant-promo-badge">EM BREVE</span> IA Cartório Dias</div>
-          <div class="assistant-promo-text">A área está preparada e será liberada quando a IA for ativada pelo administrador.</div>
+          <div class="assistant-promo-title"><span class="assistant-promo-badge">EM BREVE</span> IA Cartório Dias de Castro</div>
+          <div class="assistant-promo-text">A área está preparada e será liberada quando a IA for autorizada pelo administrador.</div>
         </div>
         <button class="assistant-promo-btn" type="button" onclick="abrirAssistenteJuridico()">Em breve <span>◷</span></button>
       </section>
@@ -3479,13 +3503,13 @@ function getWelcomeStateHtml() {
             ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecer&atilde;o aqui.', 'chat')}
           </div>
         </section>
-        <aside class="dashboard-assistant-card is-coming-soon" aria-label="IA Cartório Dias em breve">
-          <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge coming-soon">EM BREVE</span><h2>IA Cartório Dias</h2><p>Preparada para atender a rotina do cartório assim que for liberada.</p></div></div>
+        <aside class="dashboard-assistant-card is-coming-soon" aria-label="IA Cartório Dias de Castro em breve">
+          <div class="dashboard-assistant-head"><span class="dashboard-assistant-icon">✦</span><div><span class="dashboard-assistant-badge coming-soon">EM BREVE</span><h2>IA Cartório Dias de Castro</h2><p>Preparada para atender a rotina do cartório assim que for liberada.</p></div></div>
           <div class="dashboard-assistant-user"><span>✓</span> Você está identificado como <strong>${escapeHtml(nomeUsuario || emailUsuario || 'colaborador')}</strong>.</div>
-          <div class="dashboard-assistant-coming-notice"><span>◷</span><div><strong>Em breve</strong><small>As consultas serão liberadas após a ativação da IA pelo administrador.</small></div></div>
+          <div class="dashboard-assistant-coming-notice"><span>◷</span><div><strong>Em breve</strong><small>As consultas serão liberadas após a autorização do administrador.</small></div></div>
           <label for="dashboardAssistantQuestion"><span data-assistant-mode-label>Orientação</span> do cartório</label>
           <div class="assistant-mode-switch dashboard-mode-switch" role="group" aria-label="Tipo de ajuda"><button class="${modoAssistente === 'orientacao' ? 'active' : ''}" type="button" disabled>Orientação</button><button class="${modoAssistente === 'email' ? 'active' : ''}" type="button" disabled>E-mail / WhatsApp</button><button class="${modoAssistente === 'nota' ? 'active' : ''}" type="button" disabled>Nota</button></div>
-          <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" placeholder="Consultas disponíveis em breve" disabled /><button type="button" disabled aria-label="Assistente indisponível">→</button></div>
+          <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" placeholder="Consultas disponíveis em breve" disabled /><button type="button" disabled aria-label="IA Cartório Dias de Castro indisponível">→</button></div>
           <div class="dashboard-assistant-shortcuts"><button type="button" disabled>Casamento</button><button type="button" disabled>Certidões</button><button type="button" disabled>Pessoas Jurídicas</button><button type="button" disabled>Responder e-mail</button></div>
           <div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><strong id="dashboardAssistantTitle" class="dashboard-assistant-answer-title"></strong><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div><div class="dashboard-assistant-next"><strong>Próximo passo</strong><span id="dashboardAssistantNext"></span></div><a class="assistant-response-link hidden" id="dashboardAssistantLink" target="_blank" rel="noopener noreferrer"></a></div>
           <button class="dashboard-assistant-expand" type="button" onclick="abrirAssistenteJuridico()">Disponível em breve <span>◷</span></button>

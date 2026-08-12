@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/app.min.css?v=20260811-assistente-em-breve" />
+  <link rel="stylesheet" href="/assets/app.min.css?v=20260811-ia-cartorio-alinhada" />
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@17.0.3/dist/twemoji.min.js" crossorigin="anonymous" defer></script>
@@ -163,9 +163,9 @@
             <span class="action-text">Central</span>
             <span class="header-mini-badge hidden" id="operationsBadge">0</span>
           </button>
-          <button class="header-btn action-icon-btn assistant-header-btn" type="button" onclick="abrirAssistenteJuridico()" title="Abrir IA Cartório Dias" aria-label="Abrir IA Cartório Dias">
+          <button class="header-btn action-icon-btn assistant-header-btn" type="button" onclick="abrirAssistenteJuridico()" title="Abrir IA Cartório Dias de Castro" aria-label="Abrir IA Cartório Dias de Castro">
             <span class="assistant-header-spark" aria-hidden="true">✦</span>
-            <span class="action-text">IA Cartório Dias</span>
+            <span class="action-text">IA Cartório Dias de Castro</span>
             <span class="assistant-header-badge coming-soon">EM BREVE</span>
           </button>
           <button class="header-btn action-icon-btn hidden" id="priorityChatBtn" onclick="alternarPrioridadeAtual()" title="Marcar como prioridade" aria-label="Marcar conversa como prioridade" aria-pressed="false">
@@ -442,10 +442,10 @@
       </div>
     </main>
 
-    <section class="assistant-native-panel hidden" id="assistantNativePanel" aria-label="IA Cartório Dias">
+    <section class="assistant-native-panel hidden" id="assistantNativePanel" aria-label="IA Cartório Dias de Castro">
       <header class="assistant-native-header">
-        <div class="assistant-native-brand"><span>✦</span><div><strong>IA Cartório Dias</strong><small>Cartório Dias de Castro</small></div></div>
-        <div class="assistant-native-user"><span id="assistantNativeUser">Colaborador</span><button type="button" onclick="fecharAssistenteJuridico()" aria-label="Fechar IA Cartório Dias">×</button></div>
+        <div class="assistant-native-brand"><span>✦</span><div><strong>IA Cartório Dias de Castro</strong><small>Cartório Dias de Castro</small></div></div>
+        <div class="assistant-native-user"><span id="assistantNativeUser">Colaborador</span><button type="button" onclick="fecharAssistenteJuridico()" aria-label="Fechar IA Cartório Dias de Castro">×</button></div>
       </header>
       <div class="assistant-native-content">
         <section class="assistant-native-hero">
@@ -669,7 +669,7 @@
         </section>
 
         <section class="modal-tab-panel hidden" data-admin-panel="base-ia">
-          <h4 style="margin-bottom:8px;">Base Interna — IA Cartório Dias</h4>
+          <h4 style="margin-bottom:8px;">Base Interna — IA Cartório Dias de Castro</h4>
           <p style="font-size:13px;color:#64748b;margin-bottom:14px;">Cadastre procedimentos aprovados e checklists. Este conteúdo servirá de referência para a IA quando ela for ativada.</p>
           <div class="form-group">
             <label for="baseIaAreaInput">Área / serviço</label>
@@ -852,6 +852,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.min.js?v=20260811-base-interna-ia"></script>
+  <script src="/assets/app.min.js?v=20260811-ia-cartorio-alinhada"></script>
 </body>
 </html>
