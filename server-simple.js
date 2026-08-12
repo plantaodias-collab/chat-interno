@@ -101,7 +101,7 @@ const ALLOWED_MIME_EXTENSIONS = {
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
 };
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
-const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'notas-conversa.json', 'etiquetas-conversa.json', 'responsavel-conversa.json', 'mensagens-agendadas.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'base-ia.json', 'base-ia-versoes.json', 'ia-historico.json', 'ia-feedback.json', 'ia-rascunhos.json', 'codigo-normas-extrajudicial-tjsc-2026.pdf', 'codigo-normas-extrajudicial-tjsc-2026.json', 'lei-registros-publicos-planalto.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json'];
+const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'notas-conversa.json', 'etiquetas-conversa.json', 'responsavel-conversa.json', 'mensagens-agendadas.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'base-ia.json', 'base-ia-versoes.json', 'ia-historico.json', 'ia-feedback.json', 'ia-melhorias.json', 'ia-config.json', 'ia-rascunhos.json', 'codigo-normas-extrajudicial-tjsc-2026.pdf', 'codigo-normas-extrajudicial-tjsc-2026.json', 'lei-registros-publicos-planalto.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json'];
 
 // Conteúdo inicial público e aprovado. Depois da primeira edição pelo painel,
 // a cópia persistida no armazenamento do Railway passa a prevalecer.
@@ -252,6 +252,8 @@ class SimpleDB {
     this.base_ia_versoes = this.loadFile('base-ia-versoes.json', []);
     this.ia_historico = this.loadFile('ia-historico.json', []);
     this.ia_feedback = this.loadFile('ia-feedback.json', []);
+    this.ia_melhorias = this.loadFile('ia-melhorias.json', []);
+    this.ia_config = this.loadFile('ia-config.json', { custo_medio_por_consulta: 0, orcamento_mensal: 0 });
     this.ia_rascunhos = this.loadFile('ia-rascunhos.json', []);
     this.auditoria = this.loadFile('auditoria.json', []);
     this.push_subscriptions = this.loadFile('push-subscriptions.json', []);
@@ -326,6 +328,8 @@ class SimpleDB {
       ['base-ia-versoes.json', this.base_ia_versoes],
       ['ia-historico.json', this.ia_historico],
       ['ia-feedback.json', this.ia_feedback],
+      ['ia-melhorias.json', this.ia_melhorias],
+      ['ia-config.json', this.ia_config],
       ['ia-rascunhos.json', this.ia_rascunhos],
       ['push-subscriptions.json', this.push_subscriptions],
       ['escala-plantao.json', this.escala_plantao]
@@ -2445,6 +2449,63 @@ app.get('/api/admin/ia-relatorio', verificarToken, (req, res) => {
   }));
   const recomendacoes = temas.slice(0, 3).map((item) => `${item.tema}: preparar orientação rápida ou treinamento para ${item.total} consulta${item.total === 1 ? '' : 's'} no período.`);
   res.json({ dias, inicio: new Date(inicio).toISOString(), total_consultas: consultas.length, temas, recentes, recomendacoes });
+});
+
+app.get('/api/admin/ia-melhorias', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  res.json((db.ia_melhorias || []).slice(0, 200));
+});
+
+app.post('/api/admin/ia-melhorias', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const titulo = String(req.body?.titulo || '').trim().slice(0, 180);
+  const tipo = String(req.body?.tipo || 'MELHORIA').trim().toUpperCase();
+  const descricao = String(req.body?.descricao || '').trim().slice(0, 2000);
+  const responsavel = String(req.body?.responsavel || '').trim().slice(0, 120);
+  if (!titulo || !descricao) return res.status(400).json({ erro: 'Informe título e descrição da ação.' });
+  if (!['FAQ', 'TREINAMENTO', 'REVISAO_BASE', 'MELHORIA'].includes(tipo)) return res.status(400).json({ erro: 'Tipo de ação inválido.' });
+  const item = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, titulo, tipo, descricao, responsavel: responsavel || null, status: 'PENDENTE', criado_em: new Date().toISOString(), atualizado_em: new Date().toISOString() };
+  db.ia_melhorias = [item, ...(db.ia_melhorias || [])].slice(0, 500);
+  db.saveFile('ia-melhorias.json', db.ia_melhorias);
+  registrarAuditoria({ acao: 'ia_cartorio_melhoria_criada', usuarioId: req.userId, usuarioNome: findActiveUserById(req.userId)?.nome || '', detalhe: item.tipo, req });
+  res.json(item);
+});
+
+app.patch('/api/admin/ia-melhorias/:id', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const item = (db.ia_melhorias || []).find((registro) => String(registro.id) === String(req.params.id || ''));
+  const status = String(req.body?.status || '').trim().toUpperCase();
+  if (!item || !['PENDENTE', 'EM_ANDAMENTO', 'CONCLUIDA', 'ARQUIVADA'].includes(status)) return res.status(400).json({ erro: 'Atualização inválida.' });
+  item.status = status;
+  item.atualizado_em = new Date().toISOString();
+  db.saveFile('ia-melhorias.json', db.ia_melhorias);
+  registrarAuditoria({ acao: 'ia_cartorio_melhoria_atualizada', usuarioId: req.userId, usuarioNome: findActiveUserById(req.userId)?.nome || '', detalhe: status, req });
+  res.json(item);
+});
+
+app.get('/api/admin/ia-uso', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const agora = Date.now();
+  const inicioHoje = new Date(); inicioHoje.setHours(0, 0, 0, 0);
+  const inicioMes = new Date(); inicioMes.setDate(1); inicioMes.setHours(0, 0, 0, 0);
+  const consultas = (db.auditoria || []).filter((item) => item.acao === 'ia_cartorio_consulta');
+  const hoje = consultas.filter((item) => new Date(item.em || 0).getTime() >= inicioHoje.getTime()).length;
+  const mes = consultas.filter((item) => new Date(item.em || 0).getTime() >= inicioMes.getTime()).length;
+  const custoMedio = Math.max(0, Number(db.ia_config?.custo_medio_por_consulta || 0));
+  const orcamento = Math.max(0, Number(db.ia_config?.orcamento_mensal || 0));
+  const porDia = {};
+  for (let i = 13; i >= 0; i--) { const d = new Date(agora - i * 86400000); porDia[d.toISOString().slice(0, 10)] = 0; }
+  consultas.forEach((item) => { const chave = String(item.em || '').slice(0, 10); if (Object.hasOwn(porDia, chave)) porDia[chave] += 1; });
+  res.json({ limite_diario_por_usuario: IA_CARTORIO_DAILY_LIMIT, consultas_hoje: hoje, consultas_mes: mes, custo_medio_por_consulta: custoMedio, custo_estimado_mes: Number((mes * custoMedio).toFixed(2)), orcamento_mensal: orcamento, percentual_orcamento: orcamento ? Math.min(999, Number(((mes * custoMedio / orcamento) * 100).toFixed(1))) : null, por_dia: porDia });
+});
+
+app.patch('/api/admin/ia-uso/config', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const custo = Math.max(0, Math.min(1000, Number(req.body?.custo_medio_por_consulta || 0)));
+  const orcamento = Math.max(0, Math.min(100000, Number(req.body?.orcamento_mensal || 0)));
+  db.ia_config = { custo_medio_por_consulta: custo, orcamento_mensal: orcamento, atualizado_em: new Date().toISOString() };
+  db.saveFile('ia-config.json', db.ia_config);
+  res.json(db.ia_config);
 });
 
 app.post('/api/login', loginLimiter, async (req, res) => {

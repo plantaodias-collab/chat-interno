@@ -6493,6 +6493,8 @@ function abrirPainelAdmin() {
   carregarBaseIaAdmin();
   carregarFeedbackIaAdmin();
   carregarRelatorioIaAdmin();
+  carregarUsoIaAdmin();
+  carregarMelhoriasIaAdmin();
   document.getElementById('adminModal').classList.add('active');
 }
 
@@ -7119,6 +7121,73 @@ async function carregarRelatorioIaAdmin() {
   } catch (_error) {
     container.innerHTML = '<p style="color:#dc2626;font-size:12px;">Não foi possível carregar o relatório.</p>';
   }
+}
+
+function formatarMoedaIa(valor) {
+  return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+async function carregarUsoIaAdmin() {
+  const container = document.getElementById('adminIaUso');
+  if (!container) return;
+  try {
+    const response = await fetch('/api/admin/ia-uso', { headers: authHeaders() });
+    if (!response.ok) throw new Error('Falha ao carregar uso da IA');
+    const dados = await response.json();
+    const percentual = dados.percentual_orcamento;
+    const alerta = percentual !== null && percentual >= 80 ? '#b45309' : '#0f766e';
+    container.innerHTML = `<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px;"><div style="padding:10px;border-radius:9px;background:#eff8f3;"><strong style="display:block;color:#0f766e;font-size:18px;">${Number(dados.consultas_hoje) || 0}</strong><small style="color:#64748b;">consultas hoje</small></div><div style="padding:10px;border-radius:9px;background:#eff8f3;"><strong style="display:block;color:#0f766e;font-size:18px;">${Number(dados.consultas_mes) || 0}</strong><small style="color:#64748b;">consultas no mês</small></div><div style="padding:10px;border-radius:9px;background:#eff8f3;"><strong style="display:block;color:#0f766e;font-size:18px;">${formatarMoedaIa(dados.custo_estimado_mes)}</strong><small style="color:#64748b;">custo estimado mensal</small></div><div style="padding:10px;border-radius:9px;background:#eff8f3;"><strong style="display:block;color:#0f766e;font-size:18px;">${Number(dados.limite_diario_por_usuario) || 0}</strong><small style="color:#64748b;">limite diário por usuário</small></div></div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:end;"><div class="form-group" style="margin:0;"><label for="adminIaCustoMedio">Custo médio estimado por consulta (R$)</label><input class="field" id="adminIaCustoMedio" type="number" min="0" step="0.01" value="${Number(dados.custo_medio_por_consulta || 0)}" /></div><div class="form-group" style="margin:0;"><label for="adminIaOrcamento">Orçamento mensal de referência (R$)</label><input class="field" id="adminIaOrcamento" type="number" min="0" step="0.01" value="${Number(dados.orcamento_mensal || 0)}" /></div></div><div style="display:flex;align-items:center;gap:10px;margin-top:8px;"><button class="btn btn-secondary" style="width:auto;" type="button" onclick="salvarUsoIaAdmin()">Salvar referência de custo</button>${percentual !== null ? `<span style="font-size:12px;color:${alerta};font-weight:800;">${percentual}% do orçamento de referência</span>` : '<span style="font-size:12px;color:#64748b;">Informe um orçamento para acompanhar o percentual.</span>'}</div>`;
+  } catch (_error) {
+    container.innerHTML = '<p style="color:#dc2626;font-size:12px;">Não foi possível carregar o uso da IA.</p>';
+  }
+}
+
+async function salvarUsoIaAdmin() {
+  const custo = Number(document.getElementById('adminIaCustoMedio')?.value || 0);
+  const orcamento = Number(document.getElementById('adminIaOrcamento')?.value || 0);
+  try {
+    const response = await fetch('/api/admin/ia-uso/config', { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ custo_medio_por_consulta: custo, orcamento_mensal: orcamento }) });
+    if (!response.ok) throw new Error('Falha ao salvar referência de custo');
+    mostrarNotificacao('Referência de custo atualizada.', 'success');
+    carregarUsoIaAdmin();
+  } catch (_error) { mostrarNotificacao('Não foi possível salvar a referência de custo.', 'error'); }
+}
+
+async function carregarMelhoriasIaAdmin() {
+  const list = document.getElementById('adminIaMelhoriasList');
+  if (!list) return;
+  try {
+    const response = await fetch('/api/admin/ia-melhorias', { headers: authHeaders() });
+    if (!response.ok) throw new Error('Falha ao carregar fila');
+    const itens = await response.json();
+    if (!itens.length) { list.innerHTML = '<p style="color:#64748b;font-size:12px;">Nenhuma ação criada ainda.</p>'; return; }
+    const statusLabel = { PENDENTE: 'Pendente', EM_ANDAMENTO: 'Em andamento', CONCLUIDA: 'Concluída', ARQUIVADA: 'Arquivada' };
+    list.innerHTML = itens.map((item) => `<div style="padding:10px;border:1px solid #dbe4ee;border-radius:9px;background:#fff;"><div style="display:flex;justify-content:space-between;gap:10px;"><strong style="font-size:12px;color:#334155;">${escapeHtml(item.titulo)}</strong><select class="field" style="width:auto;padding:5px 7px;font-size:11px;" onchange="atualizarMelhoriaIaAdmin('${escapeHtml(item.id)}', this.value)">${Object.keys(statusLabel).map((status) => `<option value="${status}" ${item.status === status ? 'selected' : ''}>${statusLabel[status]}</option>`).join('')}</select></div><small style="display:block;margin-top:4px;color:#0f766e;font-size:10px;font-weight:800;">${escapeHtml(item.tipo || 'MELHORIA')}${item.responsavel ? ` · ${escapeHtml(item.responsavel)}` : ''}</small><p style="margin:6px 0 0;color:#64748b;font-size:12px;line-height:1.4;white-space:pre-wrap;">${escapeHtml(item.descricao)}</p></div>`).join('');
+  } catch (_error) { list.innerHTML = '<p style="color:#dc2626;font-size:12px;">Não foi possível carregar a fila de melhorias.</p>'; }
+}
+
+async function criarMelhoriaIaAdmin() {
+  const titulo = String(document.getElementById('adminIaMelhoriaTitulo')?.value || '').trim();
+  const tipo = String(document.getElementById('adminIaMelhoriaTipo')?.value || 'MELHORIA');
+  const responsavel = String(document.getElementById('adminIaMelhoriaResponsavel')?.value || '').trim();
+  const descricao = String(document.getElementById('adminIaMelhoriaDescricao')?.value || '').trim();
+  if (!titulo || !descricao) { mostrarNotificacao('Informe título e descrição da ação.', 'warning'); return; }
+  try {
+    const response = await fetch('/api/admin/ia-melhorias', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ titulo, tipo, responsavel, descricao }) });
+    if (!response.ok) throw new Error('Falha ao criar ação');
+    ['adminIaMelhoriaTitulo', 'adminIaMelhoriaResponsavel', 'adminIaMelhoriaDescricao'].forEach((id) => { const campo = document.getElementById(id); if (campo) campo.value = ''; });
+    mostrarNotificacao('Ação adicionada à fila de melhorias.', 'success');
+    carregarMelhoriasIaAdmin();
+  } catch (_error) { mostrarNotificacao('Não foi possível criar a ação.', 'error'); }
+}
+
+async function atualizarMelhoriaIaAdmin(id, status) {
+  try {
+    const response = await fetch(`/api/admin/ia-melhorias/${encodeURIComponent(id)}`, { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ status }) });
+    if (!response.ok) throw new Error('Falha ao atualizar ação');
+    mostrarNotificacao('Status da ação atualizado.', 'success');
+    carregarMelhoriasIaAdmin();
+  } catch (_error) { mostrarNotificacao('Não foi possível atualizar a ação.', 'error'); }
 }
 
 function renderBaseIaAdmin() {
