@@ -3147,7 +3147,7 @@ function abrirConversaAssistenteNativa(conversaId) {
   if (mensagens) mensagens.innerHTML = '';
   itens.forEach((item) => {
     adicionarMensagemAssistente('user', item.pergunta);
-    adicionarMensagemAssistente('assistant', { level: item.nivel || item.classificacao, title: item.titulo, text: item.resposta, basis: item.base, nextStep: item.proximo_passo });
+    adicionarMensagemAssistente('assistant', { level: item.nivel || item.classificacao, title: item.titulo, text: item.resposta, basis: item.base, nextStep: item.proximo_passo, fundamentos: item.fundamentos || [] });
   });
   renderHistoricoAssistenteNativo();
   document.getElementById('assistantQuestion')?.focus();
@@ -3362,13 +3362,32 @@ function adicionarMensagemAssistente(tipo, conteudo) {
     const texto = document.createElement('p');
     texto.textContent = textoExibicaoIa(resposta.text || resposta.resposta || 'Não foi possível gerar uma resposta.');
     balao.appendChild(texto);
-    if (resposta.basis) {
+    const fontes = Array.isArray(resposta.fundamentos) ? resposta.fundamentos.filter((fonte) => fonte?.url) : [];
+    if (resposta.basis || fontes.length) {
       const base = document.createElement('details');
       base.className = 'assistant-chat-details';
       base.innerHTML = '<summary>Base e cuidados</summary>';
-      const baseTexto = document.createElement('div');
-      baseTexto.textContent = textoExibicaoIa(resposta.basis);
-      base.appendChild(baseTexto);
+      if (resposta.basis) {
+        const baseTexto = document.createElement('div');
+        baseTexto.textContent = textoExibicaoIa(resposta.basis);
+        base.appendChild(baseTexto);
+      }
+      if (fontes.length) {
+        const listaFontes = document.createElement('div');
+        listaFontes.className = 'assistant-chat-sources';
+        const tituloFontes = document.createElement('strong');
+        tituloFontes.textContent = 'Fontes consultadas';
+        listaFontes.appendChild(tituloFontes);
+        fontes.forEach((fonte) => {
+          const link = document.createElement('a');
+          link.href = fonte.url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = fonte.documento || fonte.url;
+          listaFontes.appendChild(link);
+        });
+        base.appendChild(listaFontes);
+      }
       balao.appendChild(base);
     }
     if (resposta.nextStep) {
