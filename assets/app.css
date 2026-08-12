@@ -11704,11 +11704,16 @@ body.theme-dark .dashboard-assistant-feedback > span { color: #a8d8bb; }
 body.theme-dark .dashboard-assistant-use-actions button,
 body.theme-dark .dashboard-assistant-feedback button { border-color: #356f59; background: #132b24; color: #c7ead5; }
 
-/* Central compacta: prioriza o espaço de trabalho da IA sem perder o resumo essencial. */
+/* A IA abre em sua própria tela: a Central volta a ser o foco da página inicial. */
 @media (min-width: 1121px) {
   .dashboard-split {
-    grid-template-columns: minmax(360px, .68fr) minmax(620px, 1.32fr);
+    grid-template-columns: minmax(520px, 1.28fr) minmax(330px, .72fr);
     gap: 20px;
+  }
+
+  .dashboard-assistant-contact {
+    max-width: 480px;
+    justify-self: end;
   }
 }
 
