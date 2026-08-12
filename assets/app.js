@@ -2862,6 +2862,7 @@ function fecharAssistenteJuridico() {
 let modoAssistente = 'orientacao';
 let historicoIaCache = [];
 let historicoIaAbertoId = null;
+let conversaIaAtualId = null;
 
 function normalizarAssistente(texto) {
   return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -3058,11 +3059,11 @@ async function registrarUsoAssistenteBloqueado() {
   }
 }
 
-async function consultarIaCartorio(question) {
+async function consultarIaCartorio(question, conversaId = '') {
   const response = await fetch('/api/ia-cartorio', {
     method: 'POST',
     headers: authHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ mensagem: question, modo: modoAssistente })
+    body: JSON.stringify({ mensagem: question, modo: modoAssistente, conversa_id: conversaId || undefined })
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.erro || 'Não foi possível consultar a IA Cartório Dias.');
@@ -3136,6 +3137,7 @@ function preencherRespostaDashboard(response, question = '', historicoId = '') {
     answerLink.classList.add('hidden');
   }
   historicoIaAbertoId = historicoId || response.historicoId || null;
+  conversaIaAtualId = response.conversaId || conversaIaAtualId || null;
   atualizarAcaoFavoritaDashboard(Boolean(response.favorita));
   answer.classList.remove('hidden');
 }
@@ -3143,7 +3145,8 @@ function preencherRespostaDashboard(response, question = '', historicoId = '') {
 function abrirHistoricoIa(id) {
   const item = historicoIaCache.find((registro) => String(registro.id) === String(id));
   if (!item) return;
-  preencherRespostaDashboard({ level: item.nivel, title: item.titulo, text: item.resposta, basis: item.base, nextStep: item.proximo_passo, provider: item.provider, favorita: item.favorita }, item.pergunta, item.id);
+  conversaIaAtualId = item.conversa_id || null;
+  preencherRespostaDashboard({ level: item.nivel, title: item.titulo, text: item.resposta, basis: item.base, nextStep: item.proximo_passo, provider: item.provider, favorita: item.favorita, conversaId: item.conversa_id }, item.pergunta, item.id);
 }
 
 function textoRespostaDashboard() {
@@ -3232,6 +3235,7 @@ async function enviarFeedbackIaDashboard(tipo) {
 
 function voltarParaConsultaDashboard() {
   historicoIaAbertoId = null;
+  conversaIaAtualId = null;
   document.getElementById('dashboardAssistantAnswer')?.classList.add('hidden');
   const input = document.getElementById('dashboardAssistantQuestion');
   if (input) {
@@ -3371,6 +3375,38 @@ function enviarPerguntaDashboard(event) {
   }
 }
 
+async function continuarConversaIaDashboard() {
+  if (!ASSISTENTE_JURIDICO_ATIVO) return avisarAssistenteEmBreve();
+  if (!conversaIaAtualId) return voltarParaConsultaDashboard();
+  const input = document.getElementById('dashboardAssistantFollowup');
+  const question = String(input?.value || '').trim();
+  if (!question) {
+    input?.focus();
+    return;
+  }
+  const button = document.getElementById('dashboardAssistantFollowupSend');
+  button?.setAttribute('disabled', 'disabled');
+  if (button) button.textContent = '…';
+  try {
+    const response = await consultarIaCartorio(question, conversaIaAtualId);
+    preencherRespostaDashboard(response, question);
+    if (input) input.value = '';
+    await carregarHistoricoIa();
+  } catch (error) {
+    mostrarNotificacao(error.message, 'error');
+  } finally {
+    button?.removeAttribute('disabled');
+    if (button) button.textContent = '→';
+  }
+}
+
+function enviarContinuidadeIaDashboard(event) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    continuarConversaIaDashboard();
+  }
+}
+
 function usarAtalhoDashboard(question, mode = 'orientacao') {
   definirModoAssistente(mode);
   const input = document.getElementById('dashboardAssistantQuestion');
@@ -3403,6 +3439,8 @@ window.voltarParaConsultaDashboard = voltarParaConsultaDashboard;
 window.excluirHistoricoIa = excluirHistoricoIa;
 window.copiarRespostaDashboard = copiarRespostaDashboard;
 window.prepararRespostaDashboard = prepararRespostaDashboard;
+window.continuarConversaIaDashboard = continuarConversaIaDashboard;
+window.enviarContinuidadeIaDashboard = enviarContinuidadeIaDashboard;
 window.salvarRascunhoNotaDashboard = salvarRascunhoNotaDashboard;
 window.alternarFavoritoDashboard = alternarFavoritoDashboard;
 window.enviarFeedbackIaDashboard = enviarFeedbackIaDashboard;
@@ -3722,7 +3760,7 @@ function getWelcomeStateHtml() {
           <label for="dashboardAssistantQuestion">Pergunta ou dúvida</label>
           <div class="dashboard-assistant-input"><input id="dashboardAssistantQuestion" type="text" ${iaEmBreve ? 'disabled' : 'onkeydown="enviarPerguntaDashboard(event)"'} placeholder="${iaEmBreve ? 'Consultas disponíveis em breve' : 'Ex.: quais documentos preciso para habilitação de casamento?'}" /><button type="button" ${iaEmBreve ? 'disabled' : 'onclick="responderPerguntaDashboard()"'} aria-label="Consultar IA Cartório Dias de Castro">→</button></div>
           <p class="dashboard-assistant-disclaimer">A IA CDC pode cometer erros. Por isso, lembre-se de conferir informações relevantes.</p>
-          ${iaEmBreve ? '' : '<div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div class="dashboard-assistant-answer-actions"><button type="button" onclick="voltarParaConsultaDashboard()">← Nova consulta</button><button id="dashboardAssistantFavoriteBtn" type="button" onclick="alternarFavoritoDashboard()">☆ Favoritar</button><button class="danger" type="button" onclick="excluirHistoricoIa()">Excluir consulta</button></div><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><strong id="dashboardAssistantTitle" class="dashboard-assistant-answer-title"></strong><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div><div class="dashboard-assistant-next"><strong>Próximo passo</strong><span id="dashboardAssistantNext"></span></div><a class="assistant-response-link hidden" id="dashboardAssistantLink" target="_blank" rel="noopener noreferrer"></a><div class="dashboard-assistant-use-actions"><strong>Preparar para uso — revise antes de utilizar</strong><div><button type="button" onclick="copiarRespostaDashboard()">Copiar resposta</button><button type="button" onclick="prepararRespostaDashboard(\'email\')">E-mail</button><button type="button" onclick="prepararRespostaDashboard(\'whatsapp\')">WhatsApp</button><button type="button" onclick="salvarRascunhoNotaDashboard()">Salvar rascunho de nota</button></div></div><div class="dashboard-assistant-feedback"><span>A resposta ajudou?</span><button type="button" onclick="enviarFeedbackIaDashboard(\'ajudou\')">Sim</button><button type="button" onclick="enviarFeedbackIaDashboard(\'desatualizada\')">Está desatualizada</button><button type="button" onclick="enviarFeedbackIaDashboard(\'revisao_oficial\')">Revisão do Oficial</button></div></div><section class="dashboard-assistant-history" aria-label="Histórico de consultas"><div class="dashboard-assistant-history-head"><div><strong>Histórico de consultas</strong><small>Somente suas consultas</small></div></div><input id="dashboardAssistantHistorySearch" type="search" placeholder="Buscar no histórico" oninput="filtrarHistoricoIa()" /><div class="dashboard-assistant-history-list" id="dashboardAssistantHistoryList"><div class="dashboard-assistant-history-empty">Carregando histórico...</div></div></section>'}
+          ${iaEmBreve ? '' : '<div class="dashboard-assistant-answer hidden" id="dashboardAssistantAnswer"><div class="dashboard-assistant-answer-actions"><button type="button" onclick="voltarParaConsultaDashboard()">← Nova consulta</button><button id="dashboardAssistantFavoriteBtn" type="button" onclick="alternarFavoritoDashboard()">☆ Favoritar</button><button class="danger" type="button" onclick="excluirHistoricoIa()">Excluir consulta</button></div><div><span id="dashboardAssistantLevel" class="dashboard-assistant-level">ROTINA</span><strong id="dashboardAssistantTitle" class="dashboard-assistant-answer-title"></strong><p id="dashboardAssistantText"></p></div><div class="dashboard-assistant-basis"><strong>Base e segurança</strong><span id="dashboardAssistantBasis"></span></div><div class="dashboard-assistant-next"><strong>Próximo passo</strong><span id="dashboardAssistantNext"></span></div><div class="dashboard-assistant-followup"><strong>Continuar esta conversa</strong><small>Peça para ajustar, resumir ou complementar a resposta sem recomeçar.</small><div><input id="dashboardAssistantFollowup" type="text" placeholder="Ex.: deixe mais curto e cordial" onkeydown="enviarContinuidadeIaDashboard(event)" /><button id="dashboardAssistantFollowupSend" type="button" onclick="continuarConversaIaDashboard()" aria-label="Enviar continuação">→</button></div></div><a class="assistant-response-link hidden" id="dashboardAssistantLink" target="_blank" rel="noopener noreferrer"></a><div class="dashboard-assistant-use-actions"><strong>Preparar para uso — revise antes de utilizar</strong><div><button type="button" onclick="copiarRespostaDashboard()">Copiar resposta</button><button type="button" onclick="prepararRespostaDashboard(\'email\')">E-mail</button><button type="button" onclick="prepararRespostaDashboard(\'whatsapp\')">WhatsApp</button><button type="button" onclick="salvarRascunhoNotaDashboard()">Salvar rascunho de nota</button></div></div><div class="dashboard-assistant-feedback"><span>A resposta ajudou?</span><button type="button" onclick="enviarFeedbackIaDashboard(\'ajudou\')">Sim</button><button type="button" onclick="enviarFeedbackIaDashboard(\'desatualizada\')">Está desatualizada</button><button type="button" onclick="enviarFeedbackIaDashboard(\'revisao_oficial\')">Revisão do Oficial</button></div></div><section class="dashboard-assistant-history" aria-label="Histórico de consultas"><div class="dashboard-assistant-history-head"><div><strong>Histórico de consultas</strong><small>Somente suas consultas</small></div></div><input id="dashboardAssistantHistorySearch" type="search" placeholder="Buscar no histórico" oninput="filtrarHistoricoIa()" /><div class="dashboard-assistant-history-list" id="dashboardAssistantHistoryList"><div class="dashboard-assistant-history-empty">Carregando histórico...</div></div></section>'}
         </aside>
       </div>
     </div>

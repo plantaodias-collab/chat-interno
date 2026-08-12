@@ -5631,18 +5631,21 @@ body.theme-dark .assistant-header-badge { background:#3aa979; color:#092418; }
 .dashboard-assistant-topics > span { margin-right: 3px; color: #628776; font-size: 9px; font-weight: 900; }.dashboard-assistant-topics button { border: 0; border-radius: 999px; background: #eaf6ee; color: #35745e; padding: 5px 8px; font-size: 9px; font-weight: 800; cursor: pointer; }.dashboard-assistant-topics button:hover { background: #d7efdf; }
 .dashboard-assistant-answer { min-height: 250px; margin-top: 18px; padding: 20px; border-radius: 12px; background: #fff; border: 1px solid #d7eadf; }
 .dashboard-assistant-card .dashboard-assistant-answer:not(.hidden) { flex: 0 0 auto; }
-.dashboard-assistant-answer p { margin: 13px 0 17px; color: #425f53; font-size: 15px; line-height: 1.75; white-space: pre-line; }
-.dashboard-assistant-answer-title { display: block; margin-top: 10px; color: #286750; font-size: 16px; line-height: 1.45; }
+.dashboard-assistant-answer p { margin: 14px 0 19px; color: #263f35; font-size: 16px; line-height: 1.8; font-weight: 500; white-space: pre-line; }
+.dashboard-assistant-answer-title { display: block; margin-top: 10px; color: #1d5a45; font-size: 17px; line-height: 1.45; }
 .dashboard-assistant-level { display: inline-block; padding: 5px 8px; border-radius: 999px; background: #e6f6eb; color: #288252; font-size: 10px; font-weight: 900; letter-spacing: .4px; }
 .dashboard-assistant-level.atencao { background: #fff2de; color: #a86820; }
 .dashboard-assistant-level.oficial { background: #fde9e7; color: #b54c43; }
 .dashboard-assistant-level.escopo { background: #eef2f7; color: #52657a; }
-.dashboard-assistant-basis { border-top: 1px solid #e5eee8; padding-top: 12px; color: #587267; font-size: 12px; line-height: 1.55; }
+.dashboard-assistant-basis { border-top: 1px solid #e5eee8; padding-top: 13px; color: #365548; font-size: 13px; line-height: 1.6; }
 .dashboard-assistant-basis strong,.dashboard-assistant-basis span { display: block; }
 .dashboard-assistant-basis strong { margin-bottom: 3px; color: #4b7f68; }
-.dashboard-assistant-next { margin-top: 12px; padding: 12px; border-radius: 8px; background: #f2faf5; color: #49685a; font-size: 12px; line-height: 1.55; }
+.dashboard-assistant-next { margin-top: 13px; padding: 13px; border-radius: 8px; background: #f2faf5; color: #355548; font-size: 13px; line-height: 1.6; }
 .dashboard-assistant-next strong,.dashboard-assistant-next span { display: block; }
 .dashboard-assistant-next strong { margin-bottom: 3px; color: #39745b; }
+.dashboard-assistant-followup { margin-top: 15px; padding: 14px; border: 1px solid #b9dfc7; border-radius: 10px; background: #f7fcf8; }
+.dashboard-assistant-followup strong,.dashboard-assistant-followup small { display: block; }.dashboard-assistant-followup strong { color: #1d634b; font-size: 13px; }.dashboard-assistant-followup small { margin-top: 4px; color: #587568; font-size: 12px; line-height: 1.45; }
+.dashboard-assistant-followup > div { display: flex; gap: 8px; margin-top: 10px; }.dashboard-assistant-followup input { min-width: 0; flex: 1; border: 1px solid #9dceb0; border-radius: 8px; background: #fff; color: #243f34; padding: 11px 12px; font-size: 14px; outline: none; }.dashboard-assistant-followup input:focus { border-color: #3e9a6b; box-shadow: 0 0 0 3px rgba(62,154,107,.14); }.dashboard-assistant-followup button { width: 42px; border: 0; border-radius: 8px; background: #176c55; color: #fff; font-size: 18px; cursor: pointer; }.dashboard-assistant-followup button:disabled { opacity: .65; cursor: wait; }
 .dashboard-assistant-history { margin-top: 16px; padding-top: 14px; border-top: 1px dashed #cde4d5; }
 .dashboard-assistant-history-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 8px; }.dashboard-assistant-history-head strong,.dashboard-assistant-history-head small { display: block; }.dashboard-assistant-history-head strong { color: #286750; font-size: 11px; }.dashboard-assistant-history-head small { margin-top: 2px; color: #779184; font-size: 9px; }
 .dashboard-assistant-history > input { width: 100%; border: 1px solid #c7e3d1; border-radius: 8px; background: rgba(255,255,255,.86); padding: 9px 10px; color: #1e3b31; font-size: 10px; outline: none; }.dashboard-assistant-history > input:focus { border-color: #4baa76; box-shadow: 0 0 0 3px rgba(75,171,118,.12); }
@@ -5657,6 +5660,7 @@ body.theme-dark .dashboard-assistant-coming-notice { border-color: #74613c; back
 body.theme-dark .dashboard-assistant-head h2, body.theme-dark .dashboard-assistant-user strong, body.theme-dark .dashboard-assistant-card > label { color: #b6edce; }
 body.theme-dark .dashboard-assistant-head p, body.theme-dark .dashboard-assistant-user, body.theme-dark .dashboard-assistant-basis { color: #9ac6af; }
 body.theme-dark .dashboard-assistant-user, body.theme-dark .dashboard-assistant-answer { background: rgba(9,36,24,.38); border-color: #276d54; }
+body.theme-dark .dashboard-assistant-answer p { color: #e2f4e9; } body.theme-dark .dashboard-assistant-basis { color: #c4e7d0; } body.theme-dark .dashboard-assistant-next { color: #d2ecdb; background: rgba(29,78,55,.55); } body.theme-dark .dashboard-assistant-followup { border-color: #356f59; background: #132b24; } body.theme-dark .dashboard-assistant-followup strong { color: #c6efd5; } body.theme-dark .dashboard-assistant-followup small { color: #abd3ba; } body.theme-dark .dashboard-assistant-followup input { border-color: #356f59; background: #0f251e; color: #e2f5e9; }
 body.theme-dark .dashboard-assistant-input input, body.theme-dark .dashboard-assistant-shortcuts button, body.theme-dark .assistant-mode-switch button { border-color: #356f59; background: #132b24; color: #d7f3e2; }
 body.theme-dark .dashboard-assistant-history { border-color: #356f59; } body.theme-dark .dashboard-assistant-history > input, body.theme-dark .dashboard-assistant-history-item { border-color: #356f59; background: #132b24; color: #d7f3e2; } body.theme-dark .dashboard-assistant-history-item strong { color: #d7f3e2; }
 body.theme-dark .assistant-mode-switch button.active { background: #2c8b69; border-color: #50af8b; color: #fff; }
