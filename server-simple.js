@@ -364,6 +364,39 @@ class SimpleDB {
 }
 
 const db = new SimpleDB();
+
+// Pré-cadastro para revisão humana: consolida apenas informações públicas do
+// site institucional e a referência já baixada do Código de Normas. Nenhum
+// item nasce vigente/aprovado e, portanto, não pode fundamentar respostas.
+const PRE_CADASTRO_IA_FONTES = [
+  { chave: 'site-atendimento-canais', area: 'Atendimento', titulo: 'Canais, endereço, horário e plantão', procedimento: 'Atendimento de segunda a sexta, das 8h30 às 12h e das 13h30 às 18h. Plantão destinado ao registro de óbito. Confirmar qualquer exceção de expediente antes de orientar o usuário.', fundamento: 'Site institucional do Registro Civil Chapecó — página inicial.', palavras_chave: 'horário, endereço, telefone, contato, plantão, óbito', referencia_url: 'https://registrocivilchapeco.com.br/' },
+  { chave: 'site-rcpn-nascimento', area: 'Pessoas Naturais', titulo: 'Registro de nascimento — triagem documental do site', procedimento: 'Para a triagem, conferir DNV original, identificação e CPF dos pais e comprovante de residência. Situações de filiação ou ausência de genitor exigem análise do caso concreto.', fundamento: 'Site institucional — Pessoas Naturais. O próprio site referencia Lei 6.015/73, art. 54, e Código de Normas CGJ/SC, arts. 442, 447 e 450.', palavras_chave: 'nascimento, dnv, declaração de nascido vivo, pais, filiação', referencia_url: 'https://registrocivilchapeco.com.br/pessoasnaturais.php' },
+  { chave: 'site-rcpn-casamento', area: 'Casamento', titulo: 'Habilitação de casamento — orientação inicial do site', procedimento: 'O site orienta iniciar a habilitação com antecedência e condiciona o agendamento à entrega e análise documental e à publicação de proclamas. A lista final depende do estado civil e do caso concreto.', fundamento: 'Site institucional — Pessoas Naturais, seção Casamento.', palavras_chave: 'casamento, habilitação, proclamas, testemunhas, nubentes', referencia_url: 'https://registrocivilchapeco.com.br/pessoasnaturais.php' },
+  { chave: 'site-rcpn-obito', area: 'Pessoas Naturais', titulo: 'Registro de óbito — triagem documental do site', procedimento: 'Conferir Declaração de Óbito original, identificação do falecido e do declarante, certidão disponível e informações complementares necessárias ao assento. Casos de morte violenta e cremação exigem cautela e análise específica.', fundamento: 'Site institucional — Pessoas Naturais. O próprio site referencia Lei 6.015/73, arts. 77 e 80.', palavras_chave: 'óbito, declaração de óbito, do, cremação, plantão, falecido', referencia_url: 'https://registrocivilchapeco.com.br/pessoasnaturais.php' },
+  { chave: 'site-rcpn-prenome-genero', area: 'Pessoas Naturais', titulo: 'Alteração de prenome e gênero — checklist do site', procedimento: 'O site indica que o procedimento requer conferência de idade, capacidade, requerimento e certidões/documentos correspondentes. Por ser matéria sensível, conferir integralmente o Código de Normas antes de qualquer orientação conclusiva.', fundamento: 'Site institucional — Pessoas Naturais, com referência aos arts. 478 a 484 do Código de Normas CGJ/SC.', palavras_chave: 'prenome, gênero, nome social, alteração, retificação', referencia_url: 'https://registrocivilchapeco.com.br/pessoasnaturais.php' },
+  { chave: 'site-rcpj-associacao', area: 'Pessoas Jurídicas', titulo: 'Constituição de associação — triagem documental do site', procedimento: 'Conferir requerimento, estatuto, ata de fundação e eleição, lista de presença, qualificação da diretoria, documentos e visto de advogado quando aplicável. A qualificação definitiva depende do título apresentado.', fundamento: 'Site institucional — Pessoas Jurídicas. O próprio site referencia Lei 6.015/73, arts. 114, 120 e 121; Código Civil, arts. 46 e 54; Código de Normas CGJ/SC, arts. 580 e 581.', palavras_chave: 'associação, estatuto, fundação, diretoria, ata, rcpj', referencia_url: 'https://registrocivilchapeco.com.br/pessoasjuridicas.php' },
+  { chave: 'site-rcpj-eleicao', area: 'Pessoas Jurídicas', titulo: 'Ata de eleição e posse — triagem documental do site', procedimento: 'Conferir requerimento, edital conforme estatuto, ata assinada, qualificação dos eleitos, lista de presença e documentos exigidos pelo estatuto. Verificar prestações de contas anteriores quando exigidas.', fundamento: 'Site institucional — Pessoas Jurídicas, com referência ao art. 590 do Código de Normas CGJ/SC.', palavras_chave: 'eleição, posse, diretoria, edital, assembleia, ata, rcpj', referencia_url: 'https://registrocivilchapeco.com.br/pessoasjuridicas.php' },
+  { chave: 'site-rcpj-alteracao-estatuto', area: 'Pessoas Jurídicas', titulo: 'Alteração de estatuto — triagem documental do site', procedimento: 'Conferir requerimento, edital de convocação, ata da assembleia, visto de advogado quando aplicável, lista de presença e estatuto consolidado assinado. A análise depende da compatibilidade com o estatuto vigente.', fundamento: 'Site institucional — Pessoas Jurídicas, com referência ao art. 591 do Código de Normas CGJ/SC e art. 121 da Lei 6.015/73.', palavras_chave: 'alteração estatuto, estatuto consolidado, assembleia, edital, rcpj', referencia_url: 'https://registrocivilchapeco.com.br/pessoasjuridicas.php' },
+  { chave: 'codigo-normas-tjsc-2026', area: 'Normativa', titulo: 'Código de Normas do Foro Extrajudicial de Santa Catarina — revisão 2026', procedimento: 'Fonte normativa oficial já indexada para localização de trechos. Antes de uso como fundamento, conferir vigência, artigo, página e compatibilidade com o caso concreto.', fundamento: 'Código de Normas da Corregedoria-Geral do Foro Extrajudicial do TJSC, atualização indicada em 5 de agosto de 2026.', palavras_chave: 'código de normas, cgj, tjsc, extrajudicial, normativa', referencia_url: CODIGO_NORMAS_URL, tipo_fonte: 'NORMA_CGJSC' }
+];
+
+function aplicarPreCadastroIaFontes() {
+  let alterou = false;
+  for (const fonte of PRE_CADASTRO_IA_FONTES) {
+    if ((db.base_ia || []).some((item) => item.pre_cadastro_chave === fonte.chave)) continue;
+    db.base_ia.unshift(normalizarFonteLegadaIa({
+      id: Date.now() + Math.floor(Math.random() * 100000), area: fonte.area, titulo: fonte.titulo,
+      procedimento: fonte.procedimento, checklist: [], tipo_fonte: fonte.tipo_fonte || 'ORIENTACAO_ADMINISTRATIVA',
+      status: 'EM_REVISAO', versao: 'pré-cadastro 2026-08', fundamento: fonte.fundamento,
+      palavras_chave: fonte.palavras_chave, referencia_url: fonte.referencia_url, pre_cadastro_chave: fonte.chave,
+      criado_em: new Date().toISOString(), atualizado_em: new Date().toISOString(), atualizado_por: null
+    }));
+    alterou = true;
+  }
+  if (alterou) db.saveFile('base-ia.json', db.base_ia);
+}
+
+aplicarPreCadastroIaFontes();
 ensurePlantaoGroup();
 ensureDefaultPlantaoJuneSchedule();
 void assegurarCodigoNormasIndexado().then((indice) => {

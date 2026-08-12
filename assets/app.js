@@ -6625,7 +6625,7 @@ function renderBaseIaAdmin() {
     return `<article style="padding:14px;border:1px solid #dbe4ee;border-radius:12px;background:rgba(248,250,252,.78);">
       <div style="display:flex;gap:10px;justify-content:space-between;align-items:flex-start;">
         <div><span style="display:inline-block;padding:3px 7px;border-radius:999px;background:#e8f5ed;color:#26745c;font-size:9px;font-weight:900;">${escapeHtml(item.area)}</span><span style="display:inline-block;margin-left:5px;padding:3px 7px;border-radius:999px;background:#eef2ff;color:#465b9b;font-size:9px;font-weight:900;">${escapeHtml(item.tipo_fonte || 'PROCEDIMENTO')} · ${escapeHtml(item.status || 'VIGENTE')}</span><strong style="display:block;margin-top:7px;font-size:13px;color:#1e3b31;">${escapeHtml(item.titulo)}</strong><small style="display:block;margin-top:4px;color:#64748b;">Versão ${escapeHtml(item.versao || '1.0')}${item.fundamento ? ` · ${escapeHtml(item.fundamento)}` : ''}</small></div>
-        <div style="display:flex;gap:6px;"><button class="btn btn-secondary" style="width:auto;padding:6px 9px;font-size:11px;" type="button" onclick="editarBaseIaAdmin(${item.id})">Editar</button><button style="border:0;background:none;color:#dc2626;cursor:pointer;font-size:12px;" type="button" onclick="excluirBaseIaAdmin(${item.id})">Excluir</button></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">${item.status === 'EM_REVISAO' || item.status === 'RASCUNHO' ? `<button class="btn btn-primary" style="width:auto;padding:6px 9px;font-size:11px;" type="button" onclick="aprovarBaseIaAdmin(${item.id})">Aprovar</button>` : ''}<button class="btn btn-secondary" style="width:auto;padding:6px 9px;font-size:11px;" type="button" onclick="editarBaseIaAdmin(${item.id})">Editar</button><button style="border:0;background:none;color:#dc2626;cursor:pointer;font-size:12px;" type="button" onclick="excluirBaseIaAdmin(${item.id})">Excluir</button></div>
       </div>
       <div style="margin-top:9px;font-size:12px;color:#475569;line-height:1.55;white-space:pre-line;">${escapeHtml(item.procedimento)}</div>
       ${checklist}
@@ -6731,10 +6731,28 @@ async function excluirBaseIaAdmin(id) {
   }
 }
 
+async function aprovarBaseIaAdmin(id) {
+  const item = baseIaCache.find((registro) => Number(registro.id) === Number(id));
+  if (!item) return;
+  const status = item.tipo_fonte === 'ORIENTACAO_OFICIAL' ? 'APROVADA' : 'VIGENTE';
+  if (!confirm(`Confirmar “${item.titulo}” como ${status}? Revise o fundamento antes de aprovar.`)) return;
+  try {
+    const response = await fetch(`/api/admin/base-ia/${id}`, {
+      method: 'PUT', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ ...item, status })
+    });
+    if (!response.ok) throw new Error('Falha ao aprovar fonte');
+    await carregarBaseIaAdmin();
+    mostrarNotificacao(`Fonte marcada como ${status}.`, 'success');
+  } catch (_err) {
+    mostrarNotificacao('Não foi possível aprovar a fonte.', 'error');
+  }
+}
+
 window.salvarBaseIaAdmin = salvarBaseIaAdmin;
 window.editarBaseIaAdmin = editarBaseIaAdmin;
 window.cancelarEdicaoBaseIa = cancelarEdicaoBaseIa;
 window.excluirBaseIaAdmin = excluirBaseIaAdmin;
+window.aprovarBaseIaAdmin = aprovarBaseIaAdmin;
 
 // Template picker no campo de mensagem
 function alternarTemplates(event) {

@@ -11567,6 +11567,22 @@ body.theme-dark .main-content {
  .assistant-header-spark { color:#b77e39; font-size:16px; line-height:1; }
 .assistant-header-badge { border-radius:999px; padding:2px 5px; background:#176c55; color:#fff; font-size:7px; font-weight:900; letter-spacing:.6px; }
 
+/* O painel administrativo pode ter formulários longos; o conteúdo deve rolar
+   dentro do modal sem cortar os campos inferiores. */
+.modal.active {
+  align-items: flex-start;
+  overflow-y: auto;
+}
+
+.modal.active .modal-content {
+  width: min(960px, calc(100vw - 28px));
+  max-height: calc(100dvh - 28px);
+  margin: 14px auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 /* Cartão “Em breve”: uma escala tipográfica única, independente de regras
    antigas do dashboard que alteravam elementos span e label. */
 .dashboard-assistant-card.is-coming-soon .dashboard-assistant-knowledge {
