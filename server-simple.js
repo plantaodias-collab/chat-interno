@@ -2349,7 +2349,13 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
       registrarAuditoria({ acao: 'ia_cartorio_pesquisa_sem_fonte', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: `${provider.toLowerCase()}:${modo}`, req });
       return res.json({ ...semConfirmacao, historicoId: registro.id, conversaId: registro.conversa_id, solicitarFeedback: solicitarFeedbackIaCartorio(), pesquisa_web: true });
     }
-    const classificacao = fontesUtilizadas.length && respostaEstruturada.classificacao === 'ROTINA' ? 'ROTINA' : (respostaEstruturada.classificacao === 'OFICIAL' ? 'OFICIAL' : 'ATENCAO');
+    // "OFICIAL" não deve aparecer como alerta automático em toda pergunta
+    // cartorária. Com fonte verificável, rotinas e requisitos documentais
+    // permanecem como ROTINA ou ATENÇÃO; o encaminhamento obrigatório fica
+    // reservado a tema sensível ou à ausência de evidência, já tratada acima.
+    const classificacao = fontesUtilizadas.length
+      ? (respostaEstruturada.classificacao === 'ROTINA' ? 'ROTINA' : 'ATENCAO')
+      : 'OFICIAL';
     const alertas = [...new Set([...(respostaEstruturada.alertas || []), 'Em teste: confira informações relevantes antes de utilizá-las.', ...(fontesUtilizadas.length ? [] : ['Nenhuma evidência normativa específica foi localizada nesta pesquisa; a resposta não substitui fundamentação jurídica.'])])].slice(0, 5);
     const resposta = { level: classificacao, classificacao, title: modo === 'email' ? 'Minuta para revisão' : modo === 'nota' ? 'Minuta de nota para revisão' : 'Orientação da IA Cartório Dias de Castro — teste', text: respostaEstruturada.resposta, resposta: respostaEstruturada.resposta, basis: fontesUtilizadas.length ? `Fontes consultadas: ${fontesUtilizadas.map((fonte) => fonte.documento).join(' e ')}.` : 'Resposta operacional em teste, sem evidência normativa específica localizada.', nextStep: respostaEstruturada.motivo_escalonamento || `Revise a orientação e encaminhe ao Oficial se houver situação excepcional ou risco registral. Restam ${Math.max(0, IA_CARTORIO_DAILY_LIMIT - usadasHoje - 1)} consultas de IA hoje.`, provider, consultasRestantes: Math.max(0, IA_CARTORIO_DAILY_LIMIT - usadasHoje - 1), fundamentos: fontesUtilizadas, orientacao_interna: respostaEstruturada.orientacao_interna || null, alertas, motivo_escalonamento: respostaEstruturada.motivo_escalonamento || null, pesquisa_web: usarPesquisaWeb };
     const registro = salvarHistoricoIa(usuario, mensagem, modo, resposta, conversaId);
