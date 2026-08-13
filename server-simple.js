@@ -2299,7 +2299,12 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
   // destinatário. Não se deve devolver apenas uma rotina de triagem mesmo que
   // haja uma fonte interna relacionada ao assunto.
   const usarPesquisaWeb = perguntaExigePesquisaWebIa(mensagem, modo, Boolean(conversaAnterior));
-  const respostaLocal = !usarPesquisaWeb && modo === 'orientacao' ? (respostaLocalBaseIa(mensagem) || respostaPadraoGratuitaIa(mensagem, modo)) : null;
+  // A Base Interna resolve bem uma dúvida nova e direta. Em continuidade,
+  // porém, ela não pode substituir um pedido como “reformule para WhatsApp”:
+  // a IA precisa considerar a conversa anterior e redigir o ajuste solicitado.
+  const respostaLocal = !conversaAnterior && !usarPesquisaWeb && modo === 'orientacao'
+    ? (respostaLocalBaseIa(mensagem) || respostaPadraoGratuitaIa(mensagem, modo))
+    : null;
   if (respostaLocal) {
     const registro = salvarHistoricoIa(usuario, mensagem, modo, respostaLocal, conversaId);
     registrarAuditoria({ acao: 'ia_cartorio_base_interna', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: `${respostaLocal.provider}:${modo}`, req });
