@@ -1852,6 +1852,11 @@ function limparTextoRespostaIa(texto = '') {
     .trim();
 }
 
+function extrairReferenciasRespostaIa(texto = '') {
+  const referencias = String(texto).match(/\bart(?:igo)?\.?\s*\d+[A-Za-zº°-]*(?:\s*,\s*(?:§{1,2}|inciso|item|alínea)\s*[^.;\n]{1,45})?/gi) || [];
+  return [...new Set(referencias.map((item) => item.replace(/\s+/g, ' ').trim()))].slice(0, 6);
+}
+
 function montarReferenciaBaseIa(pergunta = '') {
   const palavras = obterPalavrasRelevantesIa(pergunta);
   const itens = (db.base_ia || []).filter(fonteEstaElegivelIa).map((item) => {
@@ -2150,6 +2155,7 @@ function salvarHistoricoIa(usuario, pergunta, modo, resposta, conversaId = '') {
     proximo_passo: String(resposta.nextStep || '').slice(0, 1000),
     provider: String(resposta.provider || 'Base Interna').slice(0, 80),
     fundamentos: Array.isArray(resposta.fundamentos) ? resposta.fundamentos.slice(0, 8) : [],
+    referencias: Array.isArray(resposta.referencias) ? resposta.referencias.slice(0, 6) : [],
     classificacao: String(resposta.classificacao || resposta.level || 'OFICIAL').slice(0, 30),
     motivo_escalonamento: String(resposta.motivo_escalonamento || '').slice(0, 1000),
     criado_em: new Date().toISOString()
@@ -2374,10 +2380,8 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
       .map((item) => String(item || '').replace(/\s+/g, ' ').trim().slice(0, 280))
       .filter(Boolean)
       .slice(0, 4);
+    const referenciasResposta = [...new Set([...referenciasEstruturadas, ...extrairReferenciasRespostaIa(respostaEstruturada.resposta)])].slice(0, 6);
     const fontesUtilizadas = [...fundamentosPesquisa, ...(respostaEstruturada.fontes_web || [])].map((fonte) => ({ ...fonte }));
-    if (fontesUtilizadas.length && referenciasEstruturadas.length) {
-      fontesUtilizadas[0].artigo_item = referenciasEstruturadas.join(' | ');
-    }
     if (usarPesquisaWeb && !fontesUtilizadas.length) {
       const semConfirmacao = respostaSemFundamentoSuficiente();
       semConfirmacao.title = 'Pesquisa oficial sem confirmação suficiente';
@@ -2402,7 +2406,7 @@ app.post('/api/ia-cartorio', verificarToken, iaCartorioLimiter, async (req, res)
     const proximoPassoMinuta = modo === 'email'
       ? 'Revise a minuta, confira os dados do pedido no sistema e envie ao destinatário.'
       : 'Revise a minuta e confirme os dados específicos do caso antes de utilizá-la.';
-    const resposta = { level: classificacao, classificacao, title: modo === 'email' ? (pedidoWhatsAppIa(mensagem) ? 'Mensagem para WhatsApp' : 'Minuta para revisão') : modo === 'nota' ? 'Minuta de nota para revisão' : 'Orientação da IA Cartório Dias de Castro — teste', text: respostaEstruturada.resposta, resposta: respostaEstruturada.resposta, basis: fontesUtilizadas.length ? `Fontes consultadas: ${fontesUtilizadas.map((fonte) => fonte.documento).join(' e ')}.` : (minutaComFatosFornecidos ? 'Minuta preparada com as informações fornecidas nesta conversa; confirme os dados do pedido antes do envio.' : 'Resposta operacional em teste, sem evidência normativa específica localizada.'), nextStep: ['email', 'nota'].includes(modo) ? proximoPassoMinuta : (respostaEstruturada.motivo_escalonamento || `Revise a orientação e encaminhe ao Oficial se houver situação excepcional ou risco registral. Restam ${Math.max(0, IA_CARTORIO_DAILY_LIMIT - usadasHoje - 1)} consultas de IA hoje.`), provider, consultasRestantes: Math.max(0, IA_CARTORIO_DAILY_LIMIT - usadasHoje - 1), fundamentos: fontesUtilizadas, orientacao_interna: respostaEstruturada.orientacao_interna || null, alertas, motivo_escalonamento: ['email', 'nota'].includes(modo) ? null : (minutaComFatosFornecidos ? null : (respostaEstruturada.motivo_escalonamento || null)), pesquisa_web: usarPesquisaWeb };
+    const resposta = { level: classificacao, classificacao, title: modo === 'email' ? (pedidoWhatsAppIa(mensagem) ? 'Mensagem para WhatsApp' : 'Minuta para revisão') : modo === 'nota' ? 'Minuta de nota para revisão' : 'Orientação da IA Cartório Dias de Castro — teste', text: respostaEstruturada.resposta, resposta: respostaEstruturada.resposta, basis: fontesUtilizadas.length ? `Fontes consultadas: ${fontesUtilizadas.map((fonte) => fonte.documento).join(' e ')}.` : (minutaComFatosFornecidos ? 'Minuta preparada com as informações fornecidas nesta conversa; confirme os dados do pedido antes do envio.' : 'Resposta operacional em teste, sem evidência normativa específica localizada.'), nextStep: ['email', 'nota'].includes(modo) ? proximoPassoMinuta : (respostaEstruturada.motivo_escalonamento || `Revise a orientação e encaminhe ao Oficial se houver situação excepcional ou risco registral. Restam ${Math.max(0, IA_CARTORIO_DAILY_LIMIT - usadasHoje - 1)} consultas de IA hoje.`), provider, consultasRestantes: Math.max(0, IA_CARTORIO_DAILY_LIMIT - usadasHoje - 1), fundamentos: fontesUtilizadas, referencias: referenciasResposta, orientacao_interna: respostaEstruturada.orientacao_interna || null, alertas, motivo_escalonamento: ['email', 'nota'].includes(modo) ? null : (minutaComFatosFornecidos ? null : (respostaEstruturada.motivo_escalonamento || null)), pesquisa_web: usarPesquisaWeb };
     const registro = salvarHistoricoIa(usuario, mensagem, modo, resposta, conversaId);
     registrarAuditoria({ acao: 'ia_cartorio_consulta', usuarioId: usuario.id, usuarioNome: usuario.nome, detalhe: `${provider.toLowerCase()}:${modo}`, req });
     return res.json({ ...resposta, historicoId: registro.id, conversaId: registro.conversa_id, solicitarFeedback: solicitarFeedbackIaCartorio() });

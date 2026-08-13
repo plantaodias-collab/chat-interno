@@ -3162,7 +3162,7 @@ function abrirConversaAssistenteNativa(conversaId) {
   if (mensagens) mensagens.innerHTML = '';
   itens.forEach((item) => {
     adicionarMensagemAssistente('user', item.pergunta);
-    adicionarMensagemAssistente('assistant', { level: item.nivel || item.classificacao, title: item.titulo, text: item.resposta, basis: item.base, nextStep: item.proximo_passo, fundamentos: item.fundamentos || [] });
+    adicionarMensagemAssistente('assistant', { level: item.nivel || item.classificacao, title: item.titulo, text: item.resposta, basis: item.base, nextStep: item.proximo_passo, fundamentos: item.fundamentos || [], referencias: item.referencias || [] });
   });
   renderHistoricoAssistenteNativo();
   document.getElementById('assistantQuestion')?.focus();
@@ -3526,9 +3526,10 @@ function adicionarMensagemAssistente(tipo, conteudo) {
       link.rel = 'noopener noreferrer';
       link.textContent = fontes[0].documento || 'Abrir fonte oficial';
       fonteResumo.append(rotulo, link);
-      if (fontes[0].artigo_item) {
+      const referencias = Array.isArray(resposta.referencias) ? resposta.referencias.filter(Boolean) : [];
+      if (referencias.length || fontes[0].artigo_item) {
         const referencia = document.createElement('small');
-        referencia.textContent = fontes[0].artigo_item;
+        referencia.textContent = `Referências localizadas: ${referencias.length ? referencias.join(' · ') : fontes[0].artigo_item}`;
         fonteResumo.appendChild(referencia);
       }
       balao.appendChild(fonteResumo);
