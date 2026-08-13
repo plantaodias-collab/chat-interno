@@ -3526,6 +3526,11 @@ function adicionarMensagemAssistente(tipo, conteudo) {
       link.rel = 'noopener noreferrer';
       link.textContent = fontes[0].documento || 'Abrir fonte oficial';
       fonteResumo.append(rotulo, link);
+      if (fontes[0].artigo_item) {
+        const referencia = document.createElement('small');
+        referencia.textContent = fontes[0].artigo_item;
+        fonteResumo.appendChild(referencia);
+      }
       balao.appendChild(fonteResumo);
     }
     if (resposta.basis || fontes.length) {
