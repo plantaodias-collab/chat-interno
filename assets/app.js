@@ -3515,6 +3515,19 @@ function adicionarMensagemAssistente(tipo, conteudo) {
     texto.textContent = textoExibicaoIa(resposta.text || resposta.resposta || 'Não foi possível gerar uma resposta.');
     balao.appendChild(texto);
     const fontes = Array.isArray(resposta.fundamentos) ? resposta.fundamentos.filter((fonte) => fonte?.url) : [];
+    if (fontes.length) {
+      const fonteResumo = document.createElement('div');
+      fonteResumo.className = 'assistant-chat-source-summary';
+      const rotulo = document.createElement('span');
+      rotulo.textContent = 'Fonte confirmada:';
+      const link = document.createElement('a');
+      link.href = fontes[0].url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = fontes[0].documento || 'Abrir fonte oficial';
+      fonteResumo.append(rotulo, link);
+      balao.appendChild(fonteResumo);
+    }
     if (resposta.basis || fontes.length) {
       const base = document.createElement('details');
       base.className = 'assistant-chat-details';
