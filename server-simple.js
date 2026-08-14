@@ -61,6 +61,7 @@ const THUMBNAIL_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif'])
 const THUMBNAIL_MAX_WIDTH = 480;
 const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
+const ATIVIDADE_BLOCO_GAP_MIN = 15;
 // Piloto supervisionado: a IA fica bloqueada até o horário combinado. Para
 // interromper imediatamente, defina IA_CARTORIO_ENABLED=false no Railway.
 const IA_CARTORIO_RELEASE_AT = new Date(process.env.IA_CARTORIO_RELEASE_AT || '2026-08-12T00:00:00-03:00').getTime();
@@ -4517,7 +4518,7 @@ app.get('/api/admin/metricas', verificarToken, (req, res) => {
     .map(([nome, total]) => ({ nome, total }));
 
   // Atividade estimada por usuario nos ultimos 14 dias. Uma nova atividade
-  // inicia outro bloco quando fica mais de 60 minutos sem mensagens.
+  // inicia outro bloco quando fica mais de 15 minutos sem mensagens.
   const periodoAtividadeDias = 14;
   const atividadeCutoff = Date.now() - periodoAtividadeDias * 24 * 60 * 60 * 1000;
   const mensagensPorUsuario = new Map();
@@ -4534,7 +4535,7 @@ app.get('/api/admin/metricas', verificarToken, (req, res) => {
       const blocos = [];
       timestamps.forEach((timestamp) => {
         const ultimoBloco = blocos[blocos.length - 1];
-        if (!ultimoBloco || timestamp - ultimoBloco.fim > 60 * 60 * 1000) {
+        if (!ultimoBloco || timestamp - ultimoBloco.fim > ATIVIDADE_BLOCO_GAP_MIN * 60 * 1000) {
           blocos.push({ inicio: timestamp, fim: timestamp });
         } else {
           ultimoBloco.fim = timestamp;
