@@ -281,6 +281,13 @@
                   <option value="mensagens">Mais mensagens</option>
                 </select>
               </div>
+              <select class="field" id="convPeriodoFiltro" onchange="filtrarConversas()" style="margin-top:8px;">
+                <option value="todos">Qualquer período</option>
+                <option value="1">Ativas hoje</option>
+                <option value="7">Últimos 7 dias</option>
+                <option value="30">Últimos 30 dias</option>
+                <option value="90">Últimos 90 dias</option>
+              </select>
             </div>
             <div class="conv-list-items" id="convLista"><p style="padding:14px;font-size:13px;color:var(--muted);">Carregando...</p></div>
           </div>
@@ -633,8 +640,10 @@ function filtrarConversas() {
   const q = document.getElementById('convFiltro').value.toLowerCase();
   const tipo = document.getElementById('convTipoFiltro').value;
   const ordenacao = document.getElementById('convOrdenacao').value;
+  const periodo = document.getElementById('convPeriodoFiltro').value;
+  const cutoff = periodo === 'todos' ? 0 : Date.now() - Number(periodo) * 24 * 60 * 60 * 1000;
   _conv.filtrada = _conv.lista
-    .filter(c => c._label.toLowerCase().includes(q) && (tipo === 'todos' || (tipo === 'favoritos' ? c.favorito : c.tipo === tipo)))
+    .filter(c => c._label.toLowerCase().includes(q) && (tipo === 'todos' || (tipo === 'favoritos' ? c.favorito : c.tipo === tipo)) && (!cutoff || new Date(c.ultima_em || 0).getTime() >= cutoff))
     .sort((a, b) => {
       if (ordenacao === 'mensagens') return Number(b.total || 0) - Number(a.total || 0);
       const aData = new Date(a.ultima_em || 0).getTime();
@@ -670,8 +679,10 @@ function renderConvLista() {
     const data = c.ultima_em ? new Date(c.ultima_em).toLocaleDateString('pt-BR') : 'sem data';
     const tipoLabel = c.tipo === 'privado' ? 'privado' : 'grupo';
     const apagadas = Number(c.apagadas || 0);
+    const preview = String(c.ultima_preview || '').trim();
     return `<div class="conv-item ${ativo ? 'active' : ''}" onclick="selecionarConv(${i})" title="${esc(c._label)}">
       <div class="conv-item-title">${c.favorito ? '★ ' : ''}${esc(c._label)}</div>
+      ${preview ? `<div style="font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px;">${esc(preview)}</div>` : ''}
       <div class="conv-item-meta">
         <span class="badge ${c.tipo === 'privado' ? 'badge-blue' : 'badge-purple'}">${tipoLabel}</span>
         <span>${total} msg${total !== 1 ? 's' : ''}</span>
@@ -690,8 +701,8 @@ async function selecionarConv(i) {
   _conv.busca = '';
   document.getElementById('convBusca').value = '';
   _conv.sel = c.tipo === 'privado'
-    ? { tipo: 'privado', uid1: c.usuario1_id, uid2: c.usuario2_id, titulo: c._label, totalResumo: c.total, apagadas: c.apagadas, ultimaEm: c.ultima_em, chave: c.chave, favorito: c.favorito, etiquetas: c.etiquetas || [] }
-    : { tipo: 'grupo', grupoId: c.grupo_id, titulo: c.nome, totalResumo: c.total, apagadas: c.apagadas, ultimaEm: c.ultima_em, chave: c.chave, favorito: c.favorito, etiquetas: c.etiquetas || [] };
+    ? { tipo: 'privado', uid1: c.usuario1_id, uid2: c.usuario2_id, titulo: c._label, totalResumo: c.total, primeiraEm: c.primeira_em, apagadas: c.apagadas, ultimaEm: c.ultima_em, chave: c.chave, favorito: c.favorito, etiquetas: c.etiquetas || [] }
+    : { tipo: 'grupo', grupoId: c.grupo_id, titulo: c.nome, totalResumo: c.total, primeiraEm: c.primeira_em, apagadas: c.apagadas, ultimaEm: c.ultima_em, chave: c.chave, favorito: c.favorito, etiquetas: c.etiquetas || [] };
   renderConvLista();
   await carregarMsgsConv();
 }
@@ -714,7 +725,7 @@ async function carregarMsgsConv() {
         <span class="badge ${s.tipo === 'privado' ? 'badge-blue' : 'badge-purple'}">${tipoLabel}</span>
         <span class="conv-header-title-text">${esc(s.titulo)}</span>
       </div>
-      <div class="conv-header-sub">${_conv.total} mensagens${s.apagadas ? ` · ${s.apagadas} apagadas` : ''} · última atividade: ${s.ultimaEm ? new Date(s.ultimaEm).toLocaleString('pt-BR') : 'sem registro'} · página ${_conv.pagina}</div>
+      <div class="conv-header-sub">${_conv.total} mensagens${s.apagadas ? ` · ${s.apagadas} apagadas` : ''} · primeira: ${s.primeiraEm ? new Date(s.primeiraEm).toLocaleDateString('pt-BR') : 'sem registro'} · última: ${s.ultimaEm ? new Date(s.ultimaEm).toLocaleString('pt-BR') : 'sem registro'} · página ${_conv.pagina}</div>
       <div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap;">
         <button class="btn btn-secondary btn-sm" onclick="alternarFavoritoConv()">${s.favorito ? '★ Favorita' : '☆ Favoritar'}</button>
         <input class="field" id="convEtiquetas" value="${esc((s.etiquetas || []).join(', '))}" placeholder="Etiquetas separadas por vírgula" style="width:260px;padding:6px 9px;" />

@@ -4274,19 +4274,22 @@ app.get('/api/admin/conversas', verificarToken, (req, res) => {
     if (!pares.has(key)) {
       const u1 = db.usuarios.find((u) => u.id === ids[0]);
       const u2 = db.usuarios.find((u) => u.id === ids[1]);
-      pares.set(key, { tipo: 'privado', usuario1_id: ids[0], usuario1_nome: u1?.nome || `#${ids[0]}`, usuario2_id: ids[1], usuario2_nome: u2?.nome || `#${ids[1]}`, total: 0, apagadas: 0, ultima_em: null });
+      pares.set(key, { tipo: 'privado', usuario1_id: ids[0], usuario1_nome: u1?.nome || `#${ids[0]}`, usuario2_id: ids[1], usuario2_nome: u2?.nome || `#${ids[1]}`, total: 0, apagadas: 0, primeira_em: null, ultima_em: null, ultima_preview: '' });
     }
     const par = pares.get(key);
     par.total++;
     if (m.apagada) par.apagadas++;
-    if (!par.ultima_em || m.criado_em > par.ultima_em) par.ultima_em = m.criado_em;
+    if (!par.primeira_em || m.criado_em < par.primeira_em) par.primeira_em = m.criado_em;
+    if (!par.ultima_em || m.criado_em > par.ultima_em) { par.ultima_em = m.criado_em; par.ultima_preview = getMessagePreviewText(m); }
   });
 
   // Grupos
   const grupos = db.grupos.map((g) => {
     const msgs = getAdminConversationMessages().filter((m) => m.grupo_id === g.id);
     const ultima = msgs.reduce((maisRecente, m) => !maisRecente || new Date(m.criado_em || 0) > new Date(maisRecente) ? m.criado_em : maisRecente, null);
-    return { tipo: 'grupo', grupo_id: g.id, nome: g.nome, total: msgs.length, apagadas: msgs.filter((m) => m.apagada).length, ultima_em: ultima };
+    const primeira = msgs.reduce((maisAntiga, m) => !maisAntiga || new Date(m.criado_em || 0) < new Date(maisAntiga) ? m.criado_em : maisAntiga, null);
+    const ultimaMensagem = msgs.find((m) => m.criado_em === ultima);
+    return { tipo: 'grupo', grupo_id: g.id, nome: g.nome, total: msgs.length, apagadas: msgs.filter((m) => m.apagada).length, primeira_em: primeira, ultima_em: ultima, ultima_preview: ultimaMensagem ? getMessagePreviewText(ultimaMensagem) : '' };
   });
 
   const privados = Array.from(pares.values()).map((item) => ({ ...item, chave: getAdminConversationMetaKey('privado', { uid1: item.usuario1_id, uid2: item.usuario2_id }), ...getAdminConversationMeta(getAdminConversationMetaKey('privado', { uid1: item.usuario1_id, uid2: item.usuario2_id })) })).sort((a, b) => (b.ultima_em || '') > (a.ultima_em || '') ? 1 : -1);
