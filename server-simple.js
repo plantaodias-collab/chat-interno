@@ -4311,6 +4311,72 @@ app.get('/api/admin/conversas', verificarToken, (req, res) => {
   res.json({ privados, grupos: gruposOrdenados });
 });
 
+function buildAdminConversationSummary(tipo, values) {
+  const key = getAdminConversationMetaKey(tipo, values);
+  if (!key) return null;
+  const messages = getAdminConversationMessages().filter((m) => {
+    if (tipo === 'grupo') return Number(m.grupo_id) === Number(values.grupoId);
+    return (Number(m.usuario_id) === Number(values.uid1) && Number(m.usuario_destino_id) === Number(values.uid2)) ||
+      (Number(m.usuario_id) === Number(values.uid2) && Number(m.usuario_destino_id) === Number(values.uid1));
+  });
+  const participants = new Map();
+  const terms = new Map();
+  const stopWords = new Set('para com uma por que não dos das nos nas uma umas uns seu sua seus suas isso isso como mais muito muita muito de do da e o a os as em um no na ao aos às se por mas ou'.split(' '));
+  messages.forEach((m) => {
+    const user = db.usuarios.find((u) => Number(u.id) === Number(m.usuario_id));
+    const participant = participants.get(Number(m.usuario_id)) || { id: Number(m.usuario_id), nome: user?.nome || `#${m.usuario_id}`, total: 0 };
+    participant.total++;
+    participants.set(Number(m.usuario_id), participant);
+    if (!m.apagada && m.tipo !== 'arquivo') {
+      normalizeSearchText(m.conteudo).split(/[^a-z0-9]+/).filter((word) => word.length >= 4 && !stopWords.has(word)).forEach((word) => terms.set(word, (terms.get(word) || 0) + 1));
+    }
+  });
+  const datas = messages.map((m) => new Date(m.criado_em || 0).getTime()).filter(Number.isFinite).filter(Boolean);
+  const primeira = datas.length ? new Date(Math.min(...datas)).toISOString() : null;
+  const ultima = datas.length ? new Date(Math.max(...datas)).toISOString() : null;
+  const periodoDias = primeira && ultima ? Math.max(1, Math.ceil((new Date(ultima) - new Date(primeira)) / 86400000)) : 0;
+  return {
+    chave: key, tipo, total: messages.length, apagadas: messages.filter((m) => m.apagada).length,
+    participantes: [...participants.values()].sort((a, b) => b.total - a.total), primeira_em: primeira, ultima_em: ultima,
+    periodo_dias: periodoDias, top_termos: [...terms.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([termo, total]) => ({ termo, total }))
+  };
+}
+
+app.get('/api/admin/conversas/resumo/privadas/:uid1/:uid2', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const resumo = buildAdminConversationSummary('privado', { uid1: Number(req.params.uid1), uid2: Number(req.params.uid2) });
+  if (!resumo) return res.status(400).json({ erro: 'Conversa invalida' });
+  res.json(resumo);
+});
+
+app.get('/api/admin/conversas/resumo/grupo/:grupoId', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const resumo = buildAdminConversationSummary('grupo', { grupoId: Number(req.params.grupoId) });
+  if (!resumo) return res.status(400).json({ erro: 'Conversa invalida' });
+  res.json(resumo);
+});
+
+app.get('/api/admin/busca-conversas', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const q = String(req.query.q || '').trim().slice(0, 100);
+  if (q.length < 2) return res.status(400).json({ erro: 'Informe ao menos 2 caracteres' });
+  const normalizedQuery = normalizeSearchText(q);
+  const resultados = new Map();
+  getAdminConversationMessages().forEach((m) => {
+    if (m.apagada || !normalizeSearchText(m.conteudo).includes(normalizedQuery)) return;
+    let tipo = 'grupo'; let key; let titulo;
+    if (m.grupo_id) { key = getAdminConversationMetaKey('grupo', { grupoId: m.grupo_id }); titulo = db.grupos.find((g) => Number(g.id) === Number(m.grupo_id))?.nome || `Grupo #${m.grupo_id}`; }
+    else if (m.usuario_destino_id) { tipo = 'privado'; key = getAdminConversationMetaKey('privado', { uid1: m.usuario_id, uid2: m.usuario_destino_id }); const nomes = [m.usuario_id, m.usuario_destino_id].map((id) => db.usuarios.find((u) => Number(u.id) === Number(id))?.nome || `#${id}`); titulo = nomes.join(' <-> '); }
+    if (!key) return;
+    const item = resultados.get(key) || { tipo, titulo, chave: key, ocorrencias: 0, amostras: [], ultima_em: m.criado_em, uid1: tipo === 'privado' ? Math.min(Number(m.usuario_id), Number(m.usuario_destino_id)) : null, uid2: tipo === 'privado' ? Math.max(Number(m.usuario_id), Number(m.usuario_destino_id)) : null, grupoId: tipo === 'grupo' ? Number(m.grupo_id) : null };
+    item.ocorrencias++;
+    if (new Date(m.criado_em || 0) > new Date(item.ultima_em || 0)) item.ultima_em = m.criado_em;
+    if (item.amostras.length < 3) item.amostras.push({ data: m.criado_em, usuario_nome: db.usuarios.find((u) => Number(u.id) === Number(m.usuario_id))?.nome || 'Desconhecido', trecho: String(m.conteudo || '').slice(0, 180) });
+    resultados.set(key, item);
+  });
+  res.json({ consulta: q, resultados: [...resultados.values()].sort((a, b) => new Date(b.ultima_em || 0) - new Date(a.ultima_em || 0)).slice(0, 50) });
+});
+
 app.post('/api/admin/conversas/meta', verificarToken, (req, res) => {
   if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
   const tipo = req.body?.tipo === 'grupo' ? 'grupo' : 'privado';
@@ -4319,7 +4385,17 @@ app.post('/api/admin/conversas/meta', verificarToken, (req, res) => {
   const etiquetas = [...new Set((Array.isArray(req.body?.etiquetas) ? req.body.etiquetas : []).map((item) => sanitizeText(item).slice(0, 30)).filter(Boolean))].slice(0, 8);
   db.admin_conversas[key] = { favorito: Boolean(req.body?.favorito), etiquetas, atualizado_em: new Date().toISOString(), atualizado_por: req.userId };
   db.saveFile('admin-conversas.json', db.admin_conversas);
+  registrarAuditoria({ acao: req.body?.favorito !== undefined ? 'favorito_alterado' : 'etiquetas_alteradas', usuarioId: req.userId, usuarioNome: db.usuarios.find((u) => Number(u.id) === Number(req.userId))?.nome, detalhe: key, req });
   res.json({ chave: key, favorito: db.admin_conversas[key].favorito, etiquetas });
+});
+
+app.post('/api/admin/auditoria/evento', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const permitidas = new Set(['consulta_conversa', 'busca_conversas']);
+  const acao = String(req.body?.acao || '').trim();
+  if (!permitidas.has(acao)) return res.status(400).json({ erro: 'Evento invalido' });
+  registrarAuditoria({ acao, usuarioId: req.userId, usuarioNome: db.usuarios.find((u) => Number(u.id) === Number(req.userId))?.nome, detalhe: String(req.body?.detalhe || '').slice(0, 300), req });
+  res.json({ ok: true });
 });
 
 app.post('/api/admin/conversas/exportar', verificarToken, (req, res) => {

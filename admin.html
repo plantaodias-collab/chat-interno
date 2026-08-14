@@ -268,6 +268,8 @@
           <div class="conv-list-col">
             <div class="conv-list-tools">
               <input class="field" id="convFiltro" placeholder="Buscar conversa..." oninput="filtrarConversas()" />
+              <div style="display:flex;gap:6px;margin-top:8px;"><input class="field" id="convBuscaGlobal" placeholder="Buscar em todas as mensagens..." onkeydown="if(event.key==='Enter') buscarConversasGlobal()" /><button class="btn btn-primary btn-sm" onclick="buscarConversasGlobal()">Buscar</button></div>
+              <div id="convBuscaGlobalResultados" style="margin-top:8px;"></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
                 <select class="field" id="convTipoFiltro" onchange="filtrarConversas()">
                   <option value="todos">Todos os tipos</option>
@@ -624,7 +626,39 @@ async function toggleUsuario(id, ativo) {
 }
 
 // ── CONVERSAS ──────────────────────────────────────────────────────────────
-const _conv = { lista: [], filtrada: [], sel: null, pagina: 1, porPag: 100, total: 0, busca: '' };
+const _conv = { lista: [], filtrada: [], sel: null, pagina: 1, porPag: 100, total: 0, busca: '', buscaResultados: [] };
+
+function registrarEventoAdmin(acao, detalhe) {
+  return apiFetch('/api/admin/auditoria/evento', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acao, detalhe }) }).catch(() => null);
+}
+
+async function buscarConversasGlobal() {
+  const input = document.getElementById('convBuscaGlobal');
+  const q = String(input?.value || '').trim();
+  if (q.length < 2) { toast('Digite ao menos 2 caracteres para buscar.', 'aviso'); return; }
+  const box = document.getElementById('convBuscaGlobalResultados');
+  box.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:6px 0;">Buscando...</div>';
+  const r = await apiFetch(`/api/admin/busca-conversas?q=${encodeURIComponent(q)}`);
+  const d = await r.json();
+  if (!r.ok) { box.innerHTML = `<div style="font-size:11px;color:var(--danger);padding:6px 0;">${esc(d.erro || 'Erro na busca')}</div>`; return; }
+  _conv.buscaResultados = d.resultados || [];
+  registrarEventoAdmin('busca_conversas', q);
+  box.innerHTML = _conv.buscaResultados.length ? `<div style="font-size:11px;color:var(--muted);margin-bottom:4px;">${_conv.buscaResultados.length} conversa(s) encontrada(s)</div>` + _conv.buscaResultados.map((item, i) => `<button type="button" onclick="abrirResultadoBusca(${i})" style="display:block;width:100%;text-align:left;background:rgba(37,99,235,.10);border:1px solid rgba(96,165,250,.18);border-radius:7px;color:var(--text);padding:7px;margin-top:5px;cursor:pointer;"><strong style="font-size:11px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(item.titulo)}</strong><span style="font-size:10px;color:var(--muted);">${item.ocorrencias} ocorrência(s) · ${esc(item.amostras?.[0]?.trecho || '')}</span></button>`).join('') : '<div style="font-size:11px;color:var(--muted);padding:6px 0;">Nenhuma ocorrência encontrada.</div>';
+}
+
+function abrirResultadoBusca(index) {
+  const result = _conv.buscaResultados[index];
+  if (!result) return;
+  const item = _conv.lista.find((c) => result.tipo === 'grupo' ? Number(c.grupo_id) === Number(result.grupoId) : c.tipo === 'privado' && Number(c.usuario1_id) === Number(result.uid1) && Number(c.usuario2_id) === Number(result.uid2));
+  if (!item) { toast('Conversa não está disponível na lista.', 'aviso'); return; }
+  _conv.filtrada = _conv.lista;
+  document.getElementById('convFiltro').value = '';
+  document.getElementById('convTipoFiltro').value = 'todos';
+  document.getElementById('convStatusFiltro').value = 'todos';
+  document.getElementById('convPeriodoFiltro').value = 'todos';
+  renderConvLista();
+  selecionarConv(_conv.filtrada.indexOf(item));
+}
 
 async function carregarConversas() {
   const el = document.getElementById('convLista');
@@ -715,6 +749,7 @@ async function selecionarConv(i) {
     ? { tipo: 'privado', uid1: c.usuario1_id, uid2: c.usuario2_id, titulo: c._label, totalResumo: c.total, primeiraEm: c.primeira_em, apagadas: c.apagadas, ultimaEm: c.ultima_em, chave: c.chave, favorito: c.favorito, etiquetas: c.etiquetas || [], status: c.status || '' }
     : { tipo: 'grupo', grupoId: c.grupo_id, titulo: c.nome, totalResumo: c.total, primeiraEm: c.primeira_em, apagadas: c.apagadas, ultimaEm: c.ultima_em, chave: c.chave, favorito: c.favorito, etiquetas: c.etiquetas || [], status: c.status || '' };
   renderConvLista();
+  registrarEventoAdmin('consulta_conversa', c.chave || c._label);
   await carregarMsgsConv();
 }
 
@@ -742,7 +777,9 @@ async function carregarMsgsConv() {
         <input class="field" id="convEtiquetas" value="${esc((s.etiquetas || []).join(', '))}" placeholder="Etiquetas separadas por vírgula" style="width:260px;padding:6px 9px;" />
         <button class="btn btn-secondary btn-sm" onclick="salvarEtiquetasConv()">Salvar etiquetas</button>
         <button class="btn btn-primary btn-sm" onclick="exportarConvCSV()">Exportar CSV</button>
+        <button class="btn btn-secondary btn-sm" onclick="carregarResumoConv()">Ver resumo</button>
       </div>
+      <div id="convResumo" style="margin-top:10px;"></div>
     </div>`;
     document.getElementById('convTotal').textContent = `${_conv.total} mensagem${_conv.total !== 1 ? 's' : ''}`;
     const body = document.getElementById('convMsgs');
@@ -750,9 +787,22 @@ async function carregarMsgsConv() {
       ? mensagens.map(m => renderMsgBubble(m, s.tipo === 'privado' ? s.uid1 : null)).join('')
       : '<div class="conv-empty">Nenhuma mensagem encontrada nesta pagina.</div>';
     renderPagConv();
+    carregarResumoConv();
   } catch {
     document.getElementById('convMsgs').innerHTML = '<div class="conv-empty" style="color:var(--danger);">Erro ao carregar mensagens.</div>';
   }
+}
+
+async function carregarResumoConv() {
+  const s = _conv.sel; const box = document.getElementById('convResumo');
+  if (!s || !box) return;
+  box.innerHTML = '<span style="font-size:11px;color:var(--muted);">Gerando resumo...</span>';
+  const url = s.tipo === 'privado' ? `/api/admin/conversas/resumo/privadas/${s.uid1}/${s.uid2}` : `/api/admin/conversas/resumo/grupo/${s.grupoId}`;
+  const r = await apiFetch(url); if (!r.ok) { box.innerHTML = ''; return; }
+  const d = await r.json();
+  const pessoas = (d.participantes || []).map((p) => `${esc(p.nome)}: ${p.total}`).join(' · ');
+  const termos = (d.top_termos || []).map((t) => `<span class="badge badge-grey">${esc(t.termo)} ${t.total}</span>`).join(' ');
+  box.innerHTML = `<div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:rgba(30,41,59,.45);font-size:11px;color:var(--muted);"><strong style="color:var(--text);">Resumo automático</strong> · ${d.total} mensagens · ${d.periodo_dias || 0} dia(s) · ${d.apagadas || 0} apagada(s)<br><span>${pessoas || 'Sem participantes'}</span>${termos ? `<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;">Termos: ${termos}</div>` : ''}</div>`;
 }
 
 async function salvarMetaConv({ favorito = _conv.sel?.favorito, etiquetas = _conv.sel?.etiquetas || [] } = {}) {
