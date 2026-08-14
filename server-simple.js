@@ -4516,6 +4516,49 @@ app.get('/api/admin/metricas', verificarToken, (req, res) => {
     .slice(0, 10)
     .map(([nome, total]) => ({ nome, total }));
 
+  // Atividade estimada por usuario nos ultimos 14 dias. Uma nova atividade
+  // inicia outro bloco quando fica mais de 60 minutos sem mensagens.
+  const periodoAtividadeDias = 14;
+  const atividadeCutoff = Date.now() - periodoAtividadeDias * 24 * 60 * 60 * 1000;
+  const mensagensPorUsuario = new Map();
+  msgs.forEach((m) => {
+    const uid = Number(m.usuario_id);
+    const timestamp = new Date(m.criado_em || '').getTime();
+    if (!uid || !Number.isFinite(timestamp) || timestamp < atividadeCutoff) return;
+    if (!mensagensPorUsuario.has(uid)) mensagensPorUsuario.set(uid, []);
+    mensagensPorUsuario.get(uid).push(timestamp);
+  });
+  const atividadeUsuarios = Array.from(mensagensPorUsuario.entries())
+    .map(([uid, timestamps]) => {
+      timestamps.sort((a, b) => a - b);
+      const blocos = [];
+      timestamps.forEach((timestamp) => {
+        const ultimoBloco = blocos[blocos.length - 1];
+        if (!ultimoBloco || timestamp - ultimoBloco.fim > 60 * 60 * 1000) {
+          blocos.push({ inicio: timestamp, fim: timestamp });
+        } else {
+          ultimoBloco.fim = timestamp;
+        }
+      });
+      const tempoAtivoMin = blocos.reduce(
+        (total, bloco) => total + Math.max(1, Math.round((bloco.fim - bloco.inicio) / 60000)),
+        0
+      );
+      const usuario = usuarios.find((item) => Number(item.id) === uid);
+      return {
+        usuarioId: uid,
+        nome: usuario?.nome || `#${uid}`,
+        total: timestamps.length,
+        diasAtivos: new Set(timestamps.map((timestamp) => new Date(timestamp).toISOString().slice(0, 10))).size,
+        primeiraAtividade: new Date(timestamps[0]).toISOString(),
+        ultimaAtividade: new Date(timestamps[timestamps.length - 1]).toISOString(),
+        blocosAtivos: blocos.length,
+        tempoAtivoMin,
+        mensagensPorHoraAtiva: Number((timestamps.length / (tempoAtivoMin / 60)).toFixed(1))
+      };
+    })
+    .sort((a, b) => b.total - a.total);
+
   // Horários de pico (por hora do dia)
   const porHora = Array(24).fill(0);
   msgs.forEach((m) => {
@@ -4572,6 +4615,8 @@ app.get('/api/admin/metricas', verificarToken, (req, res) => {
   res.json({
     porDia,
     topUsuarios,
+    periodoAtividadeDias,
+    atividadeUsuarios,
     porHora,
     totalMsgs,
     totalUrgentes,

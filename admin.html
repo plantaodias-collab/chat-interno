@@ -344,6 +344,11 @@
           <div><canvas id="chartDia" style="max-height:220px;"></canvas></div>
           <div><canvas id="chartUsr" style="max-height:220px;"></canvas></div>
         </div>
+        <div style="margin-top:24px;max-width:1100px;">
+          <div class="panel-title" style="font-size:15px;margin-bottom:6px;">Atividade estimada por usuário</div>
+          <p style="color:var(--muted);font-size:12px;margin:0 0 12px;">Últimos 14 dias. Um bloco ativo considera mensagens com intervalo máximo de 60 minutos; o tempo não representa jornada de trabalho.</p>
+          <div id="metricasAtividade"><p style="color:var(--muted);">Carregando...</p></div>
+        </div>
       </div>
 
       <!-- AUDITORIA -->
@@ -869,10 +874,30 @@ async function carregarMetricas() {
   if (_chartUsr) _chartUsr.destroy();
   _chartDia = new Chart(ctxD, { type: 'bar', data: { labels: Object.keys(d.porDia).map(k=>k.slice(5)), datasets: [{ label: 'Msgs/dia', data: Object.values(d.porDia), backgroundColor: 'rgba(59,130,246,.7)', borderRadius: 4 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } });
   if (d.topUsuarios.length)
+    renderAtividadeMetrics(d);
     _chartUsr = new Chart(ctxU, { type: 'bar', data: { labels: d.topUsuarios.map(u=>u.nome), datasets: [{ label: 'Msgs/usuário', data: d.topUsuarios.map(u=>u.total), backgroundColor: 'rgba(139,92,246,.7)', borderRadius: 4 }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } } });
 }
 
 // ── AUDITORIA ──────────────────────────────────────────────────────────────
+function renderAtividadeMetrics(d) {
+  const atividadeEl = document.getElementById('metricasAtividade');
+  const atividade = Array.isArray(d.atividadeUsuarios) ? d.atividadeUsuarios : [];
+  const formatarTempo = (minutos) => {
+    const total = Number(minutos) || 0;
+    if (total < 60) return `${total} min`;
+    return `${Math.floor(total / 60)}h ${total % 60}min`;
+  };
+  atividadeEl.innerHTML = atividade.length ? `<div style="overflow-x:auto;"><table class="data-table">
+    <thead><tr><th>Usuário</th><th>Mensagens</th><th>Dias ativos</th><th>Primeira atividade</th><th>Última atividade</th><th>Blocos ativos</th><th>Tempo estimado</th><th>Msgs/h ativa</th></tr></thead>
+    <tbody>${atividade.map(u => `<tr>
+      <td>${esc(u.nome)}</td><td>${u.total}</td><td>${u.diasAtivos}</td>
+      <td style="color:var(--muted);">${fmtDate(u.primeiraAtividade)}</td>
+      <td style="color:var(--muted);">${fmtDate(u.ultimaAtividade)}</td>
+      <td>${u.blocosAtivos}</td><td>${formatarTempo(u.tempoAtivoMin)}</td><td>${u.mensagensPorHoraAtiva}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>` : '<p style="color:var(--muted);">Nenhuma atividade registrada no período.</p>';
+}
+
 async function carregarAuditoria() {
   const el = document.getElementById('listaAuditoria');
   el.innerHTML = 'Carregando...';
