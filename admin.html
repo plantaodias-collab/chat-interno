@@ -273,6 +273,7 @@
                   <option value="todos">Todos os tipos</option>
                   <option value="privado">Privadas</option>
                   <option value="grupo">Grupos</option>
+                  <option value="favoritos">Favoritas</option>
                 </select>
                 <select class="field" id="convOrdenacao" onchange="filtrarConversas()">
                   <option value="recente">Mais recentes</option>
@@ -633,7 +634,7 @@ function filtrarConversas() {
   const tipo = document.getElementById('convTipoFiltro').value;
   const ordenacao = document.getElementById('convOrdenacao').value;
   _conv.filtrada = _conv.lista
-    .filter(c => c._label.toLowerCase().includes(q) && (tipo === 'todos' || c.tipo === tipo))
+    .filter(c => c._label.toLowerCase().includes(q) && (tipo === 'todos' || (tipo === 'favoritos' ? c.favorito : c.tipo === tipo)))
     .sort((a, b) => {
       if (ordenacao === 'mensagens') return Number(b.total || 0) - Number(a.total || 0);
       const aData = new Date(a.ultima_em || 0).getTime();
@@ -670,11 +671,12 @@ function renderConvLista() {
     const tipoLabel = c.tipo === 'privado' ? 'privado' : 'grupo';
     const apagadas = Number(c.apagadas || 0);
     return `<div class="conv-item ${ativo ? 'active' : ''}" onclick="selecionarConv(${i})" title="${esc(c._label)}">
-      <div class="conv-item-title">${esc(c._label)}</div>
+      <div class="conv-item-title">${c.favorito ? '★ ' : ''}${esc(c._label)}</div>
       <div class="conv-item-meta">
         <span class="badge ${c.tipo === 'privado' ? 'badge-blue' : 'badge-purple'}">${tipoLabel}</span>
         <span>${total} msg${total !== 1 ? 's' : ''}</span>
         ${apagadas ? `<span class="badge badge-red">${apagadas} apagada${apagadas !== 1 ? 's' : ''}</span>` : ''}
+        ${(c.etiquetas || []).slice(0, 2).map(tag => `<span class="badge badge-amber">${esc(tag)}</span>`).join('')}
         <span class="conv-item-date">${data}</span>
       </div>
     </div>`;
@@ -688,8 +690,8 @@ async function selecionarConv(i) {
   _conv.busca = '';
   document.getElementById('convBusca').value = '';
   _conv.sel = c.tipo === 'privado'
-    ? { tipo: 'privado', uid1: c.usuario1_id, uid2: c.usuario2_id, titulo: c._label, totalResumo: c.total, apagadas: c.apagadas, ultimaEm: c.ultima_em }
-    : { tipo: 'grupo', grupoId: c.grupo_id, titulo: c.nome, totalResumo: c.total, apagadas: c.apagadas, ultimaEm: c.ultima_em };
+    ? { tipo: 'privado', uid1: c.usuario1_id, uid2: c.usuario2_id, titulo: c._label, totalResumo: c.total, apagadas: c.apagadas, ultimaEm: c.ultima_em, chave: c.chave, favorito: c.favorito, etiquetas: c.etiquetas || [] }
+    : { tipo: 'grupo', grupoId: c.grupo_id, titulo: c.nome, totalResumo: c.total, apagadas: c.apagadas, ultimaEm: c.ultima_em, chave: c.chave, favorito: c.favorito, etiquetas: c.etiquetas || [] };
   renderConvLista();
   await carregarMsgsConv();
 }
@@ -713,6 +715,12 @@ async function carregarMsgsConv() {
         <span class="conv-header-title-text">${esc(s.titulo)}</span>
       </div>
       <div class="conv-header-sub">${_conv.total} mensagens${s.apagadas ? ` · ${s.apagadas} apagadas` : ''} · última atividade: ${s.ultimaEm ? new Date(s.ultimaEm).toLocaleString('pt-BR') : 'sem registro'} · página ${_conv.pagina}</div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="alternarFavoritoConv()">${s.favorito ? '★ Favorita' : '☆ Favoritar'}</button>
+        <input class="field" id="convEtiquetas" value="${esc((s.etiquetas || []).join(', '))}" placeholder="Etiquetas separadas por vírgula" style="width:260px;padding:6px 9px;" />
+        <button class="btn btn-secondary btn-sm" onclick="salvarEtiquetasConv()">Salvar etiquetas</button>
+        <button class="btn btn-primary btn-sm" onclick="exportarConvCSV()">Exportar CSV</button>
+      </div>
     </div>`;
     document.getElementById('convTotal').textContent = `${_conv.total} mensagem${_conv.total !== 1 ? 's' : ''}`;
     const body = document.getElementById('convMsgs');
@@ -723,6 +731,62 @@ async function carregarMsgsConv() {
   } catch {
     document.getElementById('convMsgs').innerHTML = '<div class="conv-empty" style="color:var(--danger);">Erro ao carregar mensagens.</div>';
   }
+}
+
+async function salvarMetaConv({ favorito = _conv.sel?.favorito, etiquetas = _conv.sel?.etiquetas || [] } = {}) {
+  const s = _conv.sel;
+  if (!s) return false;
+  const r = await apiFetch('/api/admin/conversas/meta', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tipo: s.tipo, uid1: s.uid1, uid2: s.uid2, grupoId: s.grupoId, favorito, etiquetas })
+  });
+  if (!r.ok) { toast('Não foi possível salvar os dados da conversa.', 'erro'); return false; }
+  const d = await r.json();
+  _conv.sel.favorito = d.favorito;
+  _conv.sel.etiquetas = d.etiquetas || [];
+  const item = _conv.lista.find(c => c.chave === d.chave);
+  if (item) { item.favorito = d.favorito; item.etiquetas = d.etiquetas || []; }
+  filtrarConversas();
+  renderConvLista();
+  return true;
+}
+
+async function alternarFavoritoConv() {
+  await salvarMetaConv({ favorito: !_conv.sel?.favorito, etiquetas: _conv.sel?.etiquetas || [] });
+  if (_conv.sel) carregarMsgsConv();
+}
+
+async function salvarEtiquetasConv() {
+  const etiquetas = String(document.getElementById('convEtiquetas')?.value || '')
+    .split(',').map(item => item.trim()).filter(Boolean);
+  if (await salvarMetaConv({ favorito: _conv.sel?.favorito, etiquetas })) {
+    toast('Etiquetas salvas.');
+    carregarMsgsConv();
+  }
+}
+
+async function exportarConvCSV() {
+  const s = _conv.sel;
+  if (!s) return;
+  const url = s.tipo === 'privado'
+    ? `/api/admin/conversas/privadas/${s.uid1}/${s.uid2}?pagina=1&por_pagina=10000`
+    : `/api/admin/conversas/grupo/${s.grupoId}?pagina=1&por_pagina=10000`;
+  const r = await apiFetch(url);
+  if (!r.ok) { toast('Não foi possível exportar a conversa.', 'erro'); return; }
+  const data = await r.json();
+  const escCsv = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
+  const rows = [['Data', 'Usuário', 'Tipo', 'Mensagem', 'Arquivo']];
+  (data.mensagens || []).slice().reverse().forEach(m => rows.push([
+    m.criado_em ? new Date(m.criado_em).toLocaleString('pt-BR') : '',
+    m.usuario_nome || '', m.tipo || '', m.conteudo || '', m.arquivo_nome_original || ''
+  ]));
+  const blob = new Blob(['\ufeff' + rows.map(row => row.map(escCsv).join(';')).join('\n')], { type: 'text/csv;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `conversa-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
 }
 
 function renderMsgBubble(m, refUid) {

@@ -102,7 +102,7 @@ const ALLOWED_MIME_EXTENSIONS = {
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
 };
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
-const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'notas-conversa.json', 'etiquetas-conversa.json', 'responsavel-conversa.json', 'mensagens-agendadas.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'base-ia.json', 'base-ia-versoes.json', 'ia-historico.json', 'ia-feedback.json', 'ia-melhorias.json', 'ia-config.json', 'ia-rascunhos.json', 'codigo-normas-extrajudicial-tjsc-2026.pdf', 'codigo-normas-extrajudicial-tjsc-2026.json', 'lei-registros-publicos-planalto.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json'];
+const DATA_FILE_NAMES = ['usuarios.json', 'grupos.json', 'membros.json', 'mensagens.json', 'mensagens-apagadas.json', 'painel-senhas.json', 'backup-agendamento.json', 'conversas-pendentes.json', 'status-atendimento.json', 'notas-conversa.json', 'etiquetas-conversa.json', 'responsavel-conversa.json', 'mensagens-agendadas.json', 'mensagens-prioritarias.json', 'mensagens-fixadas.json', 'templates.json', 'base-ia.json', 'base-ia-versoes.json', 'ia-historico.json', 'ia-feedback.json', 'ia-melhorias.json', 'ia-config.json', 'ia-rascunhos.json', 'codigo-normas-extrajudicial-tjsc-2026.pdf', 'codigo-normas-extrajudicial-tjsc-2026.json', 'lei-registros-publicos-planalto.json', 'auditoria.json', 'push-subscriptions.json', 'escala-plantao.json', 'admin-conversas.json'];
 
 // Conteúdo inicial público e aprovado. Depois da primeira edição pelo painel,
 // a cópia persistida no armazenamento do Railway passa a prevalecer.
@@ -257,6 +257,7 @@ class SimpleDB {
     this.ia_config = this.loadFile('ia-config.json', { custo_medio_por_consulta: 0, orcamento_mensal: 0 });
     this.ia_rascunhos = this.loadFile('ia-rascunhos.json', []);
     this.auditoria = this.loadFile('auditoria.json', []);
+    this.admin_conversas = this.loadFile('admin-conversas.json', {});
     this.push_subscriptions = this.loadFile('push-subscriptions.json', []);
     this.escala_plantao = this.loadFile('escala-plantao.json', {
       escreventes: [],
@@ -333,6 +334,7 @@ class SimpleDB {
       ['ia-config.json', this.ia_config],
       ['ia-rascunhos.json', this.ia_rascunhos],
       ['push-subscriptions.json', this.push_subscriptions],
+      ['admin-conversas.json', this.admin_conversas],
       ['escala-plantao.json', this.escala_plantao]
     ];
     // auditoria is saved immediately on each append for safety
@@ -4246,6 +4248,20 @@ io.on('connection', (socket) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Lista todas as conversas (pares privados + grupos) com contagem
+function getAdminConversationMetaKey(tipo, values) {
+  if (tipo === 'grupo') return `grupo:${Number(values.grupoId)}`;
+  const ids = [Number(values.uid1), Number(values.uid2)].sort((a, b) => a - b);
+  return `privado:${ids[0]}:${ids[1]}`;
+}
+
+function getAdminConversationMeta(key) {
+  const meta = db.admin_conversas?.[key] || {};
+  return {
+    favorito: Boolean(meta.favorito),
+    etiquetas: Array.isArray(meta.etiquetas) ? meta.etiquetas : []
+  };
+}
+
 app.get('/api/admin/conversas', verificarToken, (req, res) => {
   if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
 
@@ -4273,10 +4289,21 @@ app.get('/api/admin/conversas', verificarToken, (req, res) => {
     return { tipo: 'grupo', grupo_id: g.id, nome: g.nome, total: msgs.length, apagadas: msgs.filter((m) => m.apagada).length, ultima_em: ultima };
   });
 
-  const privados = Array.from(pares.values()).sort((a, b) => (b.ultima_em || '') > (a.ultima_em || '') ? 1 : -1);
-  const gruposOrdenados = grupos.sort((a, b) => (b.ultima_em || '') > (a.ultima_em || '') ? 1 : -1);
+  const privados = Array.from(pares.values()).map((item) => ({ ...item, chave: getAdminConversationMetaKey('privado', { uid1: item.usuario1_id, uid2: item.usuario2_id }), ...getAdminConversationMeta(getAdminConversationMetaKey('privado', { uid1: item.usuario1_id, uid2: item.usuario2_id })) })).sort((a, b) => (b.ultima_em || '') > (a.ultima_em || '') ? 1 : -1);
+  const gruposOrdenados = grupos.map((item) => ({ ...item, chave: getAdminConversationMetaKey('grupo', { grupoId: item.grupo_id }), ...getAdminConversationMeta(getAdminConversationMetaKey('grupo', { grupoId: item.grupo_id })) })).sort((a, b) => (b.ultima_em || '') > (a.ultima_em || '') ? 1 : -1);
 
   res.json({ privados, grupos: gruposOrdenados });
+});
+
+app.post('/api/admin/conversas/meta', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const tipo = req.body?.tipo === 'grupo' ? 'grupo' : 'privado';
+  const key = getAdminConversationMetaKey(tipo, req.body || {});
+  if (!key || key.endsWith(':undefined')) return res.status(400).json({ erro: 'Conversa invalida' });
+  const etiquetas = [...new Set((Array.isArray(req.body?.etiquetas) ? req.body.etiquetas : []).map((item) => sanitizeText(item).slice(0, 30)).filter(Boolean))].slice(0, 8);
+  db.admin_conversas[key] = { favorito: Boolean(req.body?.favorito), etiquetas, atualizado_em: new Date().toISOString(), atualizado_por: req.userId };
+  db.saveFile('admin-conversas.json', db.admin_conversas);
+  res.json({ chave: key, favorito: db.admin_conversas[key].favorito, etiquetas });
 });
 
 // Mensagens de uma conversa privada (admin bypass — sem marcar como lida)
