@@ -4262,6 +4262,14 @@ function getAdminConversationMeta(key) {
   };
 }
 
+function getAdminConversationStatus(tipo, values) {
+  const key = tipo === 'grupo'
+    ? `grupo-${Number(values.grupoId)}`
+    : `privado-${[Number(values.uid1), Number(values.uid2)].sort((a, b) => a - b).join('-')}`;
+  const status = String(db.status_atendimento?.[key] || '').toLowerCase();
+  return isValidAttendanceStatus(status) ? status : '';
+}
+
 app.get('/api/admin/conversas', verificarToken, (req, res) => {
   if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
 
@@ -4274,7 +4282,7 @@ app.get('/api/admin/conversas', verificarToken, (req, res) => {
     if (!pares.has(key)) {
       const u1 = db.usuarios.find((u) => u.id === ids[0]);
       const u2 = db.usuarios.find((u) => u.id === ids[1]);
-      pares.set(key, { tipo: 'privado', usuario1_id: ids[0], usuario1_nome: u1?.nome || `#${ids[0]}`, usuario2_id: ids[1], usuario2_nome: u2?.nome || `#${ids[1]}`, total: 0, apagadas: 0, primeira_em: null, ultima_em: null, ultima_preview: '' });
+      pares.set(key, { tipo: 'privado', usuario1_id: ids[0], usuario1_nome: u1?.nome || `#${ids[0]}`, usuario2_id: ids[1], usuario2_nome: u2?.nome || `#${ids[1]}`, total: 0, apagadas: 0, primeira_em: null, ultima_em: null, ultima_preview: '', status: getAdminConversationStatus('privado', { uid1: ids[0], uid2: ids[1] }) });
     }
     const par = pares.get(key);
     par.total++;
@@ -4289,7 +4297,7 @@ app.get('/api/admin/conversas', verificarToken, (req, res) => {
     const ultima = msgs.reduce((maisRecente, m) => !maisRecente || new Date(m.criado_em || 0) > new Date(maisRecente) ? m.criado_em : maisRecente, null);
     const primeira = msgs.reduce((maisAntiga, m) => !maisAntiga || new Date(m.criado_em || 0) < new Date(maisAntiga) ? m.criado_em : maisAntiga, null);
     const ultimaMensagem = msgs.find((m) => m.criado_em === ultima);
-    return { tipo: 'grupo', grupo_id: g.id, nome: g.nome, total: msgs.length, apagadas: msgs.filter((m) => m.apagada).length, primeira_em: primeira, ultima_em: ultima, ultima_preview: ultimaMensagem ? getMessagePreviewText(ultimaMensagem) : '' };
+    return { tipo: 'grupo', grupo_id: g.id, nome: g.nome, total: msgs.length, apagadas: msgs.filter((m) => m.apagada).length, primeira_em: primeira, ultima_em: ultima, ultima_preview: ultimaMensagem ? getMessagePreviewText(ultimaMensagem) : '', status: getAdminConversationStatus('grupo', { grupoId: g.id }) };
   });
 
   const privados = Array.from(pares.values()).map((item) => ({ ...item, chave: getAdminConversationMetaKey('privado', { uid1: item.usuario1_id, uid2: item.usuario2_id }), ...getAdminConversationMeta(getAdminConversationMetaKey('privado', { uid1: item.usuario1_id, uid2: item.usuario2_id })) })).sort((a, b) => (b.ultima_em || '') > (a.ultima_em || '') ? 1 : -1);
@@ -4307,6 +4315,16 @@ app.post('/api/admin/conversas/meta', verificarToken, (req, res) => {
   db.admin_conversas[key] = { favorito: Boolean(req.body?.favorito), etiquetas, atualizado_em: new Date().toISOString(), atualizado_por: req.userId };
   db.saveFile('admin-conversas.json', db.admin_conversas);
   res.json({ chave: key, favorito: db.admin_conversas[key].favorito, etiquetas });
+});
+
+app.post('/api/admin/conversas/exportar', verificarToken, (req, res) => {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  const tipo = req.body?.tipo === 'grupo' ? 'grupo' : 'privado';
+  const detalhe = tipo === 'grupo'
+    ? `grupo:${Number(req.body?.grupoId)}`
+    : `privado:${Number(req.body?.uid1)}:${Number(req.body?.uid2)}`;
+  registrarAuditoria({ acao: 'exportada', usuarioId: req.userId, usuarioNome: db.usuarios.find((u) => Number(u.id) === Number(req.userId))?.nome, detalhe, req });
+  res.json({ ok: true });
 });
 
 // Mensagens de uma conversa privada (admin bypass — sem marcar como lida)
