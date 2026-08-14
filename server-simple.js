@@ -4269,7 +4269,8 @@ app.get('/api/admin/conversas', verificarToken, (req, res) => {
   // Grupos
   const grupos = db.grupos.map((g) => {
     const msgs = getAdminConversationMessages().filter((m) => m.grupo_id === g.id);
-    return { tipo: 'grupo', grupo_id: g.id, nome: g.nome, total: msgs.length, apagadas: msgs.filter((m) => m.apagada).length, ultima_em: msgs.length ? msgs[msgs.length - 1].criado_em : null };
+    const ultima = msgs.reduce((maisRecente, m) => !maisRecente || new Date(m.criado_em || 0) > new Date(maisRecente) ? m.criado_em : maisRecente, null);
+    return { tipo: 'grupo', grupo_id: g.id, nome: g.nome, total: msgs.length, apagadas: msgs.filter((m) => m.apagada).length, ultima_em: ultima };
   });
 
   const privados = Array.from(pares.values()).sort((a, b) => (b.ultima_em || '') > (a.ultima_em || '') ? 1 : -1);

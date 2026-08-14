@@ -268,6 +268,18 @@
           <div class="conv-list-col">
             <div class="conv-list-tools">
               <input class="field" id="convFiltro" placeholder="Buscar conversa..." oninput="filtrarConversas()" />
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+                <select class="field" id="convTipoFiltro" onchange="filtrarConversas()">
+                  <option value="todos">Todos os tipos</option>
+                  <option value="privado">Privadas</option>
+                  <option value="grupo">Grupos</option>
+                </select>
+                <select class="field" id="convOrdenacao" onchange="filtrarConversas()">
+                  <option value="recente">Mais recentes</option>
+                  <option value="antiga">Mais antigas</option>
+                  <option value="mensagens">Mais mensagens</option>
+                </select>
+              </div>
             </div>
             <div class="conv-list-items" id="convLista"><p style="padding:14px;font-size:13px;color:var(--muted);">Carregando...</p></div>
           </div>
@@ -618,7 +630,16 @@ async function carregarConversas() {
 
 function filtrarConversas() {
   const q = document.getElementById('convFiltro').value.toLowerCase();
-  _conv.filtrada = _conv.lista.filter(c => c._label.toLowerCase().includes(q));
+  const tipo = document.getElementById('convTipoFiltro').value;
+  const ordenacao = document.getElementById('convOrdenacao').value;
+  _conv.filtrada = _conv.lista
+    .filter(c => c._label.toLowerCase().includes(q) && (tipo === 'todos' || c.tipo === tipo))
+    .sort((a, b) => {
+      if (ordenacao === 'mensagens') return Number(b.total || 0) - Number(a.total || 0);
+      const aData = new Date(a.ultima_em || 0).getTime();
+      const bData = new Date(b.ultima_em || 0).getTime();
+      return ordenacao === 'antiga' ? aData - bData : bData - aData;
+    });
   atualizarResumoConversas();
   renderConvLista();
 }
@@ -647,11 +668,13 @@ function renderConvLista() {
     const total = Number(c.total || 0);
     const data = c.ultima_em ? new Date(c.ultima_em).toLocaleDateString('pt-BR') : 'sem data';
     const tipoLabel = c.tipo === 'privado' ? 'privado' : 'grupo';
+    const apagadas = Number(c.apagadas || 0);
     return `<div class="conv-item ${ativo ? 'active' : ''}" onclick="selecionarConv(${i})" title="${esc(c._label)}">
       <div class="conv-item-title">${esc(c._label)}</div>
       <div class="conv-item-meta">
         <span class="badge ${c.tipo === 'privado' ? 'badge-blue' : 'badge-purple'}">${tipoLabel}</span>
         <span>${total} msg${total !== 1 ? 's' : ''}</span>
+        ${apagadas ? `<span class="badge badge-red">${apagadas} apagada${apagadas !== 1 ? 's' : ''}</span>` : ''}
         <span class="conv-item-date">${data}</span>
       </div>
     </div>`;
@@ -665,8 +688,8 @@ async function selecionarConv(i) {
   _conv.busca = '';
   document.getElementById('convBusca').value = '';
   _conv.sel = c.tipo === 'privado'
-    ? { tipo: 'privado', uid1: c.usuario1_id, uid2: c.usuario2_id, titulo: c._label }
-    : { tipo: 'grupo', grupoId: c.grupo_id, titulo: c.nome };
+    ? { tipo: 'privado', uid1: c.usuario1_id, uid2: c.usuario2_id, titulo: c._label, totalResumo: c.total, apagadas: c.apagadas, ultimaEm: c.ultima_em }
+    : { tipo: 'grupo', grupoId: c.grupo_id, titulo: c.nome, totalResumo: c.total, apagadas: c.apagadas, ultimaEm: c.ultima_em };
   renderConvLista();
   await carregarMsgsConv();
 }
@@ -689,7 +712,7 @@ async function carregarMsgsConv() {
         <span class="badge ${s.tipo === 'privado' ? 'badge-blue' : 'badge-purple'}">${tipoLabel}</span>
         <span class="conv-header-title-text">${esc(s.titulo)}</span>
       </div>
-      <div class="conv-header-sub">Pagina ${_conv.pagina} - ate ${_conv.porPag} mensagens por vez</div>
+      <div class="conv-header-sub">${_conv.total} mensagens${s.apagadas ? ` · ${s.apagadas} apagadas` : ''} · última atividade: ${s.ultimaEm ? new Date(s.ultimaEm).toLocaleString('pt-BR') : 'sem registro'} · página ${_conv.pagina}</div>
     </div>`;
     document.getElementById('convTotal').textContent = `${_conv.total} mensagem${_conv.total !== 1 ? 's' : ''}`;
     const body = document.getElementById('convMsgs');
