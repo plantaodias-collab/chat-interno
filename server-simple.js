@@ -4249,8 +4249,12 @@ io.on('connection', (socket) => {
 
 // Lista todas as conversas (pares privados + grupos) com contagem
 function getAdminConversationMetaKey(tipo, values) {
-  if (tipo === 'grupo') return `grupo:${Number(values.grupoId)}`;
+  if (tipo === 'grupo') {
+    const grupoId = Number(values.grupoId);
+    return Number.isInteger(grupoId) && grupoId > 0 ? `grupo:${grupoId}` : '';
+  }
   const ids = [Number(values.uid1), Number(values.uid2)].sort((a, b) => a - b);
+  if (!ids.every((id) => Number.isInteger(id) && id > 0) || ids[0] === ids[1]) return '';
   return `privado:${ids[0]}:${ids[1]}`;
 }
 
@@ -4275,7 +4279,8 @@ app.get('/api/admin/conversas', verificarToken, (req, res) => {
 
   // Pares privados únicos
   const pares = new Map();
-  getAdminConversationMessages().forEach((m) => {
+  const adminMessages = getAdminConversationMessages();
+  adminMessages.forEach((m) => {
     if (!m.usuario_destino_id) return;
     const ids = [Number(m.usuario_id), Number(m.usuario_destino_id)].sort((a, b) => a - b);
     const key = `${ids[0]}-${ids[1]}`;
@@ -4293,7 +4298,7 @@ app.get('/api/admin/conversas', verificarToken, (req, res) => {
 
   // Grupos
   const grupos = db.grupos.map((g) => {
-    const msgs = getAdminConversationMessages().filter((m) => m.grupo_id === g.id);
+    const msgs = adminMessages.filter((m) => m.grupo_id === g.id);
     const ultima = msgs.reduce((maisRecente, m) => !maisRecente || new Date(m.criado_em || 0) > new Date(maisRecente) ? m.criado_em : maisRecente, null);
     const primeira = msgs.reduce((maisAntiga, m) => !maisAntiga || new Date(m.criado_em || 0) < new Date(maisAntiga) ? m.criado_em : maisAntiga, null);
     const ultimaMensagem = msgs.find((m) => m.criado_em === ultima);
@@ -4310,7 +4315,7 @@ app.post('/api/admin/conversas/meta', verificarToken, (req, res) => {
   if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
   const tipo = req.body?.tipo === 'grupo' ? 'grupo' : 'privado';
   const key = getAdminConversationMetaKey(tipo, req.body || {});
-  if (!key || key.endsWith(':undefined')) return res.status(400).json({ erro: 'Conversa invalida' });
+  if (!key) return res.status(400).json({ erro: 'Conversa invalida' });
   const etiquetas = [...new Set((Array.isArray(req.body?.etiquetas) ? req.body.etiquetas : []).map((item) => sanitizeText(item).slice(0, 30)).filter(Boolean))].slice(0, 8);
   db.admin_conversas[key] = { favorito: Boolean(req.body?.favorito), etiquetas, atualizado_em: new Date().toISOString(), atualizado_por: req.userId };
   db.saveFile('admin-conversas.json', db.admin_conversas);
@@ -4323,6 +4328,7 @@ app.post('/api/admin/conversas/exportar', verificarToken, (req, res) => {
   const detalhe = tipo === 'grupo'
     ? `grupo:${Number(req.body?.grupoId)}`
     : `privado:${Number(req.body?.uid1)}:${Number(req.body?.uid2)}`;
+  if (!getAdminConversationMetaKey(tipo, req.body || {})) return res.status(400).json({ erro: 'Conversa invalida' });
   registrarAuditoria({ acao: 'exportada', usuarioId: req.userId, usuarioNome: db.usuarios.find((u) => Number(u.id) === Number(req.userId))?.nome, detalhe, req });
   res.json({ ok: true });
 });
@@ -4332,7 +4338,9 @@ app.get('/api/admin/conversas/privadas/:uid1/:uid2', verificarToken, (req, res) 
   if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
   const uid1 = parseInt(req.params.uid1, 10);
   const uid2 = parseInt(req.params.uid2, 10);
-  const { busca = '', pagina = 1, por_pagina = 100 } = req.query;
+  const { busca = '' } = req.query;
+  const pagina = Math.max(1, Number.parseInt(req.query.pagina, 10) || 1);
+  const porPagina = Math.min(10000, Math.max(1, Number.parseInt(req.query.por_pagina, 10) || 100));
   let msgs = getAdminConversationMessages().filter(
     (m) => (m.usuario_id === uid1 && m.usuario_destino_id === uid2) ||
             (m.usuario_id === uid2 && m.usuario_destino_id === uid1)
@@ -4342,23 +4350,25 @@ app.get('/api/admin/conversas/privadas/:uid1/:uid2', verificarToken, (req, res) 
     msgs = msgs.filter((m) => String(m.conteudo || '').toLowerCase().includes(q));
   }
   const total = msgs.length;
-  const offset = (parseInt(pagina, 10) - 1) * parseInt(por_pagina, 10);
-  res.json({ mensagens: msgs.slice(offset, offset + parseInt(por_pagina, 10)), total, pagina: parseInt(pagina, 10) });
+  const offset = (pagina - 1) * porPagina;
+  res.json({ mensagens: msgs.slice(offset, offset + porPagina), total, pagina });
 });
 
 // Mensagens de um grupo (admin bypass)
 app.get('/api/admin/conversas/grupo/:grupoId', verificarToken, (req, res) => {
   if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
   const grupoId = parseInt(req.params.grupoId, 10);
-  const { busca = '', pagina = 1, por_pagina = 100 } = req.query;
+  const { busca = '' } = req.query;
+  const pagina = Math.max(1, Number.parseInt(req.query.pagina, 10) || 1);
+  const porPagina = Math.min(10000, Math.max(1, Number.parseInt(req.query.por_pagina, 10) || 100));
   let msgs = getAdminConversationMessages().filter((m) => m.grupo_id === grupoId).map(enrichAdminMessage);
   if (busca) {
     const q = String(busca).toLowerCase();
     msgs = msgs.filter((m) => String(m.conteudo || '').toLowerCase().includes(q));
   }
   const total = msgs.length;
-  const offset = (parseInt(pagina, 10) - 1) * parseInt(por_pagina, 10);
-  res.json({ mensagens: msgs.slice(offset, offset + parseInt(por_pagina, 10)), total, pagina: parseInt(pagina, 10) });
+  const offset = (pagina - 1) * porPagina;
+  res.json({ mensagens: msgs.slice(offset, offset + porPagina), total, pagina });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
