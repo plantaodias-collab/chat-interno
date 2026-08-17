@@ -1134,8 +1134,18 @@ function normalizeSearchText(value) {
 function atualizarBuscaConversas(value) {
   conversationSearchTerm = normalizeSearchText(value);
   conversationSearchRemoteMatches = new Set();
+  const clearButton = document.getElementById('conversationSearchClear');
+  if (clearButton) clearButton.classList.toggle('hidden', !String(value || '').trim());
   clearTimeout(conversationSearchTimer);
   scheduleConversationRender();
+}
+
+function limparBuscaConversas() {
+  const input = document.getElementById('conversationSearchInput');
+  if (!input) return;
+  input.value = '';
+  atualizarBuscaConversas('');
+  input.focus();
 }
 
 function setConversationFilter(filter) {

@@ -11806,6 +11806,21 @@ body.theme-dark .assistant-chat-sources strong,body.theme-dark .assistant-chat-s
   .dashboard-conversations-card { border-radius: 16px; }
 }
 
+/* Busca lateral: campo único, com leitura rápida e limpeza imediata. */
+.workspace-search-shell { position: relative; }
+.workspace-search-shell .workspace-search-input { padding-left: 37px; padding-right: 34px; }
+.workspace-search-icon { position: absolute; left: 13px; top: 50%; z-index: 1; transform: translateY(-52%); color: #8fa3bd; font-size: 19px; line-height: 1; pointer-events: none; }
+.workspace-search-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 25px; height: 25px; border: 0; border-radius: 50%; background: transparent; color: #9aabc0; font-size: 20px; line-height: 1; cursor: pointer; }
+.workspace-search-clear:hover { background: rgba(148,163,184,.15); color: var(--text); }
+body:not(.theme-dark) .workspace-search-icon { color: #6f84a0; }
+body:not(.theme-dark) .workspace-search-clear { color: #68809e; }
+body:not(.theme-dark) .workspace-search-clear:hover { background: rgba(64,96,137,.10); color: #23456f; }
+
+/* Hierarquia mais discreta para a lista, mantendo o foco no contato e na mensagem. */
+.sidebar-section-header .section-title { letter-spacing: .04em; }
+.contacts-section .contact-group-header { padding-top: 9px; padding-bottom: 6px; }
+.contacts-section .offline-group { opacity: .82; }
+
 .assistant-native-history { display: flex; width: 270px; min-width: 270px; flex-direction: column; margin-right: 16px; overflow: hidden; border: 1px solid #b8d7c5; border-radius: 16px; background: #fff; box-shadow: 0 10px 26px rgba(24,77,58,.08); }
 .assistant-native-user .assistant-native-close { display: inline-flex; width: auto; height: 34px; align-items: center; gap: 7px; border-color: #a9cfb8; border-radius: 8px; background: #fff; color: #1b573f; padding: 0 10px; font-size: 13px; font-weight: 800; }.assistant-native-user .assistant-native-close:hover { border-color: #4f9c73; background: #eef9f2; }.assistant-native-user .assistant-native-close span { font-size: 18px; font-weight: 400; line-height: 1; }
 body.theme-dark .assistant-native-user .assistant-native-close { border-color: #457e64; background: #17372b; color: #dff5e7; }

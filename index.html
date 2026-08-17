@@ -70,14 +70,18 @@
       </div>
 
       <div class="workspace-search">
-        <input
-          class="workspace-search-input"
-          id="conversationSearchInput"
-          type="text"
-          placeholder="Buscar grupos e contatos"
-          aria-label="Buscar grupos e contatos"
-          oninput="atualizarBuscaConversas(this.value)"
-        />
+        <div class="workspace-search-shell">
+          <span class="workspace-search-icon" aria-hidden="true">⌕</span>
+          <input
+            class="workspace-search-input"
+            id="conversationSearchInput"
+            type="text"
+            placeholder="Buscar grupos e contatos"
+            aria-label="Buscar grupos e contatos"
+            oninput="atualizarBuscaConversas(this.value)"
+          />
+          <button class="workspace-search-clear hidden" id="conversationSearchClear" type="button" onclick="limparBuscaConversas()" aria-label="Limpar busca">×</button>
+        </div>
       </div>
       <section class="sidebar-section">
         <div class="sidebar-section-header">
@@ -107,7 +111,7 @@
         </div>
 
         <div class="sidebar-section-header">
-          <div class="section-title">Contatos</div>
+          <div class="section-title">Equipe</div>
           <button class="menu-btn" onclick="abrirNovoContato()" aria-label="Criar novo contato">+</button>
         </div>
         <div class="menu-list" id="contatosList"></div>
