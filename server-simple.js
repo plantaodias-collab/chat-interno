@@ -4748,6 +4748,11 @@ app.get('/api/admin/metricas', verificarToken, (req, res) => {
     .slice(0, 8)
     .map(([nome, total]) => ({ nome, total }));
 
+  const chavesConversas = new Set(msgs.map((m) => getStoredKeyForMessage(m)).filter(Boolean));
+  const statusPendencias = new Set(['pendente', 'aguardando', 'urgente']);
+  const conversasPendentes = Object.entries(db.status_atendimento || {})
+    .filter(([, status]) => statusPendencias.has(String(status || '').toLowerCase())).length;
+
   res.json({
     porDia,
     topUsuarios,
@@ -4762,7 +4767,11 @@ app.get('/api/admin/metricas', verificarToken, (req, res) => {
     totalAgendadasPendentes,
     tempoMedioRespostaMin,
     statusConversas,
-    topEtiquetas
+    topEtiquetas,
+    totalConversas: chavesConversas.size,
+    conversasPendentes,
+    usuariosAtivosPeriodo: atividadeUsuarios.length,
+    mediaMensagensDia: Number((totalMsgs / periodoAtividadeDias).toFixed(1))
   });
 });
 

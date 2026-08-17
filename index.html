@@ -84,6 +84,8 @@
         <button class="conversation-filter-btn" type="button" data-filter="nao-lidas" onclick="setConversationFilter('nao-lidas')">Não lidas</button>
         <button class="conversation-filter-btn" type="button" data-filter="pendentes" onclick="setConversationFilter('pendentes')">Pendentes</button>
         <button class="conversation-filter-btn" type="button" data-filter="urgentes" onclick="setConversationFilter('urgentes')">Urgentes</button>
+        <button class="conversation-filter-btn" type="button" data-filter="fixadas" onclick="setConversationFilter('fixadas')">Fixadas</button>
+        <button class="conversation-filter-btn" type="button" data-filter="prioridade" onclick="setConversationFilter('prioridade')">Prioridade</button>
         <button class="conversation-filter-btn" type="button" data-filter="online" onclick="setConversationFilter('online')">Online</button>
         <button class="conversation-filter-btn" type="button" data-filter="grupos" onclick="setConversationFilter('grupos')">Grupos</button>
       </div>
@@ -143,7 +145,8 @@
             <div class="typing-indicator" id="typingIndicator"></div>
             <div class="connection-status hidden" id="connectionStatusBanner" role="status" aria-live="polite">
               <span class="connection-status-dot"></span>
-              Reconectando...
+              <span id="connectionStatusText">Conexão perdida. Tentando reconectar...</span>
+              <button type="button" class="connection-retry-btn" onclick="reconectarSocket()">Reconectar</button>
             </div>
           </div>
         </div>
@@ -847,6 +850,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.min.js?v=20260817-usabilidade"></script>
+  <script src="/assets/app.min.js?v=20260817-presenca-metricas"></script>
 </body>
 </html>

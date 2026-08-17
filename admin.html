@@ -1026,6 +1026,9 @@ async function carregarMetricas() {
   const d = await r.json();
   const cards = [
     { lbl: 'Total mensagens', val: d.totalMsgs, cor: '#3b82f6' },
+    { lbl: 'Conversas com histórico', val: d.totalConversas, cor: '#14b8a6' },
+    { lbl: 'Pendências atuais', val: d.conversasPendentes, cor: '#f97316' },
+    { lbl: 'Usuários ativos (14 dias)', val: d.usuariosAtivosPeriodo, cor: '#22c55e' },
     { lbl: 'Urgentes', val: d.totalUrgentes, cor: '#ef4444' },
     { lbl: 'Em grupos', val: d.totalGrupo, cor: '#8b5cf6' },
     { lbl: 'Privadas', val: d.totalPrivado, cor: '#06b6d4' },
@@ -1037,8 +1040,7 @@ async function carregarMetricas() {
   if (_chartDia) _chartDia.destroy();
   if (_chartUsr) _chartUsr.destroy();
   _chartDia = new Chart(ctxD, { type: 'bar', data: { labels: Object.keys(d.porDia).map(k=>k.slice(5)), datasets: [{ label: 'Msgs/dia', data: Object.values(d.porDia), backgroundColor: 'rgba(59,130,246,.7)', borderRadius: 4 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } });
-  if (d.topUsuarios.length)
-    renderAtividadeMetrics(d);
+  renderAtividadeMetrics(d);
     _chartUsr = new Chart(ctxU, { type: 'bar', data: { labels: d.topUsuarios.map(u=>u.nome), datasets: [{ label: 'Msgs/usuário', data: d.topUsuarios.map(u=>u.total), backgroundColor: 'rgba(139,92,246,.7)', borderRadius: 4 }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } } });
 }
 

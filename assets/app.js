@@ -1019,7 +1019,16 @@ function alternarDensidadeMensagens() {
 
 function mostrarStatusConexao(desconectado) {
   const el = document.getElementById('connectionStatusBanner');
-  if (el) el.classList.toggle('hidden', !desconectado);
+  if (!el) return;
+  el.classList.toggle('hidden', !desconectado);
+  const text = document.getElementById('connectionStatusText');
+  if (text) text.textContent = desconectado ? 'Conexão perdida. Tentando reconectar...' : 'Conectado';
+}
+
+function reconectarSocket() {
+  if (!socket) return conectarSocket();
+  socket.disconnect();
+  socket.connect();
 }
 
 const RESPOSTA_RAPIDA_ATALHOS = {
@@ -1171,6 +1180,8 @@ function conversationMatchesFilter(key, options = {}) {
 
   if (conversationFilter === 'online') return !isGroup && online;
   if (conversationFilter === 'grupos') return isGroup;
+  if (conversationFilter === 'fixadas') return favoriteChats.has(key);
+  if (conversationFilter === 'prioridade') return priorityChats.has(key);
   if (conversationFilter === 'nao-lidas') return unread > 0;
   if (conversationFilter === 'pendentes') return attendanceStatus === 'pendente';
   if (conversationFilter === 'urgentes') return attendanceStatus === 'urgente';
@@ -5140,16 +5151,17 @@ function renderContatos() {
     const atendimentoHtml = senhaPainel
       ? `<div class="contact-ticket-note">Senha: ${escapeHtml(senhaPainel)}</div>`
       : '';
+    const lastSeen = lastSeenState[Number(usuario.id)] || usuario.ultimo_visto_em;
     const statusHtml = online
-      ? `<div class="status-chip ${escapeHtml(status)}">${escapeHtml(getStatusLabel(status))}</div>`
-      : '<div class="status-chip offline">Offline</div>';
+      ? `<div class="status-chip ${escapeHtml(status)}">${escapeHtml(getStatusLabel(status))} · ${isRecentlyActive(lastSeen) ? 'ativo agora' : 'ativo recentemente'}</div>`
+      : `<div class="status-chip offline">${escapeHtml(formatLastSeen(lastSeen))}</div>`;
 
     const item = document.createElement('div');
     item.className = `chat-item ${tipoChat === 'privado' && Number(chatIdAtual) === Number(usuario.id) ? 'active' : ''} ${unread > 0 ? 'unread' : ''} ${isPriority ? 'priority' : ''} ${attendanceStatus ? `attendance-${attendanceStatus}` : ''}`;
     item.innerHTML = `
       <div class="chat-icon private" ${avatarStyle(usuario.nome || usuario.email)}>
         ${escapeHtml(initials(usuario.nome))}
-        <span class="presence-dot ${online ? 'online' : ''} status-${escapeHtml(status)}" title="${escapeHtml(online ? getStatusLabel(status) : 'Offline')}"></span>
+        <span class="presence-dot ${online ? 'online' : ''} status-${escapeHtml(status)}" title="${escapeHtml(online ? `${getStatusLabel(status)} · ${isRecentlyActive(lastSeen) ? 'ativo agora' : 'ativo recentemente'}` : formatLastSeen(lastSeen))}"></span>
       </div>
       <div class="chat-details">
         <div class="chat-top">
