@@ -2850,7 +2850,8 @@ function abrirAssistenteJuridico() {
   definirModoAssistente('orientacao');
   iniciarConversaAssistente();
   carregarHistoricoIa();
-  setTimeout(() => { ajustarAlturaInputAssistente(); document.getElementById('assistantQuestion')?.focus(); }, 80);
+  atualizarStatusAssistente('Conversa privada de trabalho · pronta para ajudar');
+  setTimeout(() => { restaurarRascunhoAssistente(); ajustarAlturaInputAssistente(); document.getElementById('assistantQuestion')?.focus(); }, 80);
 }
 
 function fecharAssistenteJuridico() {
@@ -2863,6 +2864,46 @@ let historicoIaCache = [];
 let historicoIaAbertoId = null;
 let conversaIaAtualId = null;
 let conversaIaNativaId = null;
+
+function chaveRascunhoAssistente() {
+  return `ia-cartorio-rascunho-${usuarioAtual?.id || usuarioAtual?.email || 'colaborador'}`;
+}
+
+function salvarRascunhoAssistente(input = document.getElementById('assistantQuestion')) {
+  if (!input) return;
+  try {
+    const texto = String(input.value || '');
+    if (texto.trim()) sessionStorage.setItem(chaveRascunhoAssistente(), texto);
+    else sessionStorage.removeItem(chaveRascunhoAssistente());
+  } catch (_error) {
+    // O rascunho é apenas um conforto local; a conversa continua funcionando sem ele.
+  }
+}
+
+function restaurarRascunhoAssistente() {
+  const input = document.getElementById('assistantQuestion');
+  if (!input || input.value) return;
+  try {
+    const rascunho = sessionStorage.getItem(chaveRascunhoAssistente()) || '';
+    if (rascunho) {
+      input.value = rascunho;
+      ajustarAlturaInputAssistente(input);
+    }
+  } catch (_error) {
+    // Alguns navegadores podem bloquear o armazenamento; isso não impede o uso da IA.
+  }
+}
+
+function limparRascunhoAssistente() {
+  try { sessionStorage.removeItem(chaveRascunhoAssistente()); } catch (_error) { /* opcional */ }
+}
+
+function atualizarStatusAssistente(texto) {
+  const status = document.getElementById('assistantNativeStatusText');
+  if (status && texto) status.textContent = texto;
+  const indicador = document.querySelector('.assistant-native-status');
+  if (indicador) indicador.setAttribute('aria-busy', /Consultando|Enviando/i.test(String(texto || '')) ? 'true' : 'false');
+}
 
 function normalizarAssistente(texto) {
   return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -3599,12 +3640,19 @@ function iniciarConversaAssistente() {
 
 function novaConversaAssistente() {
   conversaIaNativaId = null;
+  limparRascunhoAssistente();
   const mensagens = document.getElementById('assistantNativeMessages');
   if (mensagens) mensagens.innerHTML = '';
   iniciarConversaAssistente();
   atualizarTituloConversaAssistente();
+  atualizarStatusAssistente('Conversa privada de trabalho · pronta para ajudar');
+  const input = document.getElementById('assistantQuestion');
+  if (input) {
+    input.value = '';
+    ajustarAlturaInputAssistente(input);
+  }
   renderHistoricoAssistenteNativo();
-  document.getElementById('assistantQuestion')?.focus();
+  input?.focus();
 }
 
 function preencherRespostaAssistente(response, question) {
@@ -3629,11 +3677,13 @@ async function responderPerguntaAssistente() {
   const sendButton = nativeButton || button;
   sendButton?.setAttribute('disabled', 'disabled');
   if (sendButton) sendButton.textContent = 'Enviando...';
+  atualizarStatusAssistente('Consultando a base interna e as fontes oficiais…');
   adicionarMensagemAssistente('user', question);
   if (input) {
     input.value = '';
     ajustarAlturaInputAssistente(input);
   }
+  limparRascunhoAssistente();
   mostrarAssistenteDigitando();
   try {
     const response = await consultarIaCartorio(question, conversaIaNativaId);
@@ -3644,10 +3694,14 @@ async function responderPerguntaAssistente() {
   } catch (error) {
     removerAssistenteDigitando();
     adicionarMensagemAssistente('assistant', { level: 'ATENÇÃO', title: 'Não foi possível concluir agora', text: error.message, nextStep: 'Tente novamente em alguns instantes ou encaminhe o caso ao Oficial.' });
+    atualizarStatusAssistente('Não foi possível concluir agora · você pode tentar novamente');
     mostrarNotificacao(error.message, 'error');
   } finally {
     sendButton?.removeAttribute('disabled');
     if (sendButton) sendButton.innerHTML = 'Enviar <span>→</span>';
+    if (!document.querySelector('.assistant-chat-message:last-child .assistant-chat-title')?.textContent?.includes('Não foi possível concluir agora')) {
+      atualizarStatusAssistente('Conversa privada de trabalho · pronta para ajudar');
+    }
     input?.focus();
   }
 }
@@ -6812,6 +6866,18 @@ window.onclick = function(event) {
 };
 
 document.addEventListener('keydown', (event) => {
+  const assistantPanel = document.getElementById('assistantNativePanel');
+  const assistantOpen = assistantPanel && !assistantPanel.classList.contains('hidden');
+  if (assistantOpen && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    document.getElementById('assistantQuestion')?.focus();
+    return;
+  }
+  if (assistantOpen && event.key === 'Escape') {
+    event.preventDefault();
+    fecharAssistenteJuridico();
+    return;
+  }
   if (event.altKey && !event.ctrlKey && !event.metaKey && RESPOSTA_RAPIDA_ATALHOS[event.key] && tipoChat && chatIdAtual != null) {
     event.preventDefault();
     usarRespostaRapida(RESPOSTA_RAPIDA_ATALHOS[event.key]);

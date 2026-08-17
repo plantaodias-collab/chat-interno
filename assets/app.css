@@ -11830,6 +11830,18 @@ body.theme-dark .assistant-chat-feedback > small { color: #b4d4c0; }
 .assistant-native-history-row:hover .assistant-native-history-delete,.assistant-native-history-delete:focus { border-color: #7d2f35; background: #3d2528; color: #ffd0d0; }
 body.theme-dark .assistant-native-history-delete { color: #c6dfd0; }
 
+/* Pequenos apoios de usabilidade no compositor da conversa. */
+.assistant-native-composer-field { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.assistant-native-composer-hint { padding-left: 5px; color: #71847a; font-size: 10px; line-height: 1.3; }
+.assistant-native-chat-info small { transition: color .18s ease; }
+.assistant-native-chat-info:has(+ .assistant-native-messages) .assistant-native-status { transition: transform .18s ease, box-shadow .18s ease; }
+.assistant-native-chat-info:has(+ .assistant-native-messages) .assistant-native-status[aria-busy="true"] { transform: scale(1.16); box-shadow: 0 0 0 3px #dff4e7, 0 0 0 7px rgba(41,175,105,.12); }
+body.theme-dark .assistant-native-composer-hint { color: #a8c4b2; }
+@media (max-width: 720px) {
+  .assistant-native-composer-field { width: 100%; }
+  .assistant-native-composer-hint { padding-left: 2px; font-size: 9px; }
+}
+
 .admin-ia-report-topics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .admin-ia-report-topic { width: 100%; border: 1px solid #dbe4ee; border-radius: 9px; background: #fff; color: #334155; padding: 10px; text-align: left; cursor: pointer; }
 .admin-ia-report-topic:hover { border-color: #86bda0; background: #f4fbf6; }
