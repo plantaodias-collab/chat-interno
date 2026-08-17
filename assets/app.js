@@ -4147,9 +4147,7 @@ function getWelcomeStateHtml() {
               <div class="welcome-title">${getGreeting()}, ${escapeHtml(firstName)}</div>
               <div class="welcome-copy">Acompanhe conversas não lidas e continue os atendimentos recentes.</div>
               <div class="dashboard-actions">
-                <button class="dashboard-action-btn primary" type="button" onclick="aplicarFiltroDashboard('nao-lidas')">Não lidas</button>
-                <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('fixadas')">Fixadas</button>
-                <button class="dashboard-action-btn" type="button" onclick="abrirBuscaGlobal()">Busca global</button>
+                <button class="dashboard-action-btn primary" type="button" onclick="abrirBuscaGlobal()">Busca global</button>
               </div>
             </div>
           </div>

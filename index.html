@@ -79,14 +79,6 @@
           oninput="atualizarBuscaConversas(this.value)"
         />
       </div>
-      <div class="conversation-filters" id="conversationFilters" role="group" aria-label="Filtros de conversa">
-        <button class="conversation-filter-btn active" type="button" data-filter="todos" onclick="setConversationFilter('todos')">Todos</button>
-        <button class="conversation-filter-btn" type="button" data-filter="nao-lidas" onclick="setConversationFilter('nao-lidas')">Não lidas</button>
-        <button class="conversation-filter-btn" type="button" data-filter="fixadas" onclick="setConversationFilter('fixadas')">Fixadas</button>
-        <button class="conversation-filter-btn" type="button" data-filter="online" onclick="setConversationFilter('online')">Online</button>
-        <button class="conversation-filter-btn" type="button" data-filter="grupos" onclick="setConversationFilter('grupos')">Grupos</button>
-      </div>
-
       <section class="sidebar-section">
         <div class="sidebar-section-header">
           <div class="section-title">Grupos</div>
@@ -847,6 +839,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.min.js?v=20260817-visual-chat"></script>
+  <script src="/assets/app.min.js?v=20260817-busca-clean"></script>
 </body>
 </html>
