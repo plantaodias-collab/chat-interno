@@ -4146,7 +4146,6 @@ function getWelcomeStateHtml() {
   const unreadItems = getDashboardChatItems('unread', 4);
   const recentItems = getDashboardChatItems('all', 4);
   const iaEmBreve = !ASSISTENTE_JURIDICO_ATIVO;
-
   return `
     <div class="empty-state welcome-state dashboard-home">
       <div class="dashboard-split">

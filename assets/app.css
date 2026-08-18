@@ -11821,6 +11821,47 @@ body:not(.theme-dark) .workspace-search-clear:hover { background: rgba(64,96,137
 .contacts-section .contact-group-header { padding-top: 9px; padding-bottom: 6px; }
 .contacts-section .offline-group { opacity: .82; }
 
+/* Redesign da tela inicial: o chat ocupa o palco inteiro; recursos auxiliares
+   continuam acessíveis no cabeçalho, sem competir com as conversas. */
+@media (min-width: 981px) {
+  #chatContainer.container { grid-template-columns: minmax(292px, 318px) minmax(0, 1fr) !important; }
+  .dashboard-home { width: min(1420px, calc(100% - 52px)); max-width: none; margin: 24px auto 32px; }
+  .dashboard-home .dashboard-split { display: block; }
+  .dashboard-conversations-card { width: 100%; min-height: 0; padding: 26px 28px; border-radius: 22px; }
+  .dashboard-conversations-card .dashboard-title-group { max-width: 760px; }
+  .dashboard-conversations-card .welcome-copy { font-size: 13px; }
+  .dashboard-conversations-card .dashboard-grid { grid-template-columns: minmax(0, .78fr) minmax(0, 1.22fr); gap: 14px; }
+  .dashboard-conversations-card .dashboard-quiet-banner { grid-column: 1 / -1; }
+  .dashboard-conversations-card .dashboard-panel { min-height: 250px; }
+  .main-content.home-mode .assistant-header-btn { max-width: 150px; opacity: .78; }
+  .main-content.home-mode .assistant-header-btn .action-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+.dashboard-home .dashboard-assistant-contact { display: flex; align-items: stretch; width: min(100%, 620px); margin: 14px 0 0 auto; }
+.dashboard-home .dashboard-assistant-contact > button { padding: 12px 15px; }
+.dashboard-home .dashboard-assistant-contact-avatar { width: 38px; height: 38px; flex-basis: 38px; font-size: 18px; }
+.dashboard-home .dashboard-assistant-contact-copy strong { font-size: 13px; }
+.dashboard-home .dashboard-assistant-contact-copy small { font-size: 10px; }
+.dashboard-home .dashboard-assistant-contact > p { display: flex; align-items: center; max-width: 190px; padding: 8px 12px; font-size: 10px; }
+
+/* A lista de equipe fica mais próxima de um mensageiro e menos de um painel. */
+.contacts-section .contact-group { margin: 0 5px 8px; border: 0; border-radius: 10px; background: transparent; }
+.contacts-section .contact-group-header { padding: 8px 10px 5px; background: transparent; }
+.contacts-section .contact-group-items { padding-bottom: 2px; }
+.contacts-section .chat-item { margin: 0 2px 2px; border-radius: 10px; }
+.contacts-section .chat-item:hover { transform: translateX(2px); }
+
+/* Conversas recentes: texto previsível, sem sobreposição entre itens. */
+.dashboard-chat-card { min-width: 0; }
+.dashboard-chat-card > span:nth-child(2) { min-width: 0; overflow: hidden; }
+.dashboard-chat-preview { display: -webkit-box; max-height: 2.8em; overflow: hidden; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.4; }
+.dashboard-chat-meta { align-self: start; white-space: nowrap; }
+
+@media (max-width: 980px) {
+  .dashboard-home { width: min(100% - 24px, 820px); margin-top: 12px; }
+  .dashboard-conversations-card { padding: 18px; }
+}
+
 .assistant-native-history { display: flex; width: 270px; min-width: 270px; flex-direction: column; margin-right: 16px; overflow: hidden; border: 1px solid #b8d7c5; border-radius: 16px; background: #fff; box-shadow: 0 10px 26px rgba(24,77,58,.08); }
 .assistant-native-user .assistant-native-close { display: inline-flex; width: auto; height: 34px; align-items: center; gap: 7px; border-color: #a9cfb8; border-radius: 8px; background: #fff; color: #1b573f; padding: 0 10px; font-size: 13px; font-weight: 800; }.assistant-native-user .assistant-native-close:hover { border-color: #4f9c73; background: #eef9f2; }.assistant-native-user .assistant-native-close span { font-size: 18px; font-weight: 400; line-height: 1; }
 body.theme-dark .assistant-native-user .assistant-native-close { border-color: #457e64; background: #17372b; color: #dff5e7; }
