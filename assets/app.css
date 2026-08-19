@@ -11826,8 +11826,8 @@ body:not(.theme-dark) .workspace-search-clear:hover { background: rgba(64,96,137
 @media (min-width: 981px) {
   #chatContainer.container { grid-template-columns: minmax(292px, 318px) minmax(0, 1fr) !important; }
   .dashboard-home { width: min(1420px, calc(100% - 52px)); max-width: none; margin: 24px auto 32px; }
-  .dashboard-home .dashboard-split { display: block; }
-  .dashboard-conversations-card { width: 100%; min-height: 0; padding: 26px 28px; border-radius: 22px; }
+  .dashboard-home .dashboard-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 310px); gap: 16px; }
+  .dashboard-conversations-card { width: auto; min-height: 0; padding: 26px 28px; border-radius: 22px; }
   .dashboard-conversations-card .dashboard-title-group { max-width: 760px; }
   .dashboard-conversations-card .welcome-copy { font-size: 13px; }
   .dashboard-conversations-card .dashboard-grid { grid-template-columns: minmax(0, .78fr) minmax(0, 1.22fr); gap: 14px; }

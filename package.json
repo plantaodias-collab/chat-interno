@@ -7,7 +7,8 @@
     "start": "node server-simple.js",
     "dev": "nodemon server-simple.js",
     "setup": "node setup-simple.js",
-    "build": "esbuild assets/app.js --minify --outfile=assets/app.min.js && esbuild assets/app.css --minify --outfile=assets/app.min.css"
+    "build": "esbuild assets/app.js --minify --outfile=assets/app.min.js && esbuild assets/app.css --minify --outfile=assets/app.min.css",
+    "test": "node --test tests/security-regressions.test.js"
   },
   "keywords": [
     "chat",

@@ -457,8 +457,11 @@ function verificarToken(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, SECRET_KEY);
-    req.userId = decoded.id;
-    req.userEmail = decoded.email;
+    const usuario = findActiveUserById(decoded.id);
+    if (!usuario) return res.status(401).json({ erro: 'Sessão inválida ou usuário desativado' });
+    req.userId = Number(usuario.id);
+    req.userEmail = usuario.email;
+    req.usuario = usuario;
     next();
   } catch (err) {
     res.status(401).json({ erro: 'Token inválido' });
@@ -518,6 +521,26 @@ function isUsuarioOnline(usuarioId) {
 
 function isAdminUser(userId) {
   return Boolean(db.usuarios.find((u) => u.id === Number(userId) && u.ativo && u.admin));
+}
+
+function verificarAdministrador(req, res, next) {
+  if (!isAdminUser(req.userId)) return res.status(403).json({ erro: 'Acesso negado' });
+  next();
+}
+
+// Barreira adicional para impedir que uma nova rota administrativa seja
+// publicada sem autorização por perfil.
+app.use('/api/admin', verificarToken, verificarAdministrador);
+
+function mascararIp(ip) {
+  const valor = String(ip || '').trim();
+  if (!valor) return null;
+  if (valor.includes(':')) {
+    const partes = valor.split(':').filter(Boolean);
+    return partes.length > 1 ? `${partes.slice(0, 2).join(':')}:…` : '…';
+  }
+  const partes = valor.split('.');
+  return partes.length === 4 ? `${partes[0]}.${partes[1]}.x.x` : '…';
 }
 
 function sanitizeUserStatus(value) {
@@ -4612,7 +4635,10 @@ app.get('/api/admin/auditoria', verificarToken, (req, res) => {
   const { acao, limite = 200 } = req.query;
   let registros = [...(db.auditoria || [])].reverse();
   if (acao) registros = registros.filter((r) => r.acao === acao);
-  res.json(registros.slice(0, Number(limite)));
+  res.json(registros.slice(0, Number(limite)).map((registro) => ({
+    ...registro,
+    ip: mascararIp(registro.ip)
+  })));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -4798,7 +4824,7 @@ try {
 
 app.get('/api/push/vapid-public-key', (_req, res) => {
   const key = process.env.VAPID_PUBLIC_KEY || '';
-  res.json({ key });
+  res.json({ key, configured: Boolean(key) });
 });
 
 app.post('/api/push/subscribe', verificarToken, (req, res) => {

@@ -2761,15 +2761,15 @@ function atualizarBotaoNotificacoes() {
   button.classList.toggle('hidden', permission === 'denied');
   button.classList.toggle('is-enabled', permission === 'granted');
   button.disabled = permission === 'granted';
-  button.textContent = permission === 'granted' ? 'Notificacoes ativas' : 'Ativar notificacoes';
+  button.textContent = permission === 'granted' ? 'Notificações ativas' : 'Ativar notificações';
   button.title = permission === 'granted'
-    ? 'Este navegador ja avisa quando chegam mensagens'
+    ? 'Este navegador já avisa quando chegam mensagens'
     : 'Receber avisos mesmo quando o chat estiver em segundo plano';
 }
 
 async function ativarNotificacoesNavegador() {
   if (!('Notification' in window)) {
-    mostrarNotificacao('Este navegador nao oferece notificacoes.', 'warning');
+    mostrarNotificacao('Este navegador não oferece notificações.', 'warning');
     return;
   }
 
@@ -2781,16 +2781,25 @@ async function ativarNotificacoesNavegador() {
     atualizarBotaoNotificacoes();
 
     if (permission === 'granted') {
-      await inicializarWebPush();
+      const push = await inicializarWebPush();
       localStorage.removeItem(NOTIFICATION_PROMPT_KEY);
-      mostrarNotificacao('Notificacoes do navegador ativadas', 'success');
+      if (push.ok || push.motivo === 'not-configured') {
+        mostrarNotificacao(
+          push.ok
+            ? 'Notificações do navegador ativadas.'
+            : 'Notificações locais ativadas. O envio em segundo plano ainda não está configurado no servidor.',
+          push.ok ? 'success' : 'warning'
+        );
+      } else {
+        mostrarNotificacao('A permissão foi concedida, mas não foi possível registrar o envio em segundo plano.', 'warning');
+      }
       return;
     }
 
     localStorage.setItem(NOTIFICATION_PROMPT_KEY, '1');
-    mostrarNotificacao('Notificacoes nao foram ativadas neste navegador.', 'warning');
+    mostrarNotificacao('As notificações não foram ativadas neste navegador.', 'warning');
   } catch (err) {
-    mostrarNotificacao('Nao foi possivel ativar notificacoes: ' + err.message, 'error');
+    mostrarNotificacao('Não foi possível ativar as notificações: ' + err.message, 'error');
   }
 }
 
@@ -4139,7 +4148,7 @@ function getWelcomeStateHtml() {
   const totalUrgentes = Object.values(attendanceStatusState).filter((status) => status === 'urgente').length;
   const nomeUsuario = String(usuarioAtual?.nome || '').trim();
   const emailUsuario = String(usuarioAtual?.email || '').trim();
-  const firstNameRaw = /^\(?usu[aÃ¡]rio/i.test(nomeUsuario)
+  const firstNameRaw = /^\(?usuário/i.test(nomeUsuario)
     ? (emailUsuario.split('@')[0] || 'Admin')
     : (nomeUsuario.split(/\s+/)[0] || emailUsuario.split('@')[0] || 'equipe');
   const firstName = firstNameRaw.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, '') || 'equipe';
@@ -7624,29 +7633,33 @@ async function carregarMetricasAdmin() {
 // BLOCO 3 — WEB PUSH NOTIFICATIONS
 // ═══════════════════════════════════════════════════════════════════════════
 async function inicializarWebPush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  if (Notification.permission !== 'granted') return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return { ok: false, motivo: 'unsupported' };
+  if (Notification.permission !== 'granted') return { ok: false, motivo: 'permission' };
   try {
     const kr = await fetch('/api/push/vapid-public-key');
+    if (!kr.ok) return { ok: false, motivo: 'server' };
     const { key } = await kr.json();
-    if (!key) return; // VAPID não configurado no servidor
+    if (!key) return { ok: false, motivo: 'not-configured' }; // VAPID não configurado no servidor
 
     const reg = await navigator.serviceWorker.ready;
     const existente = await reg.pushManager.getSubscription();
-    if (existente) return; // já inscrito
+    if (existente) return { ok: true, existing: true }; // já inscrito
 
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(key)
     });
-    await fetch('/api/push/subscribe', {
+    const response = await fetch('/api/push/subscribe', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ subscription: sub.toJSON() })
     });
+    if (!response.ok) return { ok: false, motivo: 'subscribe' };
     console.log('Web Push inscrito.');
+    return { ok: true };
   } catch (e) {
     console.warn('Web Push subscribe falhou:', e);
+    return { ok: false, motivo: 'error', erro: e };
   }
 }
 
