@@ -11837,12 +11837,12 @@ body:not(.theme-dark) .workspace-search-clear:hover { background: rgba(64,96,137
   .main-content.home-mode .assistant-header-btn .action-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
-.dashboard-home .dashboard-assistant-contact { display: flex; align-items: stretch; width: min(100%, 620px); margin: 14px 0 0 auto; }
+.dashboard-home .dashboard-assistant-contact { display: block; width: min(100%, 620px); margin: 14px 0 0 auto; }
 .dashboard-home .dashboard-assistant-contact > button { padding: 12px 15px; }
 .dashboard-home .dashboard-assistant-contact-avatar { width: 38px; height: 38px; flex-basis: 38px; font-size: 18px; }
 .dashboard-home .dashboard-assistant-contact-copy strong { font-size: 13px; }
 .dashboard-home .dashboard-assistant-contact-copy small { font-size: 10px; }
-.dashboard-home .dashboard-assistant-contact > p { display: flex; align-items: center; max-width: 190px; padding: 8px 12px; font-size: 10px; }
+.dashboard-home .dashboard-assistant-contact > p { display: block; max-width: none; padding: 8px 12px; font-size: 10px; }
 
 /* A lista de equipe fica mais próxima de um mensageiro e menos de um painel. */
 .contacts-section .contact-group { margin: 0 5px 8px; border: 0; border-radius: 10px; background: transparent; }
