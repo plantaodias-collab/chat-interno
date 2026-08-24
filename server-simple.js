@@ -73,6 +73,10 @@ const THUMBNAIL_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif'])
 const THUMBNAIL_MAX_WIDTH = 480;
 const APP_TIMEZONE = 'America/Sao_Paulo';
 const AUTOMATIC_BACKUP_RETENTION = 3;
+const MANUAL_BACKUP_RETENTION = 5;
+const BACKUP_FORMAT_VERSION = 2;
+const BACKUP_MIN_FREE_SPACE_BYTES = 64 * 1024 * 1024;
+const BACKUP_FREE_SPACE_MARGIN_RATIO = 0.25;
 const ATIVIDADE_BLOCO_GAP_MIN = 15;
 // Piloto supervisionado: a IA fica bloqueada até o horário combinado. Para
 // interromper imediatamente, defina IA_CARTORIO_ENABLED=false no Railway.
@@ -652,20 +656,95 @@ function resolveBackupPath(backupId) {
   const targetPath = path.join(BACKUP_DIR, String(backupId || ''));
   const resolvedBackupRoot = path.resolve(BACKUP_DIR);
   const resolvedTarget = path.resolve(targetPath);
-  if (!resolvedTarget.startsWith(resolvedBackupRoot)) {
+  const relative = path.relative(resolvedBackupRoot, resolvedTarget);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
     throw new Error('Backup invalido');
   }
   return resolvedTarget;
+}
+
+function sha256File(filePath) {
+  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+}
+
+function listarArquivosRecursivos(directory, relativeBase = '') {
+  if (!fs.existsSync(directory)) return [];
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const absolutePath = path.join(directory, entry.name);
+    const relativePath = path.posix.join(relativeBase, entry.name);
+    if (entry.isDirectory()) return listarArquivosRecursivos(absolutePath, relativePath);
+    if (!entry.isFile()) return [];
+    return [{ absolutePath, relativePath }];
+  });
+}
+
+function caminhoRelativoBackupSeguro(value) {
+  const relativePath = String(value || '').replace(/\\/g, '/');
+  if (!relativePath || path.posix.isAbsolute(relativePath) || relativePath.split('/').includes('..')) return false;
+  return (relativePath.startsWith('data/') && relativePath.endsWith('.json')) || relativePath.startsWith('uploads/');
+}
+
+function caminhoDentroDe(root, relativePath) {
+  const target = path.resolve(root, relativePath);
+  const relative = path.relative(path.resolve(root), target);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error('Caminho de backup invalido');
+  return target;
+}
+
+function entradasBackupOperacional() {
+  const data = listarArquivosRecursivos(DATA_DIR, 'data').filter((entry) => entry.relativePath.endsWith('.json'));
+  const uploads = listarArquivosRecursivos(UPLOAD_DIR, 'uploads');
+  return [...data, ...uploads].map((entry) => ({
+    ...entry,
+    tamanho: fs.statSync(entry.absolutePath).size
+  }));
+}
+
+function obterEspacoArmazenamento(directory = STORAGE_ROOT) {
+  if (typeof fs.statfsSync !== 'function') return { disponivel: false };
+  try {
+    const stat = fs.statfsSync(directory);
+    const blockSize = Number(stat.bsize || stat.frsize || 0);
+    return {
+      disponivel: Number.isFinite(blockSize) && blockSize > 0,
+      total_bytes: Number(stat.blocks || 0) * blockSize,
+      livre_bytes: Number(stat.bavail || 0) * blockSize
+    };
+  } catch {
+    return { disponivel: false };
+  }
+}
+
+function obterResumoArmazenamentoBackup() {
+  const total = (directory) => listarArquivosRecursivos(directory).reduce((sum, item) => sum + fs.statSync(item.absolutePath).size, 0);
+  return {
+    data_bytes: total(DATA_DIR),
+    uploads_bytes: total(UPLOAD_DIR),
+    backups_bytes: total(BACKUP_DIR),
+    espaco: obterEspacoArmazenamento()
+  };
+}
+
+function validarEspacoParaBackup(entradas, espaco = obterEspacoArmazenamento()) {
+  const snapshotBytes = entradas.reduce((sum, entry) => sum + entry.tamanho, 0);
+  const margemBytes = Math.max(BACKUP_MIN_FREE_SPACE_BYTES, Math.ceil(snapshotBytes * BACKUP_FREE_SPACE_MARGIN_RATIO));
+  const necessarioBytes = snapshotBytes + margemBytes;
+  if (espaco?.disponivel && Number(espaco.livre_bytes) < necessarioBytes) {
+    throw new Error(`Espaco insuficiente para backup completo: requer ${necessarioBytes} bytes livres com margem de seguranca.`);
+  }
+  return { snapshot_bytes: snapshotBytes, margem_bytes: margemBytes, necessario_bytes: necessarioBytes, espaco };
 }
 
 function listBackups() {
   if (!fs.existsSync(BACKUP_DIR)) return [];
 
   return fs.readdirSync(BACKUP_DIR, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
     .map((entry) => {
       const backupPath = path.join(BACKUP_DIR, entry.name);
-      const metadataPath = path.join(backupPath, 'metadata.json');
+      const metadataPath = fs.existsSync(path.join(backupPath, 'manifest.json'))
+        ? path.join(backupPath, 'manifest.json')
+        : path.join(backupPath, 'metadata.json');
       let metadata = null;
 
       if (fs.existsSync(metadataPath)) {
@@ -683,40 +762,50 @@ function listBackups() {
         criado_em: metadata?.criado_em || stat.mtime.toISOString(),
         criado_por: metadata?.criado_por || '',
         arquivos: Array.isArray(metadata?.arquivos) ? metadata.arquivos : [],
-        tipo: metadata?.tipo || 'manual'
+        tipo: metadata?.tipo || 'manual',
+        formato: metadata?.formato || 'legado',
+        tamanho_bytes: Number(metadata?.tamanho_total_bytes || 0)
       };
     })
     .sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
 }
 
-function createBackup({ nome = '', criadoPor = '', tipo = 'manual' } = {}) {
+function createBackup({ nome = '', criadoPor = '', tipo = 'manual', espaco } = {}) {
   // Garante que o estado em memoria esteja no disco antes de copiar os arquivos.
   db.flush();
+  if (tipo === 'manual' && listBackups().filter((backup) => backup.tipo === 'manual').length >= MANUAL_BACKUP_RETENTION) {
+    throw new Error(`Limite de ${MANUAL_BACKUP_RETENTION} backups manuais atingido; faça uma cópia externa ou remova um backup validado antes de criar outro.`);
+  }
+  const entries = entradasBackupOperacional();
+  const espacoValidado = validarEspacoParaBackup(entries, espaco);
   const stamp = formatBackupStamp();
   const safeName = sanitizeBackupName(nome);
   const backupId = safeName ? `${stamp}-${safeName}` : stamp;
   const backupPath = path.join(BACKUP_DIR, backupId);
-  fs.mkdirSync(backupPath, { recursive: true });
-
-  const copiedFiles = [];
-  DATA_FILE_NAMES.forEach((fileName) => {
-    const sourcePath = path.join(DATA_DIR, fileName);
-    if (!fs.existsSync(sourcePath)) return;
-    fs.copyFileSync(sourcePath, path.join(backupPath, fileName));
-    copiedFiles.push(fileName);
-  });
-
-  const metadata = {
-    id: backupId,
-    nome: safeName || `backup-${stamp}`,
-    criado_em: new Date().toISOString(),
-    criado_por: criadoPor,
-    arquivos: copiedFiles,
-    tipo
-  };
-
-  fs.writeFileSync(path.join(backupPath, 'metadata.json'), JSON.stringify(metadata, null, 2));
-  return metadata;
+  if (fs.existsSync(backupPath)) throw new Error('Ja existe um backup com este identificador');
+  const stagingPath = fs.mkdtempSync(path.join(BACKUP_DIR, `.${backupId}.tmp-`));
+  try {
+    const files = entries.map((entry) => {
+      if (!caminhoRelativoBackupSeguro(entry.relativePath)) throw new Error('Arquivo fora do escopo permitido do backup');
+      const destination = caminhoDentroDe(stagingPath, entry.relativePath);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.copyFileSync(entry.absolutePath, destination);
+      return { caminho: entry.relativePath, origem_relativa: entry.relativePath, tamanho_bytes: entry.tamanho, sha256: sha256File(destination) };
+    });
+    const manifest = {
+      formato: 'chatinterno-backup', versao_formato: BACKUP_FORMAT_VERSION,
+      id: backupId, nome: safeName || `backup-${stamp}`, criado_em: new Date().toISOString(), criado_por: criadoPor, tipo,
+      origem_relativa: '.', arquivos: files.map((file) => file.caminho), files,
+      tamanho_total_bytes: files.reduce((sum, file) => sum + file.tamanho_bytes, 0),
+      espaco_verificado: espacoValidado
+    };
+    fs.writeFileSync(path.join(stagingPath, 'manifest.json'), JSON.stringify(manifest, null, 2));
+    fs.renameSync(stagingPath, backupPath);
+    return manifest;
+  } catch (error) {
+    fs.rmSync(stagingPath, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 function pruneAutomaticBackups(manterQuantidade) {
@@ -730,19 +819,67 @@ function pruneAutomaticBackups(manterQuantidade) {
   });
 }
 
+function validarManifestoBackup(backupPath) {
+  const manifestPath = path.join(backupPath, 'manifest.json');
+  if (!fs.existsSync(manifestPath)) throw new Error('Backup legado sem manifesto verificavel nao pode ser restaurado com seguranca');
+  let manifest;
+  try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')); } catch { throw new Error('Manifesto de backup invalido'); }
+  if (manifest?.formato !== 'chatinterno-backup' || manifest?.versao_formato !== BACKUP_FORMAT_VERSION || !Array.isArray(manifest.files)) {
+    throw new Error('Formato de backup invalido ou nao suportado');
+  }
+  const seen = new Set();
+  for (const file of manifest.files) {
+    if (!caminhoRelativoBackupSeguro(file?.caminho) || seen.has(file.caminho)) throw new Error('Manifesto contem caminho invalido');
+    seen.add(file.caminho);
+    const source = caminhoDentroDe(backupPath, file.caminho);
+    if (!fs.existsSync(source) || !fs.statSync(source).isFile()) throw new Error(`Arquivo obrigatorio ausente no backup: ${file.caminho}`);
+    if (fs.statSync(source).size !== Number(file.tamanho_bytes) || sha256File(source) !== file.sha256) throw new Error(`Integridade invalida no backup: ${file.caminho}`);
+  }
+  if (![...seen].some((value) => value.startsWith('data/'))) throw new Error('Backup nao contem dados operacionais');
+  return manifest;
+}
+
 function restoreBackup(backupId) {
   const backupPath = resolveBackupPath(backupId);
   if (!fs.existsSync(backupPath)) {
     throw new Error('Backup nao encontrado');
   }
-
-  DATA_FILE_NAMES.forEach((fileName) => {
-    const sourcePath = path.join(backupPath, fileName);
-    if (!fs.existsSync(sourcePath)) return;
-    fs.copyFileSync(sourcePath, path.join(DATA_DIR, fileName));
-  });
-
-  db.reload();
+  const manifest = validarManifestoBackup(backupPath);
+  const transactionId = crypto.randomBytes(8).toString('hex');
+  const stagingPath = fs.mkdtempSync(path.join(STORAGE_ROOT, `.restore-${transactionId}-`));
+  const oldDataPath = path.join(STORAGE_ROOT, `.restore-previous-${transactionId}-data`);
+  const oldUploadsPath = path.join(STORAGE_ROOT, `.restore-previous-${transactionId}-uploads`);
+  let movedData = false; let movedUploads = false; let installedData = false; let installedUploads = false;
+  try {
+    for (const file of manifest.files) {
+      const source = caminhoDentroDe(backupPath, file.caminho);
+      const destination = caminhoDentroDe(stagingPath, file.caminho);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.copyFileSync(source, destination);
+      if (file.caminho.startsWith('data/')) JSON.parse(fs.readFileSync(destination, 'utf8'));
+    }
+    fs.mkdirSync(path.join(stagingPath, 'uploads'), { recursive: true });
+    fs.renameSync(DATA_DIR, oldDataPath); movedData = true;
+    fs.renameSync(UPLOAD_DIR, oldUploadsPath); movedUploads = true;
+    fs.renameSync(path.join(stagingPath, 'data'), DATA_DIR); installedData = true;
+    fs.renameSync(path.join(stagingPath, 'uploads'), UPLOAD_DIR); installedUploads = true;
+    db.reload();
+    fs.rmSync(oldDataPath, { recursive: true, force: true });
+    fs.rmSync(oldUploadsPath, { recursive: true, force: true });
+    fs.rmSync(stagingPath, { recursive: true, force: true });
+    return manifest;
+  } catch (error) {
+    try {
+      if (installedData && fs.existsSync(DATA_DIR)) fs.rmSync(DATA_DIR, { recursive: true, force: true });
+      if (installedUploads && fs.existsSync(UPLOAD_DIR)) fs.rmSync(UPLOAD_DIR, { recursive: true, force: true });
+      if (movedData && fs.existsSync(oldDataPath)) fs.renameSync(oldDataPath, DATA_DIR);
+      if (movedUploads && fs.existsSync(oldUploadsPath)) fs.renameSync(oldUploadsPath, UPLOAD_DIR);
+      if (movedData || movedUploads) db.reload();
+    } finally {
+      fs.rmSync(stagingPath, { recursive: true, force: true });
+    }
+    throw new Error(`Restauracao abortada sem substituir os dados atuais: ${error.message}`);
+  }
 }
 
 let lastAutomaticBackupCheckKey = '';
@@ -5875,5 +6012,17 @@ module.exports = {
   normalizarTextoIa,
   limparTextoRespostaIa,
   extrairReferenciasRespostaIa,
-  mensagemFalhaIaParaUsuario
+  mensagemFalhaIaParaUsuario,
+  createBackup,
+  restoreBackup,
+  listBackups,
+  pruneAutomaticBackups,
+  validarManifestoBackup,
+  validarEspacoParaBackup,
+  obterResumoArmazenamentoBackup,
+  caminhoRelativoBackupSeguro,
+  BACKUP_DIR,
+  DATA_DIR,
+  UPLOAD_DIR,
+  BACKUP_FORMAT_VERSION
 };
