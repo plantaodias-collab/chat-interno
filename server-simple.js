@@ -59,6 +59,17 @@ const BACKUP_DIR = path.join(STORAGE_ROOT, 'backups');
 // temporariamente indisponível; nunca substituem um índice persistido válido.
 const NORMATIVE_RESOURCE_DIR = path.join(__dirname, 'resources', 'normative');
 const NORMATIVE_SEED_MANIFEST_PATH = path.join(NORMATIVE_RESOURCE_DIR, 'manifest.json');
+const AI_VERSION_CONFIG_PATH = path.join(__dirname, 'resources', 'ai-cartorio-version.json');
+function carregarConfiguracaoVersaoIa() {
+  try {
+    const config = JSON.parse(fs.readFileSync(AI_VERSION_CONFIG_PATH, 'utf8'));
+    if (!/^\d+\.\d+$/.test(String(config?.version || ''))) throw new Error('versão inválida');
+    return { version: config.version };
+  } catch (error) {
+    throw new Error(`Configuração de versão da IA inválida: ${error.message}`);
+  }
+}
+const AI_VERSION = carregarConfiguracaoVersaoIa().version;
 const CODIGO_NORMAS_URL = 'https://www.tjsc.jus.br/documents/d/extrajudicial/codigo_normas_extrajudical_provimento_13_2026_atualizado_no_dia_5_agosto_2026-pdf';
 const CODIGO_NORMAS_REVISAO = 'Código de Normas da Corregedoria-Geral do Foro Extrajudicial do TJSC, atualizado em 5 de agosto de 2026';
 const CODIGO_NORMAS_PDF_PATH = path.join(DATA_DIR, 'codigo-normas-extrajudicial-tjsc-2026.pdf');
@@ -206,6 +217,10 @@ app.get('/signal_cartography.png', (_req, res) => res.sendFile(path.join(__dirna
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, storageRoot: STORAGE_ROOT, persistentStorage: !IS_EPHEMERAL_STORAGE });
+});
+
+app.get('/api/ia-cartorio/versao', verificarToken, (_req, res) => {
+  res.json({ version: AI_VERSION });
 });
 
 app.get('/api/uploads/:fileName', verificarToken, (req, res) => {
@@ -6013,6 +6028,7 @@ module.exports = {
   limparTextoRespostaIa,
   extrairReferenciasRespostaIa,
   mensagemFalhaIaParaUsuario,
+  AI_VERSION,
   createBackup,
   restoreBackup,
   listBackups,

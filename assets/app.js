@@ -2834,19 +2834,41 @@ function aplicarSessaoUsuario() {
   carregarMencoesInbox();
   atualizarBadgeOperacional();
   atualizarBotaoNotificacoes();
+  void carregarVersaoIaCartorio();
   updateDailyMotivation();
   if (!tipoChat || !chatIdAtual) renderWelcomeState();
 }
 
 const ASSISTENTE_JURIDICO_LIBERACAO_EM = new Date('2026-08-12T00:00:00-03:00').getTime();
 let ASSISTENTE_JURIDICO_ATIVO = Date.now() >= ASSISTENTE_JURIDICO_LIBERACAO_EM;
+let VERSAO_IA_CARTORIO = '';
+
+function rotuloVersaoIaCartorio() {
+  return VERSAO_IA_CARTORIO ? `Versão ${VERSAO_IA_CARTORIO}` : 'Versão';
+}
+
+async function carregarVersaoIaCartorio() {
+  if (!usuarioAtual) return;
+
+  try {
+    const response = await fetch('/api/ia-cartorio/versao', { headers: authHeaders() });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !/^\d+\.\d+$/.test(String(payload.version || ''))) return;
+
+    VERSAO_IA_CARTORIO = payload.version;
+    atualizarDisponibilidadeAssistente();
+    atualizarPainelInicialSeAberto();
+  } catch {
+    // O selo permanece genérico se o diagnóstico de versão estiver indisponível.
+  }
+}
 
 function atualizarDisponibilidadeAssistente() {
   const estavaAtivo = ASSISTENTE_JURIDICO_ATIVO;
   ASSISTENTE_JURIDICO_ATIVO = Date.now() >= ASSISTENTE_JURIDICO_LIBERACAO_EM;
   const badge = document.getElementById('assistantHeaderBadge');
   if (badge) {
-    badge.textContent = ASSISTENTE_JURIDICO_ATIVO ? 'EM TESTE' : 'EM BREVE';
+    badge.textContent = ASSISTENTE_JURIDICO_ATIVO ? rotuloVersaoIaCartorio() : 'EM BREVE';
     badge.classList.toggle('coming-soon', !ASSISTENTE_JURIDICO_ATIVO);
   }
   if (ASSISTENTE_JURIDICO_ATIVO && !estavaAtivo) {
@@ -3660,7 +3682,7 @@ function iniciarConversaAssistente() {
   if (!mensagens || mensagens.childElementCount) return;
   atualizarTituloConversaAssistente();
   adicionarMensagemAssistente('assistant', {
-    level: 'EM TESTE',
+    level: rotuloVersaoIaCartorio(),
     title: 'Olá! Como posso ajudar?',
     text: 'Posso auxiliar com textos de atendimento, e-mails, minutas, procedimentos e dúvidas de trabalho. Você pode continuar a conversa normalmente para pedir ajustes ou acrescentar informações.',
     basis: 'A IA CDC pode cometer erros. Revise informações relevantes antes de usar.',
@@ -4183,7 +4205,7 @@ function getWelcomeStateHtml() {
         <aside class="dashboard-assistant-contact ${iaEmBreve ? 'is-coming-soon' : ''}" aria-label="IA Cartório Dias de Castro">
           <button type="button" onclick="abrirAssistenteJuridico()" ${iaEmBreve ? 'disabled' : ''}>
             <span class="dashboard-assistant-contact-avatar">✦<i></i></span>
-            <span class="dashboard-assistant-contact-copy"><span class="dashboard-assistant-badge ${iaEmBreve ? 'coming-soon' : ''}">${iaEmBreve ? 'EM BREVE' : 'EM TESTE'}</span><strong>IA Cartório Dias de Castro</strong><small>${iaEmBreve ? 'Em preparação para a equipe.' : 'Conversa privada para dúvidas e tarefas de trabalho.'}</small></span>
+            <span class="dashboard-assistant-contact-copy"><span class="dashboard-assistant-badge ${iaEmBreve ? 'coming-soon' : ''}">${iaEmBreve ? 'EM BREVE' : rotuloVersaoIaCartorio()}</span><strong>IA Cartório Dias de Castro</strong><small>${iaEmBreve ? 'Em preparação para a equipe.' : 'Conversa privada para dúvidas e tarefas de trabalho.'}</small></span>
             <span class="dashboard-assistant-contact-open">Abrir conversa →</span>
           </button>
           <p>Respostas geradas por IA devem ser revisadas antes de serem utilizadas.</p>
