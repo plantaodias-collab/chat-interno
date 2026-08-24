@@ -93,6 +93,10 @@ const BACKUP_FREE_SPACE_MARGIN_RATIO = 0.25;
 const EXTERNAL_BACKUP_FORMAT = 'chatinterno-external-backup';
 const EXTERNAL_BACKUP_MANIFEST_MAX_BYTES = 8 * 1024 * 1024;
 const EXTERNAL_BACKUP_RESTORE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
+// Os JSONs operacionais sao pequenos o bastante para formar um ponto de
+// consistencia em memoria. O limite evita que um crescimento inesperado dos
+// dados transforme o backup externo em pressao de memoria no servidor.
+const EXTERNAL_BACKUP_JSON_SNAPSHOT_MAX_BYTES = 64 * 1024 * 1024;
 const ATIVIDADE_BLOCO_GAP_MIN = 15;
 // Piloto supervisionado: a IA fica bloqueada até o horário combinado. Para
 // interromper imediatamente, defina IA_CARTORIO_ENABLED=false no Railway.
@@ -273,6 +277,7 @@ app.get('/api/uploads/:fileName/thumb', verificarToken, (req, res) => {
 
 class SimpleDB {
   constructor() {
+    this._externalSnapshotInProgress = false;
     this.reload();
   }
 
@@ -430,6 +435,20 @@ class SimpleDB {
       }
     } catch (err) {
       console.error('Erro ao salvar dados (flush):', err);
+    }
+  }
+
+  // A captura abaixo e deliberadamente sincrona e curta: no Node, nenhum
+  // handler de escrita consegue intercalar entre o flush e a leitura dos
+  // bytes. O upload para o destino externo ocorre depois, sem esta guarda.
+  capturarSnapshotExterno(capture) {
+    if (this._externalSnapshotInProgress) throw new Error('Snapshot externo ja esta em andamento');
+    this._externalSnapshotInProgress = true;
+    try {
+      this.flush();
+      return capture();
+    } finally {
+      this._externalSnapshotInProgress = false;
     }
   }
 }
@@ -1071,12 +1090,73 @@ function chaveBackupExterno(prefix, backupId, relativePath) {
   return normalizarChaveS3([normalizarPrefixoS3(prefix), criarIdBackupExterno(backupId), relativePath].join('/'));
 }
 
-async function garantirArquivoExternoConsistente(client, key, entry) {
-  const before = statSnapshot(entry.absolutePath);
-  if (before.size !== Number(entry.tamanho)) throw new Error(`Arquivo alterado antes do backup externo: ${entry.relativePath}`);
-  const sha256 = await sha256FileStream(entry.absolutePath);
-  const afterHash = statSnapshot(entry.absolutePath);
-  if (!mesmoSnapshotArquivo(before, afterHash)) throw new Error(`Arquivo alterado durante calculo de integridade: ${entry.relativePath}`);
+function capturarSnapshotBackupExterno({ maxJsonBytes = EXTERNAL_BACKUP_JSON_SNAPSHOT_MAX_BYTES } = {}) {
+  const limiteJson = Number(maxJsonBytes);
+  if (!Number.isSafeInteger(limiteJson) || limiteJson < 1) throw new Error('Limite de memoria do snapshot externo invalido');
+  return db.capturarSnapshotExterno(() => {
+    let totalJsonBytes = 0;
+    const jsons = listarArquivosRecursivos(DATA_DIR, 'data')
+      .filter((entry) => entry.relativePath.endsWith('.json'))
+      .map((entry) => {
+        if (!caminhoRelativoBackupSeguro(entry.relativePath)) throw new Error('Arquivo fora do escopo permitido do snapshot externo');
+        const bytes = fs.readFileSync(entry.absolutePath);
+        totalJsonBytes += bytes.length;
+        if (totalJsonBytes > limiteJson) throw new Error('Snapshot de JSON excede o limite seguro de memoria');
+        return {
+          ...entry,
+          bytes,
+          tamanho: bytes.length,
+          sha256: crypto.createHash('sha256').update(bytes).digest('hex')
+        };
+      });
+    if (!jsons.length) throw new Error('Snapshot externo nao contem dados operacionais');
+    const uploads = listarArquivosRecursivos(UPLOAD_DIR, 'uploads').map((entry) => {
+      if (!caminhoRelativoBackupSeguro(entry.relativePath)) throw new Error('Arquivo fora do escopo permitido do snapshot externo');
+      return { ...entry, snapshot: statSnapshot(entry.absolutePath) };
+    });
+    return {
+      capturado_em: new Date().toISOString(),
+      jsons,
+      uploads,
+      json_bytes: totalJsonBytes
+    };
+  });
+}
+
+async function enviarJsonCapturadoExterno(client, key, entry) {
+  const remote = await client.headObject(key);
+  if (!remote || Number(remote.size) !== entry.tamanho || String(remote.sha256 || '') !== entry.sha256) {
+    await client.putObject(key, { body: Readable.from(entry.bytes), contentLength: entry.tamanho, sha256: entry.sha256 });
+  }
+  const verified = await client.headObject(key);
+  if (!verified || Number(verified.size) !== entry.tamanho || String(verified.sha256 || '') !== entry.sha256) {
+    throw new Error(`Integridade remota nao confirmada: ${entry.relativePath}`);
+  }
+  return {
+    caminho: entry.relativePath,
+    origem_relativa: entry.relativePath,
+    objeto: key,
+    tamanho_bytes: entry.tamanho,
+    sha256: entry.sha256
+  };
+}
+
+async function enviarUploadSnapshotExterno(client, key, entry) {
+  let before;
+  try {
+    before = statSnapshot(entry.absolutePath);
+  } catch {
+    throw new Error(`Upload do snapshot foi alterado ou removido: ${entry.relativePath}`);
+  }
+  if (!mesmoSnapshotArquivo(before, entry.snapshot)) throw new Error(`Upload do snapshot foi alterado ou removido: ${entry.relativePath}`);
+  let sha256; let afterHash;
+  try {
+    sha256 = await sha256FileStream(entry.absolutePath);
+    afterHash = statSnapshot(entry.absolutePath);
+  } catch {
+    throw new Error(`Upload do snapshot foi alterado durante calculo de integridade: ${entry.relativePath}`);
+  }
+  if (!mesmoSnapshotArquivo(before, afterHash)) throw new Error(`Upload do snapshot foi alterado durante calculo de integridade: ${entry.relativePath}`);
   const remote = await client.headObject(key);
   if (!remote || Number(remote.size) !== before.size || String(remote.sha256 || '') !== sha256) {
     await client.putObject(key, { body: fs.createReadStream(entry.absolutePath), contentLength: before.size, sha256 });
@@ -1092,17 +1172,11 @@ async function garantirArquivoExternoConsistente(client, key, entry) {
     origem_relativa: entry.relativePath,
     objeto: key,
     tamanho_bytes: before.size,
-    sha256,
-    sourceSnapshot: before,
-    absolutePath: entry.absolutePath
+    sha256
   };
 }
 
-async function criarBackupExterno({ nome = '', criadoPor = '', tipo = 'manual', backupId, client, config } = {}) {
-  // O flush ocorre antes de enumerar os arquivos. O restante é somente leitura
-  // do volume e streaming para o destino externo; nenhum snapshot completo é
-  // criado em STORAGE_ROOT.
-  db.flush();
+async function criarBackupExterno({ nome = '', criadoPor = '', tipo = 'manual', backupId, client, config, maxJsonSnapshotBytes } = {}) {
   const externalConfig = config || (client ? { prefix: 'chatinterno' } : obterConfiguracaoS3Externo());
   const externalClient = client || criarClienteS3Compativel(externalConfig);
   if (!externalClient || typeof externalClient.headObject !== 'function' || typeof externalClient.putObject !== 'function') {
@@ -1114,18 +1188,14 @@ async function criarBackupExterno({ nome = '', criadoPor = '', tipo = 'manual', 
   if (await externalClient.headObject(manifestKey)) {
     throw new Error('Ja existe um backup externo concluido com este identificador');
   }
-  const entries = entradasBackupOperacional();
-  const filesWithSnapshots = [];
-  for (const entry of entries) {
-    if (!caminhoRelativoBackupSeguro(entry.relativePath)) throw new Error('Arquivo fora do escopo permitido do backup externo');
-    filesWithSnapshots.push(await garantirArquivoExternoConsistente(externalClient, chaveBackupExterno(prefix, id, entry.relativePath), entry));
+  const snapshot = capturarSnapshotBackupExterno({ maxJsonBytes: maxJsonSnapshotBytes });
+  const files = [];
+  for (const entry of snapshot.jsons) {
+    files.push(await enviarJsonCapturadoExterno(externalClient, chaveBackupExterno(prefix, id, entry.relativePath), entry));
   }
-  for (const file of filesWithSnapshots) {
-    if (!mesmoSnapshotArquivo(file.sourceSnapshot, statSnapshot(file.absolutePath))) {
-      throw new Error(`Snapshot externo inconsistente: arquivo alterado durante o backup: ${file.caminho}`);
-    }
+  for (const entry of snapshot.uploads) {
+    files.push(await enviarUploadSnapshotExterno(externalClient, chaveBackupExterno(prefix, id, entry.relativePath), entry));
   }
-  const files = filesWithSnapshots.map(({ sourceSnapshot, absolutePath, ...file }) => file);
   const manifest = {
     formato: EXTERNAL_BACKUP_FORMAT,
     versao_formato: BACKUP_FORMAT_VERSION,
@@ -1135,6 +1205,7 @@ async function criarBackupExterno({ nome = '', criadoPor = '', tipo = 'manual', 
     criado_em: new Date().toISOString(),
     criado_por: criadoPor,
     tipo,
+    snapshot_capturado_em: snapshot.capturado_em,
     origem_relativa: '.',
     arquivos: files.map((file) => file.caminho),
     files,
@@ -6404,6 +6475,7 @@ module.exports = {
   restoreBackup,
   restoreBackupFromDirectory,
   criarBackupExterno,
+  capturarSnapshotBackupExterno,
   restaurarBackupExterno,
   criarClienteS3Compativel,
   obterConfiguracaoS3Externo,
@@ -6421,5 +6493,6 @@ module.exports = {
   DATA_DIR,
   UPLOAD_DIR,
   BACKUP_FORMAT_VERSION,
-  EXTERNAL_BACKUP_FORMAT
+  EXTERNAL_BACKUP_FORMAT,
+  EXTERNAL_BACKUP_JSON_SNAPSHOT_MAX_BYTES
 };
