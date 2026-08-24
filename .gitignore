@@ -1,8 +1,9 @@
 node_modules/
-.env
+.env*
 *.db
-uploads/
-.env.local
-.env.eval.local
-evals/results/
-evals/.runtime/
+data/**
+backups/**
+uploads/**
+tmp/**
+evals/results/**
+evals/.runtime/**

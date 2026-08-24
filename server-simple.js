@@ -48,7 +48,6 @@ const SECRET_KEY = String(process.env.SECRET_KEY || '').trim();
 if (!SECRET_KEY) {
   throw new Error('SECRET_KEY é obrigatória para iniciar o ChatInterno. Configure uma variável de ambiente antes de executar o servidor.');
 }
-const SEED_DATA_DIR = path.join(__dirname, 'data');
 const STORAGE_ROOT = process.env.STORAGE_ROOT || process.env.RAILWAY_VOLUME_MOUNT_PATH || (process.env.RAILWAY_ENVIRONMENT ? path.join(os.tmpdir(), 'chatinterno') : __dirname);
 const IS_EPHEMERAL_STORAGE = !process.env.STORAGE_ROOT && !process.env.RAILWAY_VOLUME_MOUNT_PATH && Boolean(process.env.RAILWAY_ENVIRONMENT);
 const DATA_DIR = path.join(STORAGE_ROOT, 'data');
@@ -294,11 +293,6 @@ class SimpleDB {
 
   loadFile(name, defaultValue) {
     const filePath = path.join(DATA_DIR, name);
-    const seedPath = path.join(SEED_DATA_DIR, name);
-
-    if (!fs.existsSync(filePath) && fs.existsSync(seedPath)) {
-      fs.copyFileSync(seedPath, filePath);
-    }
 
     if (fs.existsSync(filePath)) {
       try {
@@ -307,6 +301,11 @@ class SimpleDB {
         return defaultValue;
       }
     }
+
+    // Um volume novo deve nascer com estruturas neutras, nunca com cópias de
+    // dados operacionais mantidos no repositório. O provisionamento do primeiro
+    // administrador continua explícito e controlado pelo script de setup.
+    this.saveFile(name, defaultValue);
     return defaultValue;
   }
 
@@ -446,7 +445,6 @@ function aplicarPreCadastroIaFontes() {
 
 aplicarPreCadastroIaFontes();
 ensurePlantaoGroup();
-ensureDefaultPlantaoJuneSchedule();
 void assegurarCodigoNormasIndexado().then((indice) => {
   console.log(`Código de Normas do TJSC indexado: ${indice.trechos.length} trechos.`);
 }).catch((error) => {
@@ -1183,46 +1181,6 @@ function ensurePlantaoGroup() {
     criado_em: new Date().toISOString()
   });
   db.saveFile('grupos.json', db.grupos);
-}
-
-function ensureDefaultPlantaoJuneSchedule() {
-  const state = getEscalaPlantaoState();
-  if (state.escalas.length || state.escreventes.length) return;
-
-  const nomes = ['Duda', 'Daniela', 'Régis', 'Sté'];
-  const escreventes = nomes.map((nome, index) => ({
-    id: 2026060100 + index + 1,
-    nome,
-    ativo: true
-  }));
-  const byName = new Map(escreventes.map((item) => [normalizeKey(item.nome), item.id]));
-  const periodos = [
-    { inicio: '2026-05-29', fim: '2026-06-04', nome: 'Duda' },
-    { inicio: '2026-06-05', fim: '2026-06-11', nome: 'Daniela' },
-    { inicio: '2026-06-12', fim: '2026-06-18', nome: 'Régis' },
-    { inicio: '2026-06-19', fim: '2026-06-25', nome: 'Sté' }
-  ];
-  const escalas = [];
-
-  periodos.forEach((periodo) => {
-    const cursor = parseDateOnly(periodo.inicio);
-    const end = parseDateOnly(periodo.fim);
-    while (cursor && end && cursor <= end) {
-      escalas.push({
-        data: toDateOnly(cursor),
-        escreventeId: byName.get(normalizeKey(periodo.nome)),
-        conflito: false,
-        observacao: 'Escala inicial de junho/2026'
-      });
-      cursor.setDate(cursor.getDate() + 1);
-    }
-  });
-
-  saveEscalaPlantaoState({
-    escreventes,
-    ferias: [],
-    escalas
-  });
 }
 
 function getEscalaPlantaoState() {
