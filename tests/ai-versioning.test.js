@@ -63,6 +63,16 @@ test('mudança comportamental da IA altera o fingerprint sem depender de evals',
   );
 });
 
+test('fingerprint comportamental é estável entre CRLF e LF', () => {
+  const source = fs.readFileSync(sourcePath, 'utf8');
+  const manifest = fs.readFileSync(normativeManifestPath, 'utf8');
+
+  assert.equal(
+    checker.computeFingerprintFromContent(source, manifest),
+    checker.computeFingerprintFromContent(source.replace(/\r?\n/g, '\r\n'), manifest.replace(/\r?\n/g, '\r\n'))
+  );
+});
+
 test('fingerprint igual não modifica a versão', () => {
   withVersionFixture({ version: '1.1', behavior_fingerprint: currentFingerprint() }, (paths) => {
     const before = fs.readFileSync(paths.versionConfigPath, 'utf8');

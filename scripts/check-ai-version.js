@@ -27,10 +27,14 @@ function between(source, start, end) {
 
 function computeFingerprintFromContent(source, normativeManifest) {
   const payload = {
-    regions: regions.map(([name, start, end]) => [name, between(source, start, end)]),
-    normative_manifest: normativeManifest
+    regions: regions.map(([name, start, end]) => [name, normalizarConteudoFingerprint(between(source, start, end))]),
+    normative_manifest: normalizarConteudoFingerprint(normativeManifest)
   };
   return crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+}
+
+function normalizarConteudoFingerprint(content) {
+  return String(content || '').replace(/\r\n/g, '\n');
 }
 
 function computeFingerprint({ sourceFile = sourcePath, normativeManifestFile = normativeManifestPath } = {}) {
@@ -113,6 +117,7 @@ module.exports = {
   computeFingerprintFromContent,
   incrementMinor,
   loadConfig,
+  normalizarConteudoFingerprint,
   syncAiVersion,
   writeConfigAtomically
 };
