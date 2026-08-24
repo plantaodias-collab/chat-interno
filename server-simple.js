@@ -10,6 +10,8 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
+const { Readable } = require('stream');
+const { pipeline } = require('stream/promises');
 const multer = require('multer');
 const sharp = require('sharp');
 const pdfParse = require('pdf-parse');
@@ -88,6 +90,9 @@ const MANUAL_BACKUP_RETENTION = 5;
 const BACKUP_FORMAT_VERSION = 2;
 const BACKUP_MIN_FREE_SPACE_BYTES = 64 * 1024 * 1024;
 const BACKUP_FREE_SPACE_MARGIN_RATIO = 0.25;
+const EXTERNAL_BACKUP_FORMAT = 'chatinterno-external-backup';
+const EXTERNAL_BACKUP_MANIFEST_MAX_BYTES = 8 * 1024 * 1024;
+const EXTERNAL_BACKUP_RESTORE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 const ATIVIDADE_BLOCO_GAP_MIN = 15;
 // Piloto supervisionado: a IA fica bloqueada até o horário combinado. Para
 // interromper imediatamente, defina IA_CARTORIO_ENABLED=false no Railway.
@@ -682,6 +687,173 @@ function sha256File(filePath) {
   return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 }
 
+async function sha256FileStream(filePath) {
+  const hash = crypto.createHash('sha256');
+  await pipeline(fs.createReadStream(filePath), hash);
+  return hash.digest('hex');
+}
+
+function statSnapshot(filePath) {
+  const stat = fs.statSync(filePath);
+  if (!stat.isFile()) throw new Error('Arquivo de backup nao e um arquivo regular');
+  return { size: stat.size, mtimeMs: stat.mtimeMs };
+}
+
+function mesmoSnapshotArquivo(before, after) {
+  return before.size === after.size && before.mtimeMs === after.mtimeMs;
+}
+
+function normalizarPrefixoS3(value) {
+  return String(value || 'chatinterno')
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter(Boolean)
+    .map((part) => {
+      if (part === '.' || part === '..') throw new Error('Prefixo S3 invalido');
+      return part;
+    })
+    .join('/');
+}
+
+function normalizarChaveS3(value) {
+  const key = String(value || '').replace(/\\/g, '/').replace(/^\/+/, '');
+  if (!key || key.split('/').some((part) => !part || part === '.' || part === '..')) {
+    throw new Error('Chave S3 invalida');
+  }
+  return key;
+}
+
+function codificarCaminhoS3(value) {
+  return normalizarChaveS3(value).split('/').map(encodeURIComponent).join('/');
+}
+
+function obterConfiguracaoS3Externo(env = process.env) {
+  const endpoint = String(env.S3_ENDPOINT || '').trim();
+  const bucket = String(env.S3_BUCKET || '').trim();
+  const region = String(env.S3_REGION || 'us-east-1').trim();
+  const accessKeyId = String(env.S3_ACCESS_KEY_ID || '').trim();
+  const secretAccessKey = String(env.S3_SECRET_ACCESS_KEY || '').trim();
+  const sessionToken = String(env.S3_SESSION_TOKEN || '').trim();
+  if (!endpoint || !bucket || !accessKeyId || !secretAccessKey) {
+    throw new Error('Backup externo indisponivel: configure endpoint, bucket e credenciais S3 no ambiente.');
+  }
+  let endpointUrl;
+  try {
+    endpointUrl = new URL(endpoint);
+  } catch {
+    throw new Error('Endpoint S3 invalido');
+  }
+  if (!['http:', 'https:'].includes(endpointUrl.protocol)) throw new Error('Endpoint S3 deve usar HTTP(S)');
+  return {
+    endpoint: endpointUrl.toString().replace(/\/$/, ''),
+    bucket,
+    region,
+    accessKeyId,
+    secretAccessKey,
+    sessionToken: sessionToken || undefined,
+    prefix: normalizarPrefixoS3(env.S3_PREFIX || 'chatinterno'),
+    pathStyle: String(env.S3_PATH_STYLE || 'true').toLowerCase() !== 'false'
+  };
+}
+
+function backupExternoFoiConfigurado(env = process.env) {
+  return ['S3_ENDPOINT', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY']
+    .some((name) => String(env[name] || '').trim() !== '');
+}
+
+function hmacSha256(key, value, encoding) {
+  return crypto.createHmac('sha256', key).update(value, 'utf8').digest(encoding);
+}
+
+function assinaturaAwsV4(config, method, url, headers, payloadHash, now = new Date()) {
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+  const dateStamp = amzDate.slice(0, 8);
+  const headersToSign = { ...headers, 'x-amz-date': amzDate };
+  const canonicalHeaders = Object.entries(headersToSign)
+    .map(([key, value]) => [String(key).toLowerCase(), String(value).trim().replace(/\s+/g, ' ')])
+    .sort(([left], [right]) => left.localeCompare(right));
+  const signedHeaders = canonicalHeaders.map(([key]) => key).join(';');
+  const canonicalQuery = [...url.searchParams.entries()]
+    .sort(([leftKey, leftValue], [rightKey, rightValue]) => leftKey.localeCompare(rightKey) || leftValue.localeCompare(rightValue))
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&');
+  const canonicalRequest = [
+    method,
+    url.pathname.split('/').map((part) => encodeURIComponent(decodeURIComponent(part))).join('/'),
+    canonicalQuery,
+    canonicalHeaders.map(([key, value]) => `${key}:${value}\n`).join(''),
+    signedHeaders,
+    payloadHash
+  ].join('\n');
+  const credentialScope = `${dateStamp}/${config.region}/s3/aws4_request`;
+  const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${credentialScope}\n${crypto.createHash('sha256').update(canonicalRequest).digest('hex')}`;
+  const dateKey = hmacSha256(`AWS4${config.secretAccessKey}`, dateStamp);
+  const regionKey = hmacSha256(dateKey, config.region);
+  const serviceKey = hmacSha256(regionKey, 's3');
+  const signingKey = hmacSha256(serviceKey, 'aws4_request');
+  const signature = hmacSha256(signingKey, stringToSign, 'hex');
+  return {
+    'x-amz-date': amzDate,
+    authorization: `AWS4-HMAC-SHA256 Credential=${config.accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`
+  };
+}
+
+function criarClienteS3Compativel(config = obterConfiguracaoS3Externo()) {
+  function urlParaChave(key) {
+    const encodedKey = codificarCaminhoS3(key);
+    if (config.pathStyle) return new URL(`${config.endpoint}/${encodeURIComponent(config.bucket)}/${encodedKey}`);
+    const endpoint = new URL(config.endpoint);
+    endpoint.hostname = `${config.bucket}.${endpoint.hostname}`;
+    endpoint.pathname = `${endpoint.pathname.replace(/\/$/, '')}/${encodedKey}`;
+    return endpoint;
+  }
+
+  async function request(method, key, { body, contentLength, sha256, metadata = {} } = {}) {
+    const url = urlParaChave(key);
+    const headers = {
+      host: url.host,
+      'x-amz-content-sha256': sha256 || crypto.createHash('sha256').update('').digest('hex'),
+      ...Object.fromEntries(Object.entries(metadata).map(([name, value]) => [`x-amz-meta-${name}`, String(value)]))
+    };
+    if (Number.isFinite(contentLength)) headers['content-length'] = String(contentLength);
+    if (config.sessionToken) headers['x-amz-security-token'] = config.sessionToken;
+    Object.assign(headers, assinaturaAwsV4(config, method, url, headers, headers['x-amz-content-sha256']));
+    const response = await fetch(url, { method, headers, body, duplex: body ? 'half' : undefined });
+    if (response.status === 404) return { response, missing: true };
+    if (!response.ok) throw new Error(`Storage S3 respondeu HTTP ${response.status}`);
+    return { response, missing: false };
+  }
+
+  return {
+    async headObject(key) {
+      const result = await request('HEAD', key);
+      if (result.missing) return null;
+      return {
+        size: Number(result.response.headers.get('content-length') || 0),
+        sha256: result.response.headers.get('x-amz-meta-sha256') || '',
+        metadata: Object.fromEntries(result.response.headers.entries())
+      };
+    },
+    async putObject(key, { body, contentLength, sha256 }) {
+      const result = await request('PUT', key, {
+        body,
+        contentLength,
+        sha256,
+        metadata: { sha256, size: contentLength }
+      });
+      if (result.missing) throw new Error('Falha ao enviar objeto para storage S3');
+    },
+    async getObject(key) {
+      const result = await request('GET', key);
+      if (result.missing) return null;
+      return {
+        body: result.response.body,
+        size: Number(result.response.headers.get('content-length') || 0),
+        sha256: result.response.headers.get('x-amz-meta-sha256') || ''
+      };
+    }
+  };
+}
+
 function listarArquivosRecursivos(directory, relativeBase = '') {
   if (!fs.existsSync(directory)) return [];
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -839,7 +1011,7 @@ function validarManifestoBackup(backupPath) {
   if (!fs.existsSync(manifestPath)) throw new Error('Backup legado sem manifesto verificavel nao pode ser restaurado com seguranca');
   let manifest;
   try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')); } catch { throw new Error('Manifesto de backup invalido'); }
-  if (manifest?.formato !== 'chatinterno-backup' || manifest?.versao_formato !== BACKUP_FORMAT_VERSION || !Array.isArray(manifest.files)) {
+  if (!['chatinterno-backup', EXTERNAL_BACKUP_FORMAT].includes(manifest?.formato) || manifest?.versao_formato !== BACKUP_FORMAT_VERSION || !Array.isArray(manifest.files)) {
     throw new Error('Formato de backup invalido ou nao suportado');
   }
   const seen = new Set();
@@ -854,11 +1026,187 @@ function validarManifestoBackup(backupPath) {
   return manifest;
 }
 
-function restoreBackup(backupId) {
-  const backupPath = resolveBackupPath(backupId);
-  if (!fs.existsSync(backupPath)) {
-    throw new Error('Backup nao encontrado');
+function validarManifestoBackupExterno(manifest) {
+  if (manifest?.formato !== EXTERNAL_BACKUP_FORMAT || manifest?.versao_formato !== BACKUP_FORMAT_VERSION || manifest?.status !== 'complete' || !Array.isArray(manifest.files)) {
+    throw new Error('Manifesto externo invalido ou backup incompleto');
   }
+  if (Buffer.byteLength(JSON.stringify(manifest), 'utf8') > EXTERNAL_BACKUP_MANIFEST_MAX_BYTES) {
+    throw new Error('Manifesto externo excede o limite seguro');
+  }
+  const seen = new Set();
+  for (const file of manifest.files) {
+    if (!caminhoRelativoBackupSeguro(file?.caminho) || !normalizarChaveS3(file?.objeto) || seen.has(file.caminho)) {
+      throw new Error('Manifesto externo contem caminho invalido');
+    }
+    if (!Number.isSafeInteger(Number(file.tamanho_bytes)) || Number(file.tamanho_bytes) < 0 || !/^[a-f0-9]{64}$/.test(String(file.sha256 || ''))) {
+      throw new Error('Manifesto externo contem metadados invalidos');
+    }
+    seen.add(file.caminho);
+  }
+  if (![...seen].some((value) => value.startsWith('data/'))) throw new Error('Backup externo nao contem dados operacionais');
+  return manifest;
+}
+
+function validarEspacoParaRestauracao(snapshotBytes, espaco = obterEspacoArmazenamento()) {
+  const margemBytes = Math.max(BACKUP_MIN_FREE_SPACE_BYTES, Math.ceil(snapshotBytes * BACKUP_FREE_SPACE_MARGIN_RATIO));
+  const necessarioBytes = snapshotBytes + margemBytes;
+  if (espaco?.disponivel && Number(espaco.livre_bytes) < necessarioBytes) {
+    throw new Error(`Espaco insuficiente para restauracao segura: requer ${necessarioBytes} bytes livres com margem de seguranca.`);
+  }
+  return { snapshot_bytes: snapshotBytes, margem_bytes: margemBytes, necessario_bytes: necessarioBytes, espaco };
+}
+
+function criarIdBackupExterno(backupId, nome) {
+  if (backupId) {
+    const normalized = sanitizeBackupName(backupId);
+    if (!normalized || normalized !== String(backupId)) throw new Error('Identificador de backup externo invalido');
+    return normalized;
+  }
+  const stamp = formatBackupStamp();
+  const safeName = sanitizeBackupName(nome);
+  return safeName ? `${stamp}-${safeName}` : stamp;
+}
+
+function chaveBackupExterno(prefix, backupId, relativePath) {
+  return normalizarChaveS3([normalizarPrefixoS3(prefix), criarIdBackupExterno(backupId), relativePath].join('/'));
+}
+
+async function garantirArquivoExternoConsistente(client, key, entry) {
+  const before = statSnapshot(entry.absolutePath);
+  if (before.size !== Number(entry.tamanho)) throw new Error(`Arquivo alterado antes do backup externo: ${entry.relativePath}`);
+  const sha256 = await sha256FileStream(entry.absolutePath);
+  const afterHash = statSnapshot(entry.absolutePath);
+  if (!mesmoSnapshotArquivo(before, afterHash)) throw new Error(`Arquivo alterado durante calculo de integridade: ${entry.relativePath}`);
+  const remote = await client.headObject(key);
+  if (!remote || Number(remote.size) !== before.size || String(remote.sha256 || '') !== sha256) {
+    await client.putObject(key, { body: fs.createReadStream(entry.absolutePath), contentLength: before.size, sha256 });
+  }
+  const afterUpload = statSnapshot(entry.absolutePath);
+  if (!mesmoSnapshotArquivo(before, afterUpload)) throw new Error(`Arquivo alterado durante envio externo: ${entry.relativePath}`);
+  const verified = await client.headObject(key);
+  if (!verified || Number(verified.size) !== before.size || String(verified.sha256 || '') !== sha256) {
+    throw new Error(`Integridade remota nao confirmada: ${entry.relativePath}`);
+  }
+  return {
+    caminho: entry.relativePath,
+    origem_relativa: entry.relativePath,
+    objeto: key,
+    tamanho_bytes: before.size,
+    sha256,
+    sourceSnapshot: before,
+    absolutePath: entry.absolutePath
+  };
+}
+
+async function criarBackupExterno({ nome = '', criadoPor = '', tipo = 'manual', backupId, client, config } = {}) {
+  // O flush ocorre antes de enumerar os arquivos. O restante é somente leitura
+  // do volume e streaming para o destino externo; nenhum snapshot completo é
+  // criado em STORAGE_ROOT.
+  db.flush();
+  const externalConfig = config || (client ? { prefix: 'chatinterno' } : obterConfiguracaoS3Externo());
+  const externalClient = client || criarClienteS3Compativel(externalConfig);
+  if (!externalClient || typeof externalClient.headObject !== 'function' || typeof externalClient.putObject !== 'function') {
+    throw new Error('Cliente de backup externo invalido');
+  }
+  const id = criarIdBackupExterno(backupId, nome);
+  const prefix = normalizarPrefixoS3(externalConfig.prefix || 'chatinterno');
+  const manifestKey = chaveBackupExterno(prefix, id, 'manifest.json');
+  if (await externalClient.headObject(manifestKey)) {
+    throw new Error('Ja existe um backup externo concluido com este identificador');
+  }
+  const entries = entradasBackupOperacional();
+  const filesWithSnapshots = [];
+  for (const entry of entries) {
+    if (!caminhoRelativoBackupSeguro(entry.relativePath)) throw new Error('Arquivo fora do escopo permitido do backup externo');
+    filesWithSnapshots.push(await garantirArquivoExternoConsistente(externalClient, chaveBackupExterno(prefix, id, entry.relativePath), entry));
+  }
+  for (const file of filesWithSnapshots) {
+    if (!mesmoSnapshotArquivo(file.sourceSnapshot, statSnapshot(file.absolutePath))) {
+      throw new Error(`Snapshot externo inconsistente: arquivo alterado durante o backup: ${file.caminho}`);
+    }
+  }
+  const files = filesWithSnapshots.map(({ sourceSnapshot, absolutePath, ...file }) => file);
+  const manifest = {
+    formato: EXTERNAL_BACKUP_FORMAT,
+    versao_formato: BACKUP_FORMAT_VERSION,
+    status: 'complete',
+    id,
+    nome: sanitizeBackupName(nome) || `backup-${id}`,
+    criado_em: new Date().toISOString(),
+    criado_por: criadoPor,
+    tipo,
+    origem_relativa: '.',
+    arquivos: files.map((file) => file.caminho),
+    files,
+    tamanho_total_bytes: files.reduce((sum, file) => sum + file.tamanho_bytes, 0)
+  };
+  const manifestBody = Buffer.from(JSON.stringify(manifest, null, 2));
+  if (manifestBody.length > EXTERNAL_BACKUP_MANIFEST_MAX_BYTES) throw new Error('Manifesto externo excede o limite seguro');
+  const manifestSha256 = crypto.createHash('sha256').update(manifestBody).digest('hex');
+  await externalClient.putObject(manifestKey, { body: Readable.from(manifestBody), contentLength: manifestBody.length, sha256: manifestSha256 });
+  const verifiedManifest = await externalClient.headObject(manifestKey);
+  if (!verifiedManifest || Number(verifiedManifest.size) !== manifestBody.length || String(verifiedManifest.sha256 || '') !== manifestSha256) {
+    throw new Error('Manifesto remoto nao foi confirmado; backup externo permanece incompleto');
+  }
+  return { ...manifest, manifest_objeto: manifestKey, manifest_sha256: manifestSha256 };
+}
+
+async function lerObjetoExternoComoBuffer(client, key, maxBytes = EXTERNAL_BACKUP_MANIFEST_MAX_BYTES) {
+  const object = await client.getObject(key);
+  if (!object) throw new Error('Objeto remoto obrigatorio ausente');
+  if (Number(object.size) > maxBytes) throw new Error('Objeto remoto excede o limite seguro');
+  const chunks = [];
+  let total = 0;
+  const source = object.body && typeof object.body.getReader === 'function' ? Readable.fromWeb(object.body) : object.body;
+  for await (const chunk of source) {
+    total += chunk.length;
+    if (total > maxBytes) throw new Error('Objeto remoto excede o limite seguro');
+    chunks.push(Buffer.from(chunk));
+  }
+  const body = Buffer.concat(chunks);
+  const sha256 = crypto.createHash('sha256').update(body).digest('hex');
+  if (Number(object.size) !== body.length || (object.sha256 && object.sha256 !== sha256)) throw new Error('Integridade remota invalida');
+  return body;
+}
+
+async function restaurarBackupExterno({ backupId, client, config, stagingRoot, maxStagingBytes = EXTERNAL_BACKUP_RESTORE_MAX_BYTES } = {}) {
+  const externalConfig = config || (client ? { prefix: 'chatinterno' } : obterConfiguracaoS3Externo());
+  const externalClient = client || criarClienteS3Compativel(externalConfig);
+  if (!externalClient || typeof externalClient.getObject !== 'function') throw new Error('Cliente de backup externo invalido');
+  const id = criarIdBackupExterno(backupId);
+  const prefix = normalizarPrefixoS3(externalConfig.prefix || 'chatinterno');
+  const manifestKey = chaveBackupExterno(prefix, id, 'manifest.json');
+  const manifest = validarManifestoBackupExterno(JSON.parse((await lerObjetoExternoComoBuffer(externalClient, manifestKey)).toString('utf8')));
+  const snapshotBytes = Number(manifest.tamanho_total_bytes || 0);
+  if (snapshotBytes > Number(maxStagingBytes)) throw new Error('Backup externo excede o limite de staging configurado');
+  if (!stagingRoot) throw new Error('Defina um diretorio de staging externo para restauracao segura');
+  const resolvedStagingRoot = path.resolve(stagingRoot);
+  const relativeToStorage = path.relative(path.resolve(STORAGE_ROOT), resolvedStagingRoot);
+  if (!relativeToStorage.startsWith('..') && !path.isAbsolute(relativeToStorage)) throw new Error('Staging de restauracao externa nao pode ficar dentro do volume de dados');
+  fs.mkdirSync(resolvedStagingRoot, { recursive: true });
+  validarEspacoParaRestauracao(snapshotBytes);
+  const stagingPath = fs.mkdtempSync(path.join(resolvedStagingRoot, `.external-restore-${id}-`));
+  try {
+    for (const file of manifest.files) {
+      const remote = await externalClient.getObject(file.objeto);
+      if (!remote) throw new Error(`Objeto remoto obrigatorio ausente: ${file.caminho}`);
+      const destination = caminhoDentroDe(stagingPath, file.caminho);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      const source = remote.body && typeof remote.body.getReader === 'function' ? Readable.fromWeb(remote.body) : remote.body;
+      await pipeline(source, fs.createWriteStream(destination, { flags: 'wx' }));
+      if (fs.statSync(destination).size !== Number(file.tamanho_bytes) || sha256File(destination) !== file.sha256) {
+        throw new Error(`Integridade invalida no objeto remoto: ${file.caminho}`);
+      }
+    }
+    fs.writeFileSync(path.join(stagingPath, 'manifest.json'), JSON.stringify(manifest, null, 2));
+    return restoreBackupFromDirectory(stagingPath);
+  } finally {
+    fs.rmSync(stagingPath, { recursive: true, force: true });
+  }
+}
+
+function restoreBackupFromDirectory(backupPath) {
+  if (!fs.existsSync(backupPath)) throw new Error('Backup nao encontrado');
   const manifest = validarManifestoBackup(backupPath);
   const transactionId = crypto.randomBytes(8).toString('hex');
   const stagingPath = fs.mkdtempSync(path.join(STORAGE_ROOT, `.restore-${transactionId}-`));
@@ -897,9 +1245,14 @@ function restoreBackup(backupId) {
   }
 }
 
-let lastAutomaticBackupCheckKey = '';
+function restoreBackup(backupId) {
+  return restoreBackupFromDirectory(resolveBackupPath(backupId));
+}
 
-function runAutomaticBackupIfDue() {
+let lastAutomaticBackupCheckKey = '';
+let backupAutomaticoEmAndamento = false;
+
+async function runAutomaticBackupIfDue() {
   const schedule = normalizeBackupScheduleConfig(db.backup_agendamento);
   if (!schedule.ativo) return null;
 
@@ -911,28 +1264,31 @@ function runAutomaticBackupIfDue() {
   if (nowTime !== schedule.horario) return null;
   if (schedule.ultimaExecucaoChave === runKey) return null;
   if (lastAutomaticBackupCheckKey === minuteKey) return null;
+  if (backupAutomaticoEmAndamento) return null;
 
-  const metadata = createBackup({
-    nome: `auto-${runKey}-${nowParts.hour}${nowParts.minute}`,
-    criadoPor: 'Sistema',
-    tipo: 'automatico'
-  });
-
-  db.backup_agendamento = {
-    ...schedule,
-    ultimaExecucaoChave: runKey,
-    ultimaExecucaoEm: new Date().toISOString()
-  };
-  db.saveFile('backup-agendamento.json', db.backup_agendamento);
-  pruneAutomaticBackups(schedule.manterQuantidade);
-
-  lastAutomaticBackupCheckKey = minuteKey;
-  io.emit('backup-automatico-criado', {
-    backup: metadata,
-    agendamento: getBackupScheduleStatus()
-  });
-
-  return metadata;
+  backupAutomaticoEmAndamento = true;
+  try {
+    const options = { nome: `auto-${runKey}-${nowParts.hour}${nowParts.minute}`, criadoPor: 'Sistema', tipo: 'automatico' };
+    // Qualquer configuração parcial de S3 deve falhar visivelmente, sem cair
+    // em backup local e voltar a pressionar o volume por engano.
+    const externo = backupExternoFoiConfigurado();
+    const metadata = externo ? await criarBackupExterno(options) : createBackup(options);
+    db.backup_agendamento = {
+      ...schedule,
+      ultimaExecucaoChave: runKey,
+      ultimaExecucaoEm: new Date().toISOString()
+    };
+    db.saveFile('backup-agendamento.json', db.backup_agendamento);
+    if (!externo) pruneAutomaticBackups(schedule.manterQuantidade);
+    lastAutomaticBackupCheckKey = minuteKey;
+    io.emit('backup-automatico-criado', {
+      backup: metadata,
+      agendamento: getBackupScheduleStatus()
+    });
+    return metadata;
+  } finally {
+    backupAutomaticoEmAndamento = false;
+  }
 }
 
 function marcarComoLidas(remetenteId, destinatarioId) {
@@ -4011,6 +4367,21 @@ app.post('/api/admin/backups', verificarToken, (req, res) => {
   }
 });
 
+// O backup externo permanece opt-in: só é acionado por administrador e quando
+// as variáveis S3 estiverem configuradas. O agendamento local existente não é
+// modificado nesta etapa.
+app.post('/api/admin/backups/externo', verificarToken, async (req, res) => {
+  try {
+    const usuarioAdmin = findActiveUserById(req.userId);
+    if (!usuarioAdmin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
+    const nome = sanitizeText(req.body?.nome);
+    const backup = await criarBackupExterno({ nome, criadoPor: usuarioAdmin.nome });
+    res.json({ mensagem: 'Backup externo concluido com sucesso', backup: { id: backup.id, criado_em: backup.criado_em, tamanho_total_bytes: backup.tamanho_total_bytes, arquivos: backup.files.length } });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.put('/api/admin/backups/agendamento', verificarToken, (req, res) => {
   try {
     const usuarioAdmin = findActiveUserById(req.userId);
@@ -5931,9 +6302,9 @@ server.listen(PORT, '0.0.0.0', () => {
   }
 });
 
-setInterval(() => {
+setInterval(async () => {
   try {
-    const metadata = runAutomaticBackupIfDue();
+    const metadata = await runAutomaticBackupIfDue();
     if (metadata) {
       console.log(`Backup automatico criado: ${metadata.id}`);
     }
@@ -6031,14 +6402,24 @@ module.exports = {
   AI_VERSION,
   createBackup,
   restoreBackup,
+  restoreBackupFromDirectory,
+  criarBackupExterno,
+  restaurarBackupExterno,
+  criarClienteS3Compativel,
+  obterConfiguracaoS3Externo,
+  backupExternoFoiConfigurado,
+  runAutomaticBackupIfDue,
   listBackups,
   pruneAutomaticBackups,
   validarManifestoBackup,
+  validarManifestoBackupExterno,
   validarEspacoParaBackup,
+  validarEspacoParaRestauracao,
   obterResumoArmazenamentoBackup,
   caminhoRelativoBackupSeguro,
   BACKUP_DIR,
   DATA_DIR,
   UPLOAD_DIR,
-  BACKUP_FORMAT_VERSION
+  BACKUP_FORMAT_VERSION,
+  EXTERNAL_BACKUP_FORMAT
 };
