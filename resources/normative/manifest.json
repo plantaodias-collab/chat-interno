@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "descricao": "Seeds oficiais versionados para bootstrap de índices normativos em volume novo. Utilizados somente após falha temporária da fonte oficial.",
+  "fontes": {
+    "lei_registros_publicos": {
+      "diploma": "Lei nº 6.015/1973 — Lei de Registros Públicos",
+      "fonte_oficial": "https://www.planalto.gov.br/ccivil_03/leis/l6015compilada.htm",
+      "data_obtencao": "2026-08-21",
+      "versao": "Texto compilado no Portal da Legislação (Planalto), snapshot oficial validado para bootstrap",
+      "arquivo": "lei-registros-publicos-planalto-2026-08-21.html",
+      "sha256": "926b23383fbdcc9b1b7878c1b614c49c45967d26943826dc86d1a07596618e96"
+    },
+    "codigo_civil": {
+      "diploma": "Lei nº 10.406/2002 — Código Civil",
+      "fonte_oficial": "https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm",
+      "data_obtencao": "2026-08-24T13:31:15.000Z",
+      "versao": "Texto compilado no Portal da Legislação (Planalto), snapshot oficial validado para bootstrap",
+      "arquivo": "codigo-civil-planalto-2026-08-24.html",
+      "sha256": "dc6bef05391182e76a76cecbe0a0a9f22aaa6c401f058c90dcc8c9ba95caf653"
+    }
+  }
+}
