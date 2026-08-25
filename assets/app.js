@@ -76,6 +76,7 @@ let conversationTagsState = {};
 let conversationNotesCountState = {};
 let conversationNotesCache = {};
 let conversationAssigneeState = {};
+let workflowExpandedChats = new Set();
 let mentionsInbox = [];
 let mentionSuggestionsState = {
   active: false,
@@ -627,6 +628,29 @@ function renderWorkflowPanel() {
   const notesCount = document.getElementById('conversationNotesCount');
   const responsibleSelect = document.getElementById('conversationResponsibleSelect');
   const slaRow = document.getElementById('conversationSlaRow');
+  const status = document.getElementById('conversationWorkflowStatus');
+  const toggle = document.getElementById('conversationWorkflowToggle');
+  const details = document.getElementById('conversationWorkflowDetails');
+  const assignee = getConversationAssignee(key);
+  const sla = getCurrentSlaInfo(key);
+  const noteCount = Number(conversationNotesCountState[key] || 0);
+  const summaryParts = [];
+
+  if (assignee) summaryParts.push(`Responsável: ${assignee.usuario_nome || 'Equipe'}`);
+  if (tags.length) summaryParts.push(`${tags.length} etiqueta${tags.length === 1 ? '' : 's'}`);
+  if (noteCount) summaryParts.push(`${noteCount} nota${noteCount === 1 ? '' : 's'}`);
+  if (sla) summaryParts.push(sla.label);
+  const hasRelevantInfo = summaryParts.length > 0;
+  const expanded = workflowExpandedChats.has(key);
+
+  if (status) status.textContent = hasRelevantInfo ? summaryParts.join(' · ') : 'Sem informações de atendimento';
+  if (details) details.classList.toggle('hidden', !expanded);
+  panel.classList.toggle('is-compact', !expanded);
+  panel.classList.toggle('has-workflow-info', hasRelevantInfo);
+  if (toggle) {
+    toggle.textContent = expanded ? 'Recolher' : (hasRelevantInfo ? 'Ver atendimento' : 'Adicionar atendimento');
+    toggle.setAttribute('aria-expanded', String(expanded));
+  }
 
   if (tagsList) {
     tagsList.innerHTML = tags.length
@@ -639,7 +663,6 @@ function renderWorkflowPanel() {
     notesCount.textContent = count ? `(${count})` : '';
   }
   if (responsibleSelect) {
-    const assignee = getConversationAssignee(key);
     const users = getAssignableUsersForCurrentChat();
     if (assignee && !users.some((user) => Number(user.id) === Number(assignee.usuario_id))) {
       users.push({ id: Number(assignee.usuario_id), nome: assignee.usuario_nome || `#${assignee.usuario_id}` });
@@ -651,14 +674,20 @@ function renderWorkflowPanel() {
     responsibleSelect.value = currentValue;
   }
   if (slaRow) {
-    const assignee = getConversationAssignee(key);
-    const sla = getCurrentSlaInfo(key);
     const parts = [];
     if (assignee) parts.push(`Responsável: ${escapeHtml(assignee.usuario_nome || 'Equipe')}`);
     if (sla) parts.push(`<span class="${sla.overdue ? 'sla-overdue' : 'sla-watch'}">${escapeHtml(sla.label)}</span>`);
     slaRow.innerHTML = parts.length ? parts.join(' · ') : '';
     slaRow.classList.toggle('hidden', !parts.length);
   }
+}
+
+function alternarWorkflowAtual() {
+  if (!tipoChat || !chatIdAtual) return;
+  const key = getCurrentChatKey();
+  if (workflowExpandedChats.has(key)) workflowExpandedChats.delete(key);
+  else workflowExpandedChats.add(key);
+  renderWorkflowPanel();
 }
 
 async function salvarEtiquetasAtual() {
@@ -1154,7 +1183,33 @@ function setConversationFilter(filter) {
     btn.classList.toggle('active', btn.dataset.filter === conversationFilter);
     btn.setAttribute('aria-pressed', String(btn.dataset.filter === conversationFilter));
   });
+  renderSidebarInbox();
   scheduleConversationRender();
+}
+
+function renderSidebarInbox() {
+  const container = document.getElementById('sidebarInboxShortcuts');
+  if (!container) return;
+  const unread = Object.values(unreadState).reduce((total, value) => total + (Number(value) || 0), 0);
+  const priorities = Array.from(priorityChats).filter((key) => getChatNameByKey(key)).length;
+  const recent = [...gruposCache.map((item) => ({ tipo: 'grupo', item })), ...contatosCache.map((item) => ({ tipo: 'privado', item }))]
+    .filter(({ tipo, item }) => Number(lastTimestampState[getChatKey(tipo, item.id)] || 0) > 0)
+    .length;
+  const shortcuts = [
+    { filter: 'nao-lidas', label: 'Não lidas', value: unread },
+    { filter: 'prioridade', label: 'Prioridades', value: priorities },
+    { filter: 'todos', label: 'Recentes', value: recent }
+  ];
+  container.innerHTML = shortcuts.map(({ filter, label, value }) => `
+    <button class="inbox-shortcut ${conversationFilter === filter ? 'active' : ''}" type="button" onclick="abrirAtalhoCaixaEntrada('${filter}')">
+      <span>${label}</span><strong>${value}</strong>
+    </button>
+  `).join('');
+}
+
+function abrirAtalhoCaixaEntrada(filter) {
+  setConversationFilter(filter);
+  document.querySelector('.sidebar-section:not(.inbox-section)')?.scrollIntoView({ block: 'nearest' });
 }
 
 function scheduleConversationRender() {
@@ -5099,6 +5154,7 @@ async function carregarResumoConversas() {
 function renderGrupos() {
   const gruposList = document.getElementById('gruposList');
   gruposList.innerHTML = '';
+  renderSidebarInbox();
 
   const gruposFiltrados = sortByRecent(gruposCache, 'grupo').filter((grupo) => {
     const key = getChatKey('grupo', grupo.id);
@@ -5136,7 +5192,6 @@ function renderGrupos() {
           ${unread > 0 ? `<span class="notification-badge" title="${escapeHtml(getUnreadBadgeTitle(unread))}">${unread > 99 ? '99+' : unread}</span>` : ''}
         </div>
         ${getAttendanceChipHtml(key)}
-        ${isPriority ? '<div class="priority-chip">Prioridade</div>' : ''}
       </div>
     `;
     item.addEventListener('click', () => carregarChat('grupo', grupo.id, grupo.nome));
@@ -5147,6 +5202,7 @@ function renderGrupos() {
 function renderContatos() {
   const contatosList = document.getElementById('contatosList');
   contatosList.innerHTML = '';
+  renderSidebarInbox();
 
   const onlineContainer = document.createElement('div');
   onlineContainer.className = 'contact-group-items';
@@ -5190,10 +5246,6 @@ function renderContatos() {
     const status = getUserStatus(usuario.id);
     const preview = lastPreviewState[key] || (online ? 'Online agora' : usuario.email);
     const lastSeen = lastSeenState[Number(usuario.id)] || usuario.ultimo_visto_em;
-    const statusHtml = online
-      ? `<div class="status-chip ${escapeHtml(status)}">${escapeHtml(getStatusLabel(status))} · ${isRecentlyActive(lastSeen) ? 'ativo agora' : 'ativo recentemente'}</div>`
-      : `<div class="status-chip offline">${escapeHtml(formatLastSeen(lastSeen))}</div>`;
-
     const item = document.createElement('div');
     item.className = `chat-item ${tipoChat === 'privado' && Number(chatIdAtual) === Number(usuario.id) ? 'active' : ''} ${unread > 0 ? 'unread' : ''} ${isPriority ? 'priority' : ''} ${attendanceStatus ? `attendance-${attendanceStatus}` : ''}`;
     item.innerHTML = `
@@ -5211,8 +5263,6 @@ function renderContatos() {
           ${unread > 0 ? `<span class="notification-badge" title="${escapeHtml(getUnreadBadgeTitle(unread))}">${unread > 99 ? '99+' : unread}</span>` : ''}
         </div>
         ${getAttendanceChipHtml(key)}
-        ${statusHtml}
-        ${isPriority ? '<div class="priority-chip">Prioridade</div>' : ''}
       </div>
     `;
     item.addEventListener('click', () => carregarChat('privado', usuario.id, usuario.nome));

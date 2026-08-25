@@ -11821,6 +11821,258 @@ body:not(.theme-dark) .workspace-search-clear:hover { background: rgba(64,96,137
 .contacts-section .contact-group-header { padding-top: 9px; padding-bottom: 6px; }
 .contacts-section .offline-group { opacity: .82; }
 
+/* Fase visual 1: reduzir ruído sem alterar os fluxos de conversa. */
+#chatContainer .header {
+  min-height: 68px;
+  padding-block: 12px;
+}
+
+#chatContainer .header-actions {
+  flex: 0 1 510px;
+}
+
+#chatContainer .assistant-header-btn {
+  max-width: 188px;
+}
+
+#chatContainer .assistant-header-btn .action-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#chatContainer .user-info {
+  gap: 9px;
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+
+#chatContainer .user-info .avatar {
+  width: 38px;
+  height: 38px;
+  font-size: 13px;
+}
+
+#chatContainer .user-name { font-size: 13px; }
+#chatContainer .user-email { display: none; }
+#chatContainer .user-status-select { min-height: 28px; font-size: 11px; }
+#chatContainer .logout-btn { min-height: 30px; font-size: 11px; }
+
+#chatContainer .inbox-section {
+  padding-top: 8px;
+  padding-bottom: 4px;
+}
+
+.inbox-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 12px 6px;
+}
+
+.inbox-shortcut {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  padding: 7px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inbox-shortcut strong {
+  color: var(--text);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.inbox-shortcut:hover,
+.inbox-shortcut.active {
+  border-color: rgba(44,80,121,.20);
+  background: rgba(44,80,121,.08);
+  color: #23456f;
+}
+
+#chatContainer .sidebar-section:not(.contacts-section):not(.inbox-section) {
+  padding-top: 8px;
+}
+
+#chatContainer .chat-item {
+  min-height: 54px;
+  margin: 0 4px 2px;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+#chatContainer .chat-item:hover {
+  border-color: transparent;
+  background: rgba(44,80,121,.06);
+  transform: none;
+}
+
+#chatContainer .chat-item.active {
+  border-color: transparent;
+  background: rgba(44,80,121,.12);
+  box-shadow: none;
+}
+
+#chatContainer .chat-item.active::before {
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background: var(--primary);
+}
+
+#chatContainer .chat-item.unread {
+  border-color: transparent;
+  background: transparent;
+}
+
+#chatContainer .chat-item.unread .chat-name { font-weight: 850; }
+
+#chatContainer .chat-item.priority {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+#chatContainer .chat-item.priority::after {
+  right: 10px;
+  top: 9px;
+  width: auto;
+  height: auto;
+  background: transparent;
+  box-shadow: none;
+  color: #b7791f;
+  content: '★';
+  font-size: 11px;
+}
+
+#chatContainer .chat-item:not(.active):not(.unread) .chat-preview {
+  display: none;
+}
+
+#chatContainer .chat-item:not(.active):not(.unread) .chat-preview-row {
+  min-height: 0;
+}
+
+#chatContainer .chat-time,
+#chatContainer .chat-preview,
+#chatContainer .workflow-empty,
+#chatContainer .workflow-sla-row,
+#chatContainer .message-time {
+  font-size: 12px;
+}
+
+#chatContainer .notification-badge {
+  min-width: 20px;
+  height: 20px;
+  border-width: 1px;
+  box-shadow: none;
+  font-size: 11px;
+}
+
+#chatContainer .chat-icon.private .presence-dot,
+#chatContainer .avatar .presence-dot {
+  width: 10px;
+  height: 10px;
+  border-width: 2px;
+  box-shadow: none;
+}
+
+#chatContainer .chat-icon.private:has(.presence-dot.online),
+#chatContainer .header-avatar-private:has(.presence-dot.online) {
+  box-shadow: none;
+}
+
+#chatContainer .conversation-workflow-panel {
+  margin-top: 8px;
+  margin-bottom: 0;
+  padding: 8px 12px;
+  box-shadow: none;
+}
+
+.workflow-summary-row {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workflow-summary-copy {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.workflow-summary-title {
+  flex: 0 0 auto;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.workflow-summary-status {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-workflow-panel.has-workflow-info .workflow-summary-status { color: #2c5079; }
+
+.workflow-toggle-btn {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #2c5079;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.workflow-toggle-btn:hover { background: rgba(44,80,121,.09); }
+.workflow-details { margin-top: 10px; }
+.workflow-details.hidden { display: none; }
+
+body.theme-dark .inbox-shortcut:hover,
+body.theme-dark .inbox-shortcut.active,
+body.theme-dark .workflow-toggle-btn:hover {
+  border-color: rgba(96,165,250,.28);
+  background: rgba(96,165,250,.13);
+  color: #bfdbfe;
+}
+
+body.theme-dark .workflow-summary-title { color: #e5edf7; }
+body.theme-dark .workflow-summary-status { color: #aebed2; }
+body.theme-dark .conversation-workflow-panel.has-workflow-info .workflow-summary-status,
+body.theme-dark .workflow-toggle-btn { color: #bfdbfe; }
+
+@media (max-width: 1366px) and (min-width: 981px) {
+  #chatContainer.container { grid-template-columns: minmax(262px, 286px) minmax(0, 1fr); }
+  #chatContainer .header-main { flex-basis: 250px; }
+  #chatContainer .header-search { width: min(220px, 24vw); min-width: 150px; }
+  #chatContainer .assistant-header-btn { max-width: 142px; }
+  #chatContainer .header-motivation { display: none; }
+  #chatContainer .messages-container { padding-top: 20px; padding-bottom: 20px; }
+}
+
+@media (max-width: 760px) {
+  .inbox-shortcuts { padding-left: 10px; padding-right: 10px; }
+  .workflow-summary-row { align-items: flex-start; }
+  .workflow-summary-copy { display: grid; gap: 2px; }
+  .workflow-summary-status { white-space: normal; }
+}
+
 /* Redesign da tela inicial: o chat ocupa o palco inteiro; recursos auxiliares
    continuam acessíveis no cabeçalho, sem competir com as conversas. */
 @media (min-width: 981px) {

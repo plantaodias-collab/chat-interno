@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/app.min.css?v=5cc1ec65b702cd40" />
+  <link rel="stylesheet" href="/assets/app.min.css?v=b06b41f62ae82728" />
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@17.0.3/dist/twemoji.min.js" crossorigin="anonymous" defer></script>
@@ -83,6 +83,12 @@
           <button class="workspace-search-clear hidden" id="conversationSearchClear" type="button" onclick="limparBuscaConversas()" aria-label="Limpar busca">×</button>
         </div>
       </div>
+      <section class="sidebar-section inbox-section" id="sidebarInboxSection" aria-label="Caixa de entrada">
+        <div class="sidebar-section-header">
+          <div class="section-title">Caixa de entrada</div>
+        </div>
+        <div class="inbox-shortcuts" id="sidebarInboxShortcuts"></div>
+      </section>
       <section class="sidebar-section">
         <div class="sidebar-section-header">
           <div class="section-title">Grupos</div>
@@ -150,15 +156,6 @@
             <span class="action-text optional-mobile" id="sidebarToggleText">Menu</span>
           </button>
           <input class="header-search" id="messageSearchInput" type="text" placeholder="Buscar na conversa" aria-label="Buscar mensagens nesta conversa" oninput="atualizarBuscaMensagens(this.value)" />
-          <button class="header-btn action-icon-btn" onclick="abrirBuscaGlobal()" title="Buscar em todas as conversas" aria-label="Buscar em todas as conversas">
-            <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
-            <span class="action-text">Global</span>
-          </button>
-          <button class="header-btn action-icon-btn" onclick="abrirCentralOperacional()" title="Central de recados" aria-label="Central de recados">
-            <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span>
-            <span class="action-text">Central</span>
-            <span class="header-mini-badge hidden" id="operationsBadge">0</span>
-          </button>
           <button class="header-btn action-icon-btn assistant-header-btn" type="button" onclick="abrirAssistenteJuridico()" title="Abrir IA Cartório Dias de Castro" aria-label="Abrir IA Cartório Dias de Castro">
             <span class="assistant-header-spark" aria-hidden="true">✦</span>
             <span class="action-text">IA Cartório Dias de Castro</span>
@@ -181,6 +178,15 @@
               <span class="action-text optional-mobile">Mais</span>
             </summary>
             <div class="header-more-panel">
+              <button class="header-btn action-icon-btn" onclick="abrirBuscaGlobal()" title="Buscar em todas as conversas" aria-label="Buscar em todas as conversas">
+                <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+                <span class="action-text">Busca global</span>
+              </button>
+              <button class="header-btn action-icon-btn" onclick="abrirCentralOperacional()" title="Central de recados" aria-label="Central de recados">
+                <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span>
+                <span class="action-text">Central</span>
+                <span class="header-mini-badge hidden" id="operationsBadge">0</span>
+              </button>
               <button class="header-btn action-icon-btn" id="densityToggleBtn" onclick="alternarDensidadeMensagens()" title="Alternar modo compacto das mensagens" aria-label="Alternar modo compacto das mensagens" aria-pressed="false">
                 <span class="action-icon" id="densityToggleIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></span>
                 <span class="action-text" id="densityToggleText">Compacto</span>
@@ -238,26 +244,35 @@
       </div>
 
       <section class="conversation-workflow-panel hidden" id="conversationWorkflowPanel" aria-label="Atendimento da conversa">
-        <div class="workflow-row">
-          <div class="workflow-group">
-            <span class="workflow-label">Etiquetas</span>
-            <div class="workflow-tags" id="conversationTagsList"></div>
+        <div class="workflow-summary-row">
+          <div class="workflow-summary-copy">
+            <span class="workflow-summary-title">Atendimento</span>
+            <span class="workflow-summary-status" id="conversationWorkflowStatus">Sem informações de atendimento</span>
           </div>
-          <div class="workflow-actions">
-            <select class="workflow-input workflow-select" id="conversationResponsibleSelect" onchange="salvarResponsavelAtual()" aria-label="Acompanhar conversa por">
-              <option value="">Sem responsável</option>
-            </select>
-            <input class="workflow-input" id="conversationTagsInput" type="text" maxlength="180" placeholder="serviço, setor, prioridade" aria-label="Etiquetas da conversa" />
-            <button class="workflow-btn" type="button" onclick="salvarEtiquetasAtual()">Salvar</button>
-            <button class="workflow-btn" type="button" onclick="alternarNotasConversa()">Notas <span id="conversationNotesCount"></span></button>
-          </div>
+          <button class="workflow-toggle-btn" id="conversationWorkflowToggle" type="button" onclick="alternarWorkflowAtual()" aria-expanded="false">Adicionar atendimento</button>
         </div>
-        <div class="workflow-sla-row" id="conversationSlaRow"></div>
-        <div class="conversation-notes-panel hidden" id="conversationNotesPanel">
-          <div class="notes-list" id="conversationNotesList"></div>
-          <div class="notes-form">
-            <textarea id="conversationNoteInput" rows="2" maxlength="1200" placeholder="Nota interna visível só para a equipe"></textarea>
-            <button class="workflow-btn primary" type="button" onclick="adicionarNotaAtual()">Adicionar nota</button>
+        <div class="workflow-details" id="conversationWorkflowDetails">
+          <div class="workflow-row">
+            <div class="workflow-group">
+              <span class="workflow-label">Etiquetas</span>
+              <div class="workflow-tags" id="conversationTagsList"></div>
+            </div>
+            <div class="workflow-actions">
+              <select class="workflow-input workflow-select" id="conversationResponsibleSelect" onchange="salvarResponsavelAtual()" aria-label="Acompanhar conversa por">
+                <option value="">Sem responsável</option>
+              </select>
+              <input class="workflow-input" id="conversationTagsInput" type="text" maxlength="180" placeholder="serviço, setor, prioridade" aria-label="Etiquetas da conversa" />
+              <button class="workflow-btn" type="button" onclick="salvarEtiquetasAtual()">Salvar</button>
+              <button class="workflow-btn" type="button" onclick="alternarNotasConversa()">Notas <span id="conversationNotesCount"></span></button>
+            </div>
+          </div>
+          <div class="workflow-sla-row" id="conversationSlaRow"></div>
+          <div class="conversation-notes-panel hidden" id="conversationNotesPanel">
+            <div class="notes-list" id="conversationNotesList"></div>
+            <div class="notes-form">
+              <textarea id="conversationNoteInput" rows="2" maxlength="1200" placeholder="Nota interna visível só para a equipe"></textarea>
+              <button class="workflow-btn primary" type="button" onclick="adicionarNotaAtual()">Adicionar nota</button>
+            </div>
           </div>
         </div>
       </section>
@@ -843,6 +858,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.min.js?v=d91155033bb1b77e"></script>
+  <script src="/assets/app.min.js?v=7c4bb0657a335f8e"></script>
 </body>
 </html>
