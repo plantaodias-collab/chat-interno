@@ -6382,9 +6382,9 @@ async function carregarUsuariosAdmin() {
         <td>${escapeHtml(usuario.nome)}</td>
         <td>${escapeHtml(usuario.email)}</td>
         <td>${usuario.admin ? 'Sim' : 'Não'}</td>
-        <td>${usuario.ativo ? (online ? 'Ativo / Online' : 'Ativo') : 'Inativo'}</td>
+        <td>${usuario.ativo ? (online ? 'Ativo / Online' : 'Ativo') : 'Inativo'}${usuario.senha_antiga_precisa_redefinir ? '<div class="status-chip offline" style="margin-top:4px">Senha antiga — redefinição necessária</div>' : ''}</td>
         <td class="table-actions">
-          <button class="mini-btn btn-secondary" onclick="redefinirSenhaUsuario(${usuario.id}, '${escapeHtml(usuario.nome).replace(/'/g, "\\'")}')">Senha</button>
+          <button class="mini-btn btn-secondary" onclick="redefinirSenhaTemporariaUsuario(${usuario.id}, '${escapeHtml(usuario.nome).replace(/'/g, "\\'")}')">Redefinir senha</button>
           ${Number(usuario.id) !== Number(usuarioAtual.id) ? `<button class="mini-btn btn-danger" onclick="desativarUsuario(${usuario.id})">Desativar</button>` : '-'}
         </td>
       `;
@@ -6654,6 +6654,10 @@ async function salvarAjustesConta() {
     token = data.token;
     usuarioAtual = data.usuario;
     salvarSessao();
+    if (novaSenha && socket) {
+      socket.auth = { token };
+      reconectarSocket();
+    }
     aplicarSessaoUsuario();
     preencherFormularioAjustes();
     renderContatos();
@@ -6736,20 +6740,67 @@ async function desativarUsuario(usuarioId) {
   }
 }
 
-async function redefinirSenhaUsuario(usuarioId, nomeUsuario) {
-  const novaSenha = prompt(`Digite a nova senha para ${nomeUsuario}:`);
-  if (novaSenha === null) return;
-
-  if (novaSenha.trim().length < 6) {
-    mostrarNotificacao('A nova senha deve ter pelo menos 6 caracteres', 'error');
+function exibirSenhaTemporariaAdministrador(senhaTemporaria) {
+  let senha = String(senhaTemporaria || '');
+  if (!senha) {
+    mostrarNotificacao('Não foi possível apresentar a senha temporária.', 'error');
     return;
   }
+  const modal = document.createElement('div');
+  modal.className = 'modal active';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-label', 'Senha temporária do usuário');
+  const content = document.createElement('div');
+  content.className = 'modal-content';
+  content.style.maxWidth = '520px';
+  const title = document.createElement('h3');
+  title.textContent = 'Senha temporária — mostre apenas ao usuário';
+  const notice = document.createElement('p');
+  notice.textContent = 'Esta senha é exibida somente agora e não é armazenada pelo ChatInterno.';
+  const passwordValue = document.createElement('code');
+  passwordValue.textContent = senha;
+  passwordValue.style.cssText = 'display:block;overflow-wrap:anywhere;margin:16px 0;padding:12px;border-radius:8px;background:#eff6ff;color:#0f172a;font-size:15px;font-weight:700;user-select:all';
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;justify-content:flex-end;gap:8px';
+  const copyButton = document.createElement('button');
+  copyButton.type = 'button';
+  copyButton.className = 'btn btn-secondary';
+  copyButton.textContent = 'Copiar senha';
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.className = 'btn';
+  closeButton.textContent = 'Fechar';
+  const close = () => {
+    passwordValue.textContent = '';
+    senha = '';
+    copyButton.removeEventListener('click', copy);
+    closeButton.removeEventListener('click', close);
+    modal.remove();
+  };
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(senha);
+      mostrarNotificacao('Senha temporária copiada.', 'success');
+    } catch {
+      mostrarNotificacao('Não foi possível copiar. Selecione e copie a senha manualmente antes de fechar.', 'error');
+    }
+  };
+  copyButton.addEventListener('click', copy);
+  closeButton.addEventListener('click', close);
+  actions.append(copyButton, closeButton);
+  content.append(title, notice, passwordValue, actions);
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+  closeButton.focus();
+}
 
+async function redefinirSenhaTemporariaUsuario(usuarioId, nomeUsuario) {
+  if (!confirm(`Redefinir a senha de ${nomeUsuario}? A senha temporária atual deixará de funcionar.`)) return;
   try {
-    const response = await fetch(`/api/admin/usuarios/${usuarioId}/senha`, {
-      method: 'PUT',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ novaSenha: novaSenha.trim() })
+    const response = await fetch(`/api/admin/usuarios/${usuarioId}/redefinir-senha`, {
+      method: 'POST',
+      headers: authHeaders()
     });
 
     const data = await response.json();
@@ -6758,7 +6809,8 @@ async function redefinirSenhaUsuario(usuarioId, nomeUsuario) {
       return;
     }
 
-    mostrarNotificacao('Senha redefinida com sucesso', 'success');
+    exibirSenhaTemporariaAdministrador(data.senha_temporaria);
+    carregarUsuariosAdmin();
   } catch (err) {
     mostrarNotificacao('Erro ao redefinir senha: ' + err.message, 'error');
   }

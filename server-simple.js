@@ -510,6 +510,40 @@ function gerarIdMensagem() {
 const onlineUsers = new Map();
 const socketUsers = new Map();
 const typingTimeouts = new Map();
+// Usada exclusivamente para localizar contas antigas que precisam de
+// remediação. Não é usada na criação, redefinição ou validação normal de senha.
+const LEGACY_DEFAULT_PASSWORD = 'Senha123!';
+
+function versaoSessaoUsuario(usuario) {
+  const versao = Number(usuario?.auth_version);
+  return Number.isSafeInteger(versao) && versao >= 0 ? versao : 0;
+}
+
+function invalidarSessoesUsuario(usuario) {
+  usuario.auth_version = versaoSessaoUsuario(usuario) + 1;
+  for (const [socketId, userId] of socketUsers.entries()) {
+    if (Number(userId) === Number(usuario.id)) {
+      io.sockets.sockets.get(socketId)?.disconnect(true);
+    }
+  }
+}
+
+function criarTokenUsuario(usuario) {
+  return jwt.sign(
+    { id: usuario.id, email: usuario.email, admin: usuario.admin, auth_version: versaoSessaoUsuario(usuario) },
+    SECRET_KEY,
+    { expiresIn: '30d' }
+  );
+}
+
+async function senhaLegadaPrecisaRedefinir(usuario) {
+  if (!usuario?.ativo || !usuario?.senha) return false;
+  try {
+    return await bcrypt.compare(LEGACY_DEFAULT_PASSWORD, usuario.senha);
+  } catch {
+    return false;
+  }
+}
 
 function verificarToken(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
@@ -519,6 +553,9 @@ function verificarToken(req, res, next) {
     const decoded = jwt.verify(token, SECRET_KEY);
     const usuario = findActiveUserById(decoded.id);
     if (!usuario) return res.status(401).json({ erro: 'Sessão inválida ou usuário desativado' });
+    if (Number(decoded.auth_version || 0) !== versaoSessaoUsuario(usuario)) {
+      return res.status(401).json({ erro: 'Sessão inválida ou expirada' });
+    }
     req.userId = Number(usuario.id);
     req.userEmail = usuario.email;
     req.usuario = usuario;
@@ -4135,11 +4172,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
     if (!senhaValida) return res.status(401).json({ erro: 'Usuário ou senha inválidos' });
 
-    const token = jwt.sign(
-      { id: usuario.id, email: usuario.email, admin: usuario.admin },
-      SECRET_KEY,
-      { expiresIn: '30d' }
-    );
+    const token = criarTokenUsuario(usuario);
 
     res.json({
       token,
@@ -4203,17 +4236,14 @@ app.put('/api/me', verificarToken, async (req, res) => {
       }
 
       usuario.senha = await bcrypt.hash(novaSenha, 10);
+      invalidarSessoesUsuario(usuario);
     }
 
     usuario.nome = nome;
     usuario.email = email;
     db.save();
 
-    const token = jwt.sign(
-      { id: usuario.id, email: usuario.email, admin: usuario.admin },
-      SECRET_KEY,
-      { expiresIn: '30d' }
-    );
+    const token = criarTokenUsuario(usuario);
 
     res.json({
       mensagem: 'Ajustes salvos com sucesso',
@@ -4268,6 +4298,7 @@ app.post('/api/admin/criar-usuario', verificarToken, async (req, res) => {
       senha: senhaHash,
       admin: 0,
       ativo: 1,
+      auth_version: 0,
       criado_em: new Date().toISOString()
     };
 
@@ -4279,15 +4310,16 @@ app.post('/api/admin/criar-usuario', verificarToken, async (req, res) => {
   }
 });
 
-app.get('/api/admin/usuarios', verificarToken, (req, res) => {
+app.get('/api/admin/usuarios', verificarToken, async (req, res) => {
   try {
     const usuarioAdmin = db.usuarios.find((u) => u.id === req.userId);
     if (!usuarioAdmin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
 
-    const usuarios = db.usuarios.map((u) => ({
+    const usuarios = await Promise.all(db.usuarios.map(async (u) => ({
       ...getUsuarioPublico(u),
-      online: isUsuarioOnline(u.id)
-    }));
+      online: isUsuarioOnline(u.id),
+      senha_antiga_precisa_redefinir: await senhaLegadaPrecisaRedefinir(u)
+    })));
     res.json(usuarios);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -4351,6 +4383,7 @@ app.put('/api/admin/usuarios/:id/senha', verificarToken, async (req, res) => {
     }
 
     usuario.senha = await bcrypt.hash(novaSenha, 10);
+    invalidarSessoesUsuario(usuario);
     db.save();
 
     res.json({ mensagem: 'Senha redefinida com sucesso' });
@@ -4369,6 +4402,7 @@ app.post('/api/admin/usuarios/:id/redefinir-senha', verificarToken, async (req, 
 
     const senhaTemporaria = gerarSenhaTemporaria();
     usuario.senha = await bcrypt.hash(senhaTemporaria, 10);
+    invalidarSessoesUsuario(usuario);
     db.save();
 
     res.json({ mensagem: 'Senha redefinida com sucesso', senha_temporaria: senhaTemporaria });
@@ -5484,6 +5518,9 @@ io.use((socket, next) => {
     const decoded = jwt.verify(token, SECRET_KEY);
     const usuario = findActiveUserById(decoded.id);
     if (!usuario) return next(new Error('Usuario inativo ou inexistente'));
+    if (Number(decoded.auth_version || 0) !== versaoSessaoUsuario(usuario)) {
+      return next(new Error('Sessao invalida ou expirada'));
+    }
     socket.data.userId = Number(usuario.id);
     socket.data.user = usuario;
     return next();
@@ -6435,6 +6472,9 @@ module.exports = {
   extrairReferenciasRespostaIa,
   mensagemFalhaIaParaUsuario,
   gerarSenhaTemporaria,
+  criarTokenUsuario,
+  versaoSessaoUsuario,
+  senhaLegadaPrecisaRedefinir,
   AI_VERSION,
   createBackup,
   restoreBackup,
