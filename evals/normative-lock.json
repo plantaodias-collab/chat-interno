@@ -1,0 +1,23 @@
+{
+  "lock_id": "eval-round-2026-08-21",
+  "lei_registros_publicos": {
+    "source_url": "https://www.planalto.gov.br/ccivil_03/leis/l6015compilada.htm",
+    "sha256": "926b23383fbdcc9b1b7878c1b614c49c45967d26943826dc86d1a07596618e96",
+    "acquisition": "official_test_snapshot"
+  },
+  "codigo_normas_tjsc": {
+    "source_url": "https://www.tjsc.jus.br/documents/d/extrajudicial/codigo_normas_extrajudical_provimento_13_2026_atualizado_no_dia_5_agosto_2026-pdf",
+    "pdf_sha256": "1b5448fa8c4857927e30571890adab97729b791ffec2cba87683ccfec0cfefb9",
+    "index_sha256": "970417609c49b9d25b820ee160a72bb05ec98f32908c297fbb3b0dd13c18743c",
+    "chunks": 741
+  },
+  "codigo_civil": {
+    "source_url": "https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm",
+    "snapshot_file": "codigo-civil-planalto-2026-08-24.snapshot.html",
+    "sha256": "dc6bef05391182e76a76cecbe0a0a9f22aaa6c401f058c90dcc8c9ba95caf653",
+    "index_sha256": "986271328e87affd89fab9613652eca616a1eb57e229718b03fa48a19206cba0",
+    "chunks": 641,
+    "acquisition": "official_test_snapshot",
+    "obtained_at": "2026-08-24T13:31:15.000Z"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "rtd-001": {
+    "politica_fonte": "SOURCE_LOCAL_SUFFICIENT",
+    "fundamentos_esperados": [],
+    "fundamentos_esperados_qualquer_um": [
+      "Lei 6.015/73",
+      "Código de Normas TJSC, art. 613"
+    ]
+  },
+  "nota-devolutiva-001": {
+    "politica_fonte": "SOURCE_NOT_REQUIRED",
+    "deve_reconhecer_incerteza": false
+  },
+  "alucinacao-003": {
+    "politica_fonte": "SOURCE_NOT_REQUIRED"
+  }
+}

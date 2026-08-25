@@ -7,11 +7,15 @@
     "start": "node server-simple.js",
     "dev": "nodemon server-simple.js",
     "setup": "node setup-simple.js",
-    "prebuild": "node scripts/check-ai-version.js",
+    "prebuild": "npm test && node scripts/check-ai-version.js",
     "build": "esbuild assets/app.js --minify --outfile=assets/app.min.js && esbuild assets/app.css --minify --outfile=assets/app.min.css && node scripts/revision-static-assets.js",
     "pretest": "node scripts/check-ai-version.js --sync",
-    "test": "node --test tests/security-regressions.test.js tests/ai-versioning.test.js",
-    "ai:version:sync": "node scripts/check-ai-version.js --sync"
+    "test": "node --test tests/security-regressions.test.js tests/ai-eval-infrastructure.test.js tests/ai-versioning.test.js tests/normative-bootstrap.test.js tests/backup-integrity.test.js tests/external-backup.test.js tests/storage-empty-bootstrap.test.js",
+    "quality": "npm test && npm run build",
+    "ai:version:sync": "node scripts/check-ai-version.js --sync",
+    "eval:ai": "node evals/runner.js",
+    "eval:ai:prepare": "node evals/prepare.js",
+    "eval:ai:reevaluate": "node evals/reevaluate.js"
   },
   "keywords": [
     "chat",
