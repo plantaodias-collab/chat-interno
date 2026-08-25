@@ -1996,7 +1996,10 @@ function excluirPlantaoPeriodo(inicio, fim) {
 }
 
 function gerarSenhaTemporaria() {
-  return `Senha${Math.floor(100000 + Math.random() * 900000)}!`;
+  // Senhas temporárias nunca podem seguir um padrão reconhecível. O valor
+  // retornado tem 192 bits de entropia e só é entregue na resposta da criação
+  // ou redefinição; o armazenamento permanece exclusivamente em bcrypt.
+  return crypto.randomBytes(24).toString('base64url');
 }
 
 function clampNumber(value, min, max, fallback) {
@@ -4242,7 +4245,9 @@ app.post('/api/admin/criar-usuario', verificarToken, async (req, res) => {
 
     const email = normalizeEmail(req.body?.email);
     const nome = sanitizeText(req.body?.nome);
-    const senha = String(req.body?.senha || gerarSenhaTemporaria()).trim() || gerarSenhaTemporaria();
+    // A senha inicial é sempre gerada no servidor. Ignorar qualquer valor
+    // enviado pelo cliente evita a reintrodução acidental de senha padrão.
+    const senha = gerarSenhaTemporaria();
     if (!nome || !email) {
       return res.status(400).json({ erro: 'Nome e email são obrigatórios' });
     }
@@ -6429,6 +6434,7 @@ module.exports = {
   limparTextoRespostaIa,
   extrairReferenciasRespostaIa,
   mensagemFalhaIaParaUsuario,
+  gerarSenhaTemporaria,
   AI_VERSION,
   createBackup,
   restoreBackup,

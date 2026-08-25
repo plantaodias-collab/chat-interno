@@ -6698,7 +6698,7 @@ async function cadastrarNovoUsuario() {
     const response = await fetch('/api/admin/criar-usuario', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ nome, email, senha: 'Senha123!' })
+      body: JSON.stringify({ nome, email })
     });
 
     const data = await response.json();
@@ -6707,7 +6707,7 @@ async function cadastrarNovoUsuario() {
       return;
     }
 
-    mostrarNotificacao('Usuário cadastrado com sucesso. Senha padrão: Senha123!', 'success');
+    mostrarNotificacao(`Usuário cadastrado. Anote agora a senha temporária: ${data.senha_temporaria}`, 'success');
     document.getElementById('adminNovonome').value = '';
     document.getElementById('adminNovoEmail').value = '';
     carregarUsuariosAdmin();
