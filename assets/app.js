@@ -5186,13 +5186,9 @@ function renderContatos() {
     const isPriority = priorityChats.has(key);
     const isFavorite = favoriteChats.has(key);
     const attendanceStatus = getAttendanceStatus(key);
-    const senhaPainel = String(usuario.senha_painel || '').trim();
     const typingPreviewHtml = getTypingPreviewHtml('privado', usuario.id);
     const status = getUserStatus(usuario.id);
     const preview = lastPreviewState[key] || (online ? 'Online agora' : usuario.email);
-    const atendimentoHtml = senhaPainel
-      ? `<div class="contact-ticket-note">Senha: ${escapeHtml(senhaPainel)}</div>`
-      : '';
     const lastSeen = lastSeenState[Number(usuario.id)] || usuario.ultimo_visto_em;
     const statusHtml = online
       ? `<div class="status-chip ${escapeHtml(status)}">${escapeHtml(getStatusLabel(status))} · ${isRecentlyActive(lastSeen) ? 'ativo agora' : 'ativo recentemente'}</div>`
@@ -5214,7 +5210,6 @@ function renderContatos() {
           <div class="chat-preview">${typingPreviewHtml || escapeHtml(preview)}</div>
           ${unread > 0 ? `<span class="notification-badge" title="${escapeHtml(getUnreadBadgeTitle(unread))}">${unread > 99 ? '99+' : unread}</span>` : ''}
         </div>
-        ${atendimentoHtml}
         ${getAttendanceChipHtml(key)}
         ${statusHtml}
         ${isPriority ? '<div class="priority-chip">Prioridade</div>' : ''}
