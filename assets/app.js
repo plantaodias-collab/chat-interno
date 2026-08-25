@@ -4231,6 +4231,12 @@ function getWelcomeStateHtml() {
   const firstName = firstNameRaw.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, '') || 'equipe';
   const unreadItems = getDashboardChatItems('unread', 4);
   const recentItems = getDashboardChatItems('all', 4);
+  const attentionItems = [...getDashboardChatItems('urgent', 4), ...getDashboardChatItems('pending', 4)]
+    .filter((item, index, items) => items.findIndex((candidate) => candidate.tipo === item.tipo && Number(candidate.id) === Number(item.id)) === index)
+    .slice(0, 4);
+  const priorityItems = [...getDashboardChatItems('priority', 4), ...unreadItems]
+    .filter((item, index, items) => items.findIndex((candidate) => candidate.tipo === item.tipo && Number(candidate.id) === Number(item.id)) === index)
+    .slice(0, 4);
   const iaEmBreve = !ASSISTENTE_JURIDICO_ATIVO;
   return `
     <div class="empty-state welcome-state dashboard-home">
@@ -4238,23 +4244,24 @@ function getWelcomeStateHtml() {
         <section class="dashboard-conversations-card">
           <div class="dashboard-hero compact">
             <div class="dashboard-title-group">
-              <div class="welcome-eyebrow">CENTRAL DE CONVERSAS</div>
+              <div class="welcome-eyebrow">VISÃO DE TRABALHO</div>
               <div class="welcome-title">${getGreeting()}, ${escapeHtml(firstName)}</div>
-              <div class="welcome-copy">Acompanhe conversas não lidas e continue os atendimentos recentes.</div>
+              <div class="welcome-copy">Priorize o que precisa de atenção e retome as conversas recentes.</div>
               <div class="dashboard-actions">
-                <button class="dashboard-action-btn primary" type="button" onclick="abrirBuscaGlobal()">Busca global</button>
+                <button class="dashboard-action-btn primary" type="button" onclick="abrirBuscaGlobal()">Buscar conversas</button>
+                <button class="dashboard-action-btn" type="button" onclick="aplicarFiltroDashboard('nao-lidas')">${totalNaoLidas} não lida${totalNaoLidas === 1 ? '' : 's'}</button>
+                ${totalPendentes || totalUrgentes ? `<button class="dashboard-action-btn attention" type="button" onclick="aplicarFiltroDashboard('pendentes')">${totalPendentes + totalUrgentes} em atenção</button>` : ''}
               </div>
             </div>
           </div>
-          <div class="welcome-stats dashboard-stats">
+          <div class="dashboard-activity-summary" aria-label="Resumo da equipe">
             ${getDashboardStatCard('online agora', totalOnline, 'online', totalOnline > 0 ? 'is-active' : 'is-zero')}
-            ${getDashboardStatCard('n&atilde;o lidas', totalNaoLidas, 'nao-lidas', totalNaoLidas > 0 ? 'is-active' : 'is-zero')}
             ${getDashboardStatCard('grupos', totalGrupos, 'grupos', '')}
           </div>
-          <div class="dashboard-grid">
-            ${getDashboardQuietBannerHtml()}
-            ${getDashboardListHtml('N&atilde;o lidas', 'responder primeiro', unreadItems, 'Tudo em dia por aqui.')}
-            ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecer&atilde;o aqui.', 'chat')}
+          <div class="dashboard-grid dashboard-work-grid">
+            ${getDashboardListHtml('Para sua atenção', attentionItems.length ? 'prioridades e pendências' : 'nenhuma pendência', attentionItems, 'Nenhuma pendência no momento.')}
+            ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecerão aqui.', 'chat')}
+            ${getDashboardListHtml('Não lidas e prioridades', priorityItems.length ? 'prioridades marcadas' : 'responder primeiro', priorityItems.length ? priorityItems : unreadItems, 'Tudo em dia por aqui.')}
           </div>
         </section>
         <aside class="dashboard-assistant-contact ${iaEmBreve ? 'is-coming-soon' : ''}" aria-label="IA Cartório Dias de Castro">
