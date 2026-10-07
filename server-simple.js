@@ -4353,6 +4353,23 @@ app.get('/api/admin/mensagens-apagadas', verificarToken, (req, res) => {
   }
 });
 
+app.patch('/api/admin/usuarios/:id/nome', verificarToken, (req, res) => {
+  try {
+    const usuario = db.usuarios.find((u) => u.id === parseInt(req.params.id, 10));
+    if (!usuario) return res.status(404).json({ erro: 'Usuario nao encontrado' });
+
+    const nome = sanitizeText(req.body?.nome);
+    if (!nome) return res.status(400).json({ erro: 'Nome e obrigatorio' });
+    if (nome.length > 120) return res.status(400).json({ erro: 'Nome muito longo' });
+
+    usuario.nome = nome;
+    db.save();
+    res.json({ mensagem: 'Nome atualizado com sucesso', usuario: getUsuarioPublico(usuario) });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.delete('/api/admin/usuarios/:id', verificarToken, (req, res) => {
   try {
     const usuarioAdmin = db.usuarios.find((u) => u.id === req.userId);

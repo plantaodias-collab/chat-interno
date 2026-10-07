@@ -590,7 +590,7 @@ function renderUsuarios() {
   el.innerHTML = `<table class="data-table">
     <thead><tr><th>Nome</th><th>E-mail</th><th>Admin</th><th>Status</th><th>Ação</th></tr></thead>
     <tbody>${_usuarios.map(u=>`<tr>
-      <td>${esc(u.nome)}</td>
+      <td><span>${esc(u.nome)}</span> <button class="btn btn-secondary btn-sm" type="button" title="Editar nome" aria-label="Editar nome de ${esc(u.nome)}" onclick="editarNomeUsuario(${u.id})">✎</button></td>
       <td style="color:var(--muted);">${esc(u.email)}</td>
       <td>${u.admin ? '<span class="badge badge-amber">Sim</span>' : '<span class="badge badge-grey">Não</span>'}</td>
       <td>${u.ativo ? '<span class="badge badge-green">Ativo</span>' : '<span class="badge badge-red">Inativo</span>'}</td>
@@ -610,6 +610,25 @@ async function cadastrarUsuario() {
   if (!r.ok) { toast(d.erro || 'Erro', 'erro'); return; }
   toast(`Usuário criado. Senha: ${d.senha_temporaria}`);
   document.getElementById('novoNome').value = ''; document.getElementById('novoEmail').value = '';
+  carregarUsuarios();
+}
+async function editarNomeUsuario(id) {
+  const usuario = _usuarios.find(u => u.id === id);
+  if (!usuario) return;
+  const nome = window.prompt('Novo nome do usuário:', usuario.nome);
+  if (nome === null) return;
+  const nomeNormalizado = nome.trim();
+  if (!nomeNormalizado) { toast('Informe um nome.', 'aviso'); return; }
+  if (nomeNormalizado === usuario.nome) return;
+
+  const r = await apiFetch(`/api/admin/usuarios/${id}/nome`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nome: nomeNormalizado })
+  });
+  const d = await r.json();
+  if (!r.ok) { toast(d.erro || 'Erro ao atualizar nome', 'erro'); return; }
+  toast('Nome atualizado.');
   carregarUsuarios();
 }
 async function redefinirSenha(id) {
