@@ -10935,7 +10935,7 @@ body:not(.theme-dark) .quick-reply-btn:hover {
 .composer,
 body:not(.theme-dark) .composer {
   display: grid;
-  grid-template-columns: repeat(5, 40px) minmax(160px, 1fr) 46px;
+  grid-template-columns: repeat(6, 40px) minmax(160px, 1fr) 46px;
   align-items: center;
   gap: 8px;
   min-height: 64px;
@@ -11105,7 +11105,7 @@ body.theme-dark .emoji-btn:hover {
 
   .composer,
   body:not(.theme-dark) .composer {
-    grid-template-columns: repeat(5, minmax(38px, 1fr)) 44px;
+    grid-template-columns: repeat(6, minmax(38px, 1fr)) 44px;
     gap: 7px;
   }
 

@@ -2010,7 +2010,8 @@ function isVideoAttachment(message) {
 
 function linkifyTextHtml(text, query) {
   const highlighted = highlightText(text, query);
-  return highlighted.replace(/(https?:\/\/[^\s<]+)/g, '<a class="message-link" href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  const formatted = highlighted.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  return formatted.replace(/(https?:\/\/[^\s<]+)/g, '<a class="message-link" href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
 }
 
 function getFirstUrl(text) {
@@ -2754,6 +2755,36 @@ function inserirEmoji(emoji) {
   autoResizeComposer();
   fecharEmojiPicker();
   emitirDigitando();
+}
+
+function alternarNegrito(event) {
+  event?.preventDefault();
+  const input = document.getElementById('messageInput');
+  if (!input) return;
+
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? start;
+  const selecionado = input.value.slice(start, end);
+  const antes = input.value.slice(Math.max(0, start - 2), start);
+  const depois = input.value.slice(end, end + 2);
+
+  if (selecionado && antes === '**' && depois === '**') {
+    input.value = `${input.value.slice(0, start - 2)}${selecionado}${input.value.slice(end + 2)}`;
+    input.focus();
+    input.setSelectionRange(start - 2, end - 2);
+  } else if (selecionado) {
+    input.value = `${input.value.slice(0, start)}**${selecionado}**${input.value.slice(end)}`;
+    input.focus();
+    input.setSelectionRange(start + 2, end + 2);
+  } else {
+    input.value = `${input.value.slice(0, start)}****${input.value.slice(end)}`;
+    input.focus();
+    input.setSelectionRange(start + 2, start + 2);
+  }
+
+  autoResizeComposer();
+  emitirDigitando();
+  salvarRascunhoAtual();
 }
 
 function salvarSessao() {
