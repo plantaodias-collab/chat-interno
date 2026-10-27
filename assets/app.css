@@ -9056,6 +9056,68 @@ body.theme-dark .message-delete-btn:focus-visible {
   color: #ffffff !important;
 }
 
+/* As ações ficam em um menu no rodapé da mensagem, sem cobrir o texto. */
+.message-action-menu {
+  position: static;
+  display: inline-block;
+  vertical-align: middle;
+  color: inherit;
+}
+
+.message-action-menu > summary {
+  display: inline-grid;
+  width: 27px;
+  height: 23px;
+  place-items: center;
+  list-style: none;
+  border: 1px solid rgba(44, 80, 121, .2);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .78);
+  color: #31516f;
+  cursor: pointer;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.message-action-menu > summary::-webkit-details-marker { display: none; }
+.message-action-menu > summary:hover,
+.message-action-menu > summary:focus-visible,
+.message-action-menu[open] > summary {
+  border-color: #2c5079;
+  background: #eaf2fa;
+  outline: none;
+}
+
+.message-actions {
+  position: static !important;
+  display: none !important;
+  width: min(100%, 420px);
+  max-width: calc(100vw - 64px);
+  margin-top: 7px;
+  padding: 6px !important;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: none !important;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, .1) !important;
+}
+
+.message-action-menu[open] .message-actions { display: flex !important; }
+
+body.theme-dark .message-action-menu > summary {
+  border-color: rgba(96, 165, 250, .3);
+  background: rgba(30, 41, 59, .9);
+  color: #dbeafe;
+}
+
+body.theme-dark .message-action-menu > summary:hover,
+body.theme-dark .message-action-menu > summary:focus-visible,
+body.theme-dark .message-action-menu[open] > summary {
+  background: #263c58;
+}
+
 /* Premium UI refresh: high-definition operational workspace */
 :root {
   --bg: #eaf2ff;

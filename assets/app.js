@@ -5482,7 +5482,9 @@ function renderMessageRow(message) {
     : '';
 
   const actionButtons = `
-    <span class="message-actions">
+    <details class="message-action-menu">
+      <summary class="message-action-trigger" title="Ações da mensagem" aria-label="Abrir ações da mensagem">⋯</summary>
+      <span class="message-actions">
       <button class="message-action-btn ${isPriorityMessage ? 'active' : ''}" onclick="alternarPrioridadeMensagem(${Number(message.id)})" title="${isPriorityMessage ? 'Remover destaque da mensagem' : 'Destacar mensagem como prioridade'}" aria-label="${isPriorityMessage ? 'Remover destaque da mensagem' : 'Destacar mensagem como prioridade'}" aria-pressed="${isPriorityMessage ? 'true' : 'false'}">!</button>
       <button class="message-action-btn ${isMensagemFixada(message.id) ? 'active' : ''}" onclick="alternarFixarMensagem(${Number(message.id)})" title="${isMensagemFixada(message.id) ? 'Desfixar mensagem' : 'Fixar mensagem no topo da conversa'}" aria-label="${isMensagemFixada(message.id) ? 'Desfixar mensagem' : 'Fixar mensagem no topo da conversa'}" aria-pressed="${isMensagemFixada(message.id) ? 'true' : 'false'}">📌</button>
       <button class="message-action-btn" onclick="responderMensagem(${Number(message.id)})" title="Responder">&#8617;</button>
@@ -5493,7 +5495,8 @@ function renderMessageRow(message) {
       ${!ehOutro && message.tipo === 'texto' ? `<button class="message-action-btn" onclick="prepararEdicaoMensagem(${Number(message.id)})" title="Editar">&#9998;</button>` : ''}
       <button class="message-action-btn" onclick="alternarReacaoRapida(${Number(message.id)})" title="Reagir">+</button>
       ${!ehOutro ? `<button class="message-delete-btn" onclick="apagarMensagem(${Number(message.id)})" title="Apagar mensagem">&#128465;</button>` : ''}
-    </span>
+      </span>
+    </details>
   `;
 
   const pickerHtml = message.showReactionPicker
