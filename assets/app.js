@@ -24,7 +24,7 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 let socket = null;
-let token = null;
+let sessaoAtiva = false;
 let usuarioAtual = null;
 let tipoChat = null;
 let chatIdAtual = null;
@@ -1095,10 +1095,7 @@ function setSettingsTab(tab) {
 }
 
 function authHeaders(extra = {}) {
-  return {
-    ...extra,
-    'Authorization': `Bearer ${token}`
-  };
+  return { ...extra };
 }
 
 function getPrivateChatUnreadCount(userId) {
@@ -2788,15 +2785,13 @@ function alternarNegrito(event) {
 }
 
 function salvarSessao() {
-  if (!token || !usuarioAtual) return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    token,
-    usuario: usuarioAtual
-  }));
+  if (!sessaoAtiva || !usuarioAtual) return;
+  localStorage.setItem(STORAGE_KEY, '1');
 }
 
 function limparSessao() {
   localStorage.removeItem(STORAGE_KEY);
+  sessaoAtiva = false;
 }
 
 async function registrarServiceWorkerNotificacoes() {
@@ -4361,24 +4356,29 @@ function abrirPainelSenhaPublico() {
 async function restaurarSessao() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-
-    const session = JSON.parse(raw);
-    if (!session?.token || !session?.usuario) {
-      limparSessao();
-      return;
+    let session = null;
+    if (raw) {
+      try { session = JSON.parse(raw); } catch (_err) { limparSessao(); }
     }
 
-    token = session.token;
-    const response = await fetch('/api/me', {
-      headers: { Authorization: `Bearer ${session.token}` }
-    });
+    let response = null;
+    if (session?.token) {
+      response = await fetch('/api/session/migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+        body: '{}'
+      });
+    }
+
+    if (!response?.ok) response = await fetch('/api/me');
     if (!response.ok) {
       limparSessao();
       return;
     }
 
     usuarioAtual = await response.json();
+    sessaoAtiva = true;
+    salvarSessao();
     aplicarSessaoUsuario();
     conectarSocket();
     await carregarPainelSenha();
@@ -4501,7 +4501,7 @@ async function fazerLogin() {
       return;
     }
 
-    token = data.token;
+    sessaoAtiva = true;
     usuarioAtual = data.usuario;
 
     salvarSessao();
@@ -4515,8 +4515,13 @@ async function fazerLogin() {
   }
 }
 
+document.getElementById('loginForm')?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  fazerLogin();
+});
+
 function conectarSocket() {
-  socket = io({ auth: { token } });
+  socket = io();
 
   socket.on('connect', () => {
     mostrarStatusConexao(false);
@@ -4850,7 +4855,7 @@ function normalizarPlantaoState(data) {
 }
 
 async function carregarEscalaPlantao() {
-  if (!token) return;
+  if (!sessaoAtiva) return;
   try {
     const response = await fetch('/api/plantao/escala', { headers: authHeaders() });
     const data = await response.json();
@@ -5485,16 +5490,16 @@ function renderMessageRow(message) {
     <details class="message-action-menu">
       <summary class="message-action-trigger" title="Ações da mensagem" aria-label="Abrir ações da mensagem">⋯</summary>
       <span class="message-actions">
-      <button class="message-action-btn ${isPriorityMessage ? 'active' : ''}" onclick="alternarPrioridadeMensagem(${Number(message.id)})" title="${isPriorityMessage ? 'Remover destaque da mensagem' : 'Destacar mensagem como prioridade'}" aria-label="${isPriorityMessage ? 'Remover destaque da mensagem' : 'Destacar mensagem como prioridade'}" aria-pressed="${isPriorityMessage ? 'true' : 'false'}">!</button>
-      <button class="message-action-btn ${isMensagemFixada(message.id) ? 'active' : ''}" onclick="alternarFixarMensagem(${Number(message.id)})" title="${isMensagemFixada(message.id) ? 'Desfixar mensagem' : 'Fixar mensagem no topo da conversa'}" aria-label="${isMensagemFixada(message.id) ? 'Desfixar mensagem' : 'Fixar mensagem no topo da conversa'}" aria-pressed="${isMensagemFixada(message.id) ? 'true' : 'false'}">📌</button>
-      <button class="message-action-btn" onclick="responderMensagem(${Number(message.id)})" title="Responder">&#8617;</button>
-      <button class="message-action-btn" onclick="copiarMensagem(${Number(message.id)})" title="Copiar mensagem">&#128203;</button>
-      <button class="message-action-btn" onclick="abrirEncaminharMensagem(${Number(message.id)})" title="Encaminhar">&#10150;</button>
-      ${stickerAttachment ? `<button class="message-action-btn" onclick="salvarFigurinhaMensagem(${Number(message.id)})" title="Salvar figurinha">Salvar</button>` : ''}
-      ${ehOutro && tipoChat === 'privado' ? `<button class="message-action-btn" onclick="marcarConversaComoNaoLida(${Number(message.id)}, ${Number(message.usuarioId)})" title="Marcar conversa como não lida">Nao lido</button>` : ''}
-      ${!ehOutro && message.tipo === 'texto' ? `<button class="message-action-btn" onclick="prepararEdicaoMensagem(${Number(message.id)})" title="Editar">&#9998;</button>` : ''}
-      <button class="message-action-btn" onclick="alternarReacaoRapida(${Number(message.id)})" title="Reagir">+</button>
-      ${!ehOutro ? `<button class="message-delete-btn" onclick="apagarMensagem(${Number(message.id)})" title="Apagar mensagem">&#128465;</button>` : ''}
+      <button class="message-action-btn ${isPriorityMessage ? 'active' : ''}" onclick="alternarPrioridadeMensagem(${Number(message.id)})" title="${isPriorityMessage ? 'Remover destaque da mensagem' : 'Destacar mensagem como prioridade'}" aria-label="${isPriorityMessage ? 'Remover destaque da mensagem' : 'Destacar mensagem como prioridade'}" aria-pressed="${isPriorityMessage ? 'true' : 'false'}">${isPriorityMessage ? 'Remover prioridade' : 'Prioridade'}</button>
+      <button class="message-action-btn ${isMensagemFixada(message.id) ? 'active' : ''}" onclick="alternarFixarMensagem(${Number(message.id)})" title="${isMensagemFixada(message.id) ? 'Desfixar mensagem' : 'Fixar mensagem no topo da conversa'}" aria-label="${isMensagemFixada(message.id) ? 'Desfixar mensagem' : 'Fixar mensagem no topo da conversa'}" aria-pressed="${isMensagemFixada(message.id) ? 'true' : 'false'}">${isMensagemFixada(message.id) ? 'Desfixar' : 'Fixar'}</button>
+      <button class="message-action-btn" onclick="responderMensagem(${Number(message.id)})" title="Responder" aria-label="Responder mensagem">Responder</button>
+      <button class="message-action-btn" onclick="copiarMensagem(${Number(message.id)})" title="Copiar mensagem" aria-label="Copiar mensagem">Copiar</button>
+      <button class="message-action-btn" onclick="abrirEncaminharMensagem(${Number(message.id)})" title="Encaminhar" aria-label="Encaminhar mensagem">Encaminhar</button>
+      ${stickerAttachment ? `<button class="message-action-btn" onclick="salvarFigurinhaMensagem(${Number(message.id)})" title="Salvar figurinha" aria-label="Salvar figurinha">Salvar figurinha</button>` : ''}
+      ${ehOutro && tipoChat === 'privado' ? `<button class="message-action-btn" onclick="marcarConversaComoNaoLida(${Number(message.id)}, ${Number(message.usuarioId)})" title="Marcar conversa como não lida" aria-label="Marcar conversa como não lida">Não lido</button>` : ''}
+      ${!ehOutro && message.tipo === 'texto' ? `<button class="message-action-btn" onclick="prepararEdicaoMensagem(${Number(message.id)})" title="Editar mensagem" aria-label="Editar mensagem">Editar</button>` : ''}
+      <button class="message-action-btn" onclick="alternarReacaoRapida(${Number(message.id)})" title="Reagir à mensagem" aria-label="Reagir à mensagem">Reagir</button>
+      ${!ehOutro ? `<button class="message-delete-btn" onclick="apagarMensagem(${Number(message.id)})" title="Apagar mensagem" aria-label="Apagar mensagem">Apagar</button>` : ''}
       </span>
     </details>
   `;
@@ -5865,7 +5870,7 @@ async function abrirGaleriaConversa() {
         const nome = escapeHtml(m.arquivo_nome_original || 'arquivo');
         let thumb;
         // Imagens usam a miniatura protegida (menor e mais rapida); video/PDF usam
-        // o arquivo original protegido. Ambos exigem o token de autenticacao, por
+        // o arquivo original protegido. Ambos exigem uma sessão autenticada, por
         // isso passam por data-secure-* + hydrateSecureAttachments em vez de um
         // src direto (que resultaria em 404, pois /uploads nao e publico).
         if (isImageAttachment(m)) thumb = `<img src="${ATTACHMENT_PLACEHOLDER_SRC}" data-secure-thumb="${url}" alt="${nome}" loading="lazy">`;
@@ -6354,9 +6359,6 @@ async function enviarArquivoSelecionado(arquivo, options = {}) {
 
     const response = await fetch('/api/upload', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
       body: formData
     });
 
@@ -6742,11 +6744,10 @@ async function salvarAjustesConta() {
       return;
     }
 
-    token = data.token;
+    sessaoAtiva = true;
     usuarioAtual = data.usuario;
     salvarSessao();
     if (novaSenha && socket) {
-      socket.auth = { token };
       reconectarSocket();
     }
     aplicarSessaoUsuario();
@@ -6983,9 +6984,10 @@ async function limparAvisoGrupoAdmin() {
 function abrirNovoGrupo() { abrirPainelAdmin(); }
 function abrirNovoContato() { mostrarNotificacao('Todos os contatos cadastrados aparecem na lista', 'success'); }
 
-function fazerLogout() {
+async function fazerLogout() {
+  try { await fetch('/api/logout', { method: 'POST' }); } catch (_err) { /* limpa a sessão local mesmo sem rede */ }
   limparSessao();
-  token = null;
+  sessaoAtiva = false;
   usuarioAtual = null;
   tipoChat = null;
   chatIdAtual = null;
@@ -7684,8 +7686,8 @@ document.addEventListener('click', (e) => {
 
 // Carregar templates após login
 const _origAplicarSessao = typeof aplicarSessaoUsuario === 'function' ? aplicarSessaoUsuario : null;
-// Carrega na inicialização quando token disponível
-setTimeout(() => { if (token) carregarTemplates(); }, 2000);
+// Carrega na inicialização quando a sessão estiver ativa.
+setTimeout(() => { if (sessaoAtiva) carregarTemplates(); }, 2000);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BLOCO 4 — AUDITORIA DE MENSAGENS
@@ -7831,4 +7833,4 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 // Chamar após login bem-sucedido
-setTimeout(() => { if (token) inicializarWebPush(); }, 3000);
+setTimeout(() => { if (sessaoAtiva) inicializarWebPush(); }, 3000);

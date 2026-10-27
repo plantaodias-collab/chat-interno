@@ -33,6 +33,17 @@ const APP_ORIGINS = new Set(
     .map((origin) => origin.trim())
     .filter(Boolean)
 );
+const CSP_CONNECT_SOURCES = [
+  "'self'",
+  ...Array.from(APP_ORIGINS, (origin) => {
+    try {
+      const parsed = new URL(origin);
+      return `${parsed.protocol === 'https:' ? 'wss:' : 'ws:'}//${parsed.host}`;
+    } catch {
+      return '';
+    }
+  }).filter(Boolean)
+].join(' ');
 function isAllowedOrigin(origin) {
   return !origin || APP_ORIGINS.has(origin);
 }
@@ -191,7 +202,7 @@ app.use(express.json());
 app.disable('x-powered-by');
 app.use((req, res, next) => {
   res.set({
-    'Content-Security-Policy': "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'",
+    'Content-Security-Policy': `default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src ${CSP_CONNECT_SOURCES}; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'`,
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'SAMEORIGIN',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -225,7 +236,7 @@ app.get('/sw.js', (_req, res) => res.sendFile(path.join(__dirname, 'sw.js')));
 app.get('/signal_cartography.png', (_req, res) => res.sendFile(path.join(__dirname, 'signal_cartography.png')));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, storageRoot: STORAGE_ROOT, persistentStorage: !IS_EPHEMERAL_STORAGE });
+  res.json({ ok: true, persistentStorage: !IS_EPHEMERAL_STORAGE });
 });
 
 app.get('/api/ia-cartorio/versao', verificarToken, (_req, res) => {
@@ -536,6 +547,46 @@ function criarTokenUsuario(usuario) {
   );
 }
 
+const SESSION_COOKIE_NAME = 'chatinterno_session';
+const SESSION_COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+
+function readCookieValue(cookieHeader, name) {
+  const prefix = `${name}=`;
+  for (const part of String(cookieHeader || '').split(';')) {
+    const cookie = part.trim();
+    if (cookie.startsWith(prefix)) return cookie.slice(prefix.length);
+  }
+  return '';
+}
+
+function tokenFromRequest(req) {
+  const cookieToken = readCookieValue(req.headers.cookie, SESSION_COOKIE_NAME);
+  if (cookieToken) return cookieToken;
+  // Mantém compatibilidade durante a migração de tokens legados já salvos no navegador.
+  const authorization = String(req.headers.authorization || '');
+  return /^Bearer\s+/i.test(authorization) ? authorization.replace(/^Bearer\s+/i, '').trim() : '';
+}
+
+function setSessionCookie(req, res, token) {
+  const secure = req.secure || String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https';
+  const attributes = [
+    `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Strict',
+    `Max-Age=${SESSION_COOKIE_MAX_AGE_SECONDS}`
+  ];
+  if (secure) attributes.push('Secure');
+  res.append('Set-Cookie', attributes.join('; '));
+}
+
+function clearSessionCookie(req, res) {
+  const secure = req.secure || String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https';
+  const attributes = [`${SESSION_COOKIE_NAME}=`, 'Path=/', 'HttpOnly', 'SameSite=Strict', 'Max-Age=0', 'Expires=Thu, 01 Jan 1970 00:00:00 GMT'];
+  if (secure) attributes.push('Secure');
+  res.append('Set-Cookie', attributes.join('; '));
+}
+
 async function senhaLegadaPrecisaRedefinir(usuario) {
   if (!usuario?.ativo || !usuario?.senha) return false;
   try {
@@ -546,7 +597,7 @@ async function senhaLegadaPrecisaRedefinir(usuario) {
 }
 
 function verificarToken(req, res, next) {
-  const token = req.headers.authorization?.split(' ')[1];
+  const token = tokenFromRequest(req);
   if (!token) return res.status(401).json({ erro: 'Token não fornecido' });
 
   try {
@@ -4173,9 +4224,8 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     if (!senhaValida) return res.status(401).json({ erro: 'Usuário ou senha inválidos' });
 
     const token = criarTokenUsuario(usuario);
-
+    setSessionCookie(req, res, token);
     res.json({
-      token,
       usuario: {
         id: usuario.id,
         email: usuario.email,
@@ -4186,6 +4236,19 @@ app.post('/api/login', loginLimiter, async (req, res) => {
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
+});
+
+app.post('/api/logout', (req, res) => {
+  clearSessionCookie(req, res);
+  res.json({ ok: true });
+});
+
+// Converte sessões antigas armazenadas pelo navegador em um cookie HttpOnly.
+app.post('/api/session/migrate', verificarToken, (req, res) => {
+  const usuario = findActiveUserById(req.userId);
+  if (!usuario) return res.status(401).json({ erro: 'Sessão inválida ou usuário desativado' });
+  setSessionCookie(req, res, criarTokenUsuario(usuario));
+  res.json(getUsuarioPublico(usuario));
 });
 
 app.get('/api/me', verificarToken, (req, res) => {
@@ -4244,10 +4307,10 @@ app.put('/api/me', verificarToken, async (req, res) => {
     db.save();
 
     const token = criarTokenUsuario(usuario);
+    setSessionCookie(req, res, token);
 
     res.json({
       mensagem: 'Ajustes salvos com sucesso',
-      token,
       usuario: getUsuarioPublico(usuario)
     });
   } catch (err) {
@@ -5529,7 +5592,9 @@ app.use((err, _req, res, _next) => {
 });
 
 io.use((socket, next) => {
-  const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(' ')[1];
+  const token = readCookieValue(socket.handshake.headers?.cookie, SESSION_COOKIE_NAME)
+    || socket.handshake.auth?.token
+    || socket.handshake.headers?.authorization?.split(' ')[1];
   if (!token) return next(new Error('Autenticacao necessaria'));
   try {
     const decoded = jwt.verify(token, SECRET_KEY);

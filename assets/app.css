@@ -12553,3 +12553,20 @@ body.theme-dark .admin-tab-group + .admin-tab-group { border-color: #334155; }
 @media (max-width: 980px) {
   .dashboard-home .dashboard-panel:has(.dashboard-empty) .dashboard-empty { min-height: 46px; padding: 9px 10px; }
 }
+
+.message-action-menu .message-actions .message-action-btn,
+.message-action-menu .message-actions .message-delete-btn {
+  width: auto;
+  min-width: max-content;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+#loginForm { margin: 0; }
+.login-recovery-hint {
+  margin: 12px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  text-align: center;
+}
+body.theme-dark .login-recovery-hint { color: #aab9cc; }
