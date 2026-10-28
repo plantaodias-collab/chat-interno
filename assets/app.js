@@ -4713,7 +4713,7 @@ function conectarSocket() {
         usuarioNome: data.message.usuario_nome,
         usuarioId: data.message.usuario_id,
         showReactionPicker: false
-      });
+      }, { scrollToBottom: data.acao !== 'reacao' });
     }
 
     if (data.tipoChat === 'grupo') {
@@ -5487,7 +5487,7 @@ function renderMessageRow(message) {
     : '';
 
   const actionButtons = `
-    <details class="message-action-menu">
+    <details class="message-action-menu" ontoggle="posicionarMenuAcoes(this)">
       <summary class="message-action-trigger" title="Ações da mensagem" aria-label="Abrir ações da mensagem">⋯</summary>
       <span class="message-actions">
       <button class="message-action-btn ${isPriorityMessage ? 'active' : ''}" onclick="alternarPrioridadeMensagem(${Number(message.id)})" title="${isPriorityMessage ? 'Remover destaque da mensagem' : 'Destacar mensagem como prioridade'}" aria-label="${isPriorityMessage ? 'Remover destaque da mensagem' : 'Destacar mensagem como prioridade'}" aria-pressed="${isPriorityMessage ? 'true' : 'false'}">${isPriorityMessage ? 'Remover prioridade' : 'Prioridade'}</button>
@@ -5498,17 +5498,15 @@ function renderMessageRow(message) {
       ${stickerAttachment ? `<button class="message-action-btn" onclick="salvarFigurinhaMensagem(${Number(message.id)})" title="Salvar figurinha" aria-label="Salvar figurinha">Salvar figurinha</button>` : ''}
       ${ehOutro && tipoChat === 'privado' ? `<button class="message-action-btn" onclick="marcarConversaComoNaoLida(${Number(message.id)}, ${Number(message.usuarioId)})" title="Marcar conversa como não lida" aria-label="Marcar conversa como não lida">Não lido</button>` : ''}
       ${!ehOutro && message.tipo === 'texto' ? `<button class="message-action-btn" onclick="prepararEdicaoMensagem(${Number(message.id)})" title="Editar mensagem" aria-label="Editar mensagem">Editar</button>` : ''}
-      <button class="message-action-btn" onclick="alternarReacaoRapida(${Number(message.id)})" title="Reagir à mensagem" aria-label="Reagir à mensagem">Reagir</button>
+      <button class="message-action-btn" onclick="alternarReacaoRapida(${Number(message.id)}, event)" title="Reagir à mensagem" aria-label="Reagir à mensagem" aria-controls="reaction-picker-${Number(message.id)}" aria-expanded="false">Reagir</button>
       ${!ehOutro ? `<button class="message-delete-btn" onclick="apagarMensagem(${Number(message.id)})" title="Apagar mensagem" aria-label="Apagar mensagem">Apagar</button>` : ''}
+      <span class="reaction-picker" id="reaction-picker-${Number(message.id)}" role="group" aria-label="Escolher reação" hidden>
+        ${REACTION_OPTIONS.map((emoji) => `<button type="button" class="reaction-picker-btn" onclick="alternarReacao(${Number(message.id)}, '${emoji}')" title="Reagir com ${emoji}" aria-label="Reagir com ${emoji}">${emoji}</button>`).join('')}
+      </span>
       </span>
     </details>
   `;
 
-  const pickerHtml = message.showReactionPicker
-    ? `<div class="reaction-picker">
-        ${REACTION_OPTIONS.map((emoji) => `<button class="reaction-picker-btn" onclick="alternarReacao(${Number(message.id)}, '${emoji}')" title="Reagir com ${emoji}">${emoji}</button>`).join('')}
-      </div>`
-    : '';
   const priorityBadgeHtml = isPriorityMessage
     ? '<div class="message-priority-badge">Mensagem prioritária</div>'
     : '';
@@ -5527,7 +5525,6 @@ function renderMessageRow(message) {
         ${replyHtml}
         ${innerContent}
         ${reactionsHtml}
-        ${pickerHtml}
         <div class="message-time">${actionButtons} ${editedHtml} <span class="message-timestamp">${escapeHtml(horarioMensagem)}</span></div>
       </div>
     `;
@@ -5558,7 +5555,6 @@ function renderMessageRow(message) {
       ${replyHtml}
       ${innerContent}
       ${reactionsHtml}
-      ${pickerHtml}
       <div class="message-time">${actionButtons} ${editedHtml} <span class="message-timestamp">${escapeHtml(horarioMensagem)}</span> <span class="message-status ${statusClass}" title="${escapeHtml(statusTitle)}">${statusText}</span></div>
       ${resumoHtml}
     </div>
@@ -5896,13 +5892,13 @@ async function abrirGaleriaConversa() {
   hydrateSecureAttachments(overlay);
 }
 
-function upsertMessageInCache(message) {
+function upsertMessageInCache(message, { scrollToBottom = true } = {}) {
   const normalized = normalizeMessage(message);
   const index = currentMessagesCache.findIndex((item) => Number(item.id) === Number(normalized.id));
   if (index >= 0) currentMessagesCache[index] = { ...currentMessagesCache[index], ...normalized };
   else currentMessagesCache.push(normalized);
   currentMessagesCache.sort((a, b) => toTimestamp(a.criado_em) - toTimestamp(b.criado_em));
-  renderMessages();
+  renderMessages({ scrollToBottom });
 }
 
 function replaceTemporaryMessage(clientTempId, message) {
@@ -6008,12 +6004,33 @@ async function apagarMensagem(messageId) {
   }
 }
 
-function alternarReacaoRapida(messageId) {
-  currentMessagesCache = currentMessagesCache.map((message) => ({
-    ...message,
-    showReactionPicker: Number(message.id) === Number(messageId) ? !message.showReactionPicker : false
-  }));
-  renderMessages();
+function posicionarMenuAcoes(menu) {
+  if (!menu?.open) {
+    menu?.classList.remove('open-up');
+    return;
+  }
+  const actions = menu.querySelector('.message-actions');
+  const container = menu.closest('.messages-container');
+  if (!actions || !container) return;
+  menu.classList.remove('open-up');
+  const bounds = container.getBoundingClientRect();
+  const trigger = menu.getBoundingClientRect();
+  const actionsBounds = actions.getBoundingClientRect();
+  if (actionsBounds.bottom > bounds.bottom && trigger.top - bounds.top > bounds.bottom - trigger.bottom) {
+    menu.classList.add('open-up');
+  }
+}
+
+function alternarReacaoRapida(messageId, event) {
+  const trigger = event?.currentTarget;
+  const menu = trigger?.closest('.message-action-menu');
+  const picker = menu?.querySelector(`#reaction-picker-${Number(messageId)}`);
+  if (!picker) return;
+  const opening = picker.hidden;
+  picker.hidden = !opening;
+  trigger.setAttribute('aria-expanded', String(opening));
+  posicionarMenuAcoes(menu);
+  if (opening) picker.querySelector('button')?.focus();
 }
 
 async function alternarReacao(messageId, emoji) {
@@ -6030,7 +6047,7 @@ async function alternarReacao(messageId, emoji) {
       return;
     }
 
-    upsertMessageInCache({ ...data.message, showReactionPicker: false });
+    upsertMessageInCache({ ...data.message, showReactionPicker: false }, { scrollToBottom: false });
   } catch (err) {
     mostrarNotificacao('Erro ao reagir: ' + err.message, 'error');
   }
