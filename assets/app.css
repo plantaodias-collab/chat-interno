@@ -12885,3 +12885,22 @@ body.theme-dark .context-summary p, body.theme-dark .context-empty { color: #aeb
   #chatContainer .message-row { padding-inline: 0; }
   #chatContainer .message { max-width: min(100%, 82vw); }
 }
+
+/* Em telas menores, a grade de conversas continua visível mesmo quando a
+   altura disponível é curta. Nesses casos os painéis também se empilham para
+   que o conteúdo não seja comprimido dentro de cards estreitos. */
+@media (max-height: 760px) and (min-width: 821px) {
+  .dashboard-home .dashboard-grid {
+    display: grid;
+  }
+}
+
+@media (max-width: 1180px) and (min-width: 821px) {
+  .dashboard-home .dashboard-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-home .dashboard-assistant-contact {
+    max-width: none;
+  }
+}
