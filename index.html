@@ -92,13 +92,6 @@
         </div>
         <div class="inbox-shortcuts" id="sidebarInboxShortcuts"></div>
       </section>
-      <section class="sidebar-section" id="sidebarChannelsSection" aria-label="Canais">
-        <div class="sidebar-section-header">
-          <button class="section-toggle" type="button" onclick="alternarSecaoSidebar('canais')" aria-expanded="true" aria-controls="canaisList">▾ <span>Canais</span></button>
-          <button class="menu-btn" id="novoCanalBtn" onclick="abrirNovoCanal()" style="display:none;" aria-label="Criar canal">+</button>
-        </div>
-        <div class="menu-list" id="canaisList"></div>
-      </section>
       <section class="sidebar-section">
         <div class="sidebar-section-header">
           <button class="section-toggle" type="button" onclick="alternarSecaoSidebar('grupos')" aria-expanded="true" aria-controls="gruposList">▾ <span>Grupos</span></button>
@@ -131,6 +124,14 @@
           <button class="menu-btn" onclick="abrirNovoContato()" aria-label="Criar novo contato">+</button>
         </div>
         <div class="menu-list" id="contatosList"></div>
+      </section>
+
+      <section class="sidebar-section" id="sidebarChannelsSection" aria-label="Canais">
+        <div class="sidebar-section-header">
+          <button class="section-toggle" type="button" onclick="alternarSecaoSidebar('canais')" aria-expanded="true" aria-controls="canaisList">▾ <span>Canais</span></button>
+          <button class="menu-btn" id="novoCanalBtn" onclick="abrirNovoCanal()" style="display:none;" aria-label="Criar canal">+</button>
+        </div>
+        <div class="menu-list" id="canaisList"></div>
       </section>
 
       <div class="admin-section hidden" id="adminSection">
