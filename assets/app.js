@@ -115,6 +115,7 @@ let plantaoState = {
   escalas: []
 };
 let plantaoCollapsed = false;
+let plantaoActiveTab = 'escala';
 let plantaoEditingPeriodoKey = '';
 const REACTION_OPTIONS = ['\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F44F}', '\u{1F525}', '\u{1F440}'];
 const STORAGE_KEY = 'chatinterno.session';
@@ -5029,13 +5030,38 @@ function alternarPlantaoPanel() {
   renderPlantaoPanel();
 }
 
+function alternarAbaPlantao(tab) {
+  if (!['escala', 'equipe'].includes(tab)) return;
+  plantaoActiveTab = tab;
+  const entries = [
+    ['escala', 'plantaoTabEscala', 'plantaoEscalaTab'],
+    ['equipe', 'plantaoTabEquipe', 'plantaoEquipeTab']
+  ];
+  entries.forEach(([key, buttonId, panelId]) => {
+    const active = key === plantaoActiveTab;
+    const button = document.getElementById(buttonId);
+    const panel = document.getElementById(panelId);
+    button?.classList.toggle('active', active);
+    button?.setAttribute('aria-selected', String(active));
+    panel?.classList.toggle('hidden', !active);
+    if (panel) panel.hidden = !active;
+  });
+}
+
 function renderPlantaoPanel() {
   const panel = document.getElementById('plantaoPanel');
   if (!panel) return;
   const body = document.getElementById('plantaoBody');
   const icon = document.getElementById('plantaoToggleIcon');
+  const toggle = panel.querySelector('.plantao-icon-btn');
   if (body) body.classList.toggle('hidden', plantaoCollapsed);
   if (icon) icon.textContent = plantaoCollapsed ? '+' : '-';
+  if (toggle) {
+    toggle.setAttribute('aria-expanded', String(!plantaoCollapsed));
+    toggle.title = plantaoCollapsed ? 'Expandir escala' : 'Recolher escala';
+    toggle.setAttribute('aria-label', toggle.title);
+  }
+  alternarAbaPlantao(plantaoActiveTab);
 
   const escreventesList = document.getElementById('plantaoEscreventesList');
   const feriasList = document.getElementById('plantaoFeriasList');
@@ -5079,11 +5105,12 @@ function renderPlantaoPanel() {
   }
 
   const conflitos = plantaoState.escalas.filter((item) => item.conflito).length;
+  const periodosCount = getPlantaoEscalaPeriodos().length;
   if (resumo) {
     resumo.innerHTML = `
-      <span>${getPlantaoEscalaPeriodos().length} periodos</span>
-      <span>${plantaoState.escreventes.length} escreventes</span>
-      <span class="${conflitos ? 'plantao-conflict-text' : ''}">${conflitos} conflitos</span>
+      <span><strong>${periodosCount}</strong> ${periodosCount === 1 ? 'período' : 'períodos'}</span>
+      <span><strong>${plantaoState.escreventes.length}</strong> ${plantaoState.escreventes.length === 1 ? 'escrevente' : 'escreventes'}</span>
+      <span class="${conflitos ? 'plantao-conflict-text' : ''}"><strong>${conflitos}</strong> ${conflitos === 1 ? 'conflito' : 'conflitos'}</span>
     `;
   }
 
@@ -5102,7 +5129,7 @@ function renderPlantaoPanel() {
         <div class="plantao-scale-row ${item.conflito ? 'conflict' : ''}" ${getPlantaoColorStyle(item.escreventeId, item.conflito)}>
           <div class="plantao-scale-main">
             <strong>${formatDateOnlyBr(item.inicio)} a ${formatDateOnlyBr(item.fim)}</strong>
-            <span>${item.conflito ? 'Conflito de ferias' : escapeHtml(getPlantaoEscreventeNome(item.escreventeId))}</span>
+            <span class="plantao-scale-name">${item.conflito ? 'Conflito de férias' : escapeHtml(getPlantaoEscreventeNome(item.escreventeId))}</span>
           </div>
           <div class="plantao-scale-actions">
             <button class="plantao-scale-edit" type="button" onclick="editarPeriodoEscalaPlantao('${escapeHtml(item.inicio)}','${escapeHtml(item.fim)}')" title="Editar periodo e escrevente" aria-label="Editar periodo e escrevente">Editar</button>

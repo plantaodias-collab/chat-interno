@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/app.min.css?v=a49eda2b537b1f9b" />
+  <link rel="stylesheet" href="/assets/app.min.css?v=515c112f89c95c9b" />
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@17.0.3/dist/twemoji.min.js" crossorigin="anonymous" defer></script>
@@ -300,56 +300,70 @@
 
       <section class="plantao-panel hidden" id="plantaoPanel" aria-label="Escala de plantao">
         <div class="plantao-toolbar">
-          <div>
-            <div class="plantao-kicker">Registro Civil de Chapeco SC</div>
-            <h3>Escala de plantao dos escreventes</h3>
+          <div class="plantao-heading">
+            <div class="plantao-kicker">Registro Civil de Chapecó SC</div>
+            <h3>Plantão</h3>
+            <div class="plantao-summary" id="plantaoResumo" aria-live="polite"></div>
           </div>
-          <button class="plantao-icon-btn" type="button" onclick="alternarPlantaoPanel()" title="Recolher escala" aria-label="Recolher escala">
-            <span id="plantaoToggleIcon">-</span>
-          </button>
+          <div class="plantao-toolbar-actions">
+            <div class="plantao-tabs" role="tablist" aria-label="Seções do plantão">
+              <button class="plantao-tab active" type="button" id="plantaoTabEscala" role="tab" aria-selected="true" aria-controls="plantaoEscalaTab" onclick="alternarAbaPlantao('escala')">Escala</button>
+              <button class="plantao-tab" type="button" id="plantaoTabEquipe" role="tab" aria-selected="false" aria-controls="plantaoEquipeTab" onclick="alternarAbaPlantao('equipe')">Equipe e férias</button>
+            </div>
+            <button class="plantao-icon-btn" type="button" onclick="alternarPlantaoPanel()" title="Recolher escala" aria-label="Recolher escala" aria-expanded="true">
+              <span id="plantaoToggleIcon">−</span>
+            </button>
+          </div>
         </div>
         <div class="plantao-body" id="plantaoBody">
-          <div class="plantao-grid">
-            <div class="plantao-card">
-              <div class="plantao-card-title">Escreventes</div>
-              <div class="plantao-inline-form">
-                <input class="field" id="plantaoNomeInput" type="text" maxlength="80" placeholder="Nome do escrevente" />
-                <button class="btn btn-primary plantao-action" type="button" onclick="adicionarEscreventePlantao()">Cadastrar</button>
-              </div>
-              <div class="plantao-list" id="plantaoEscreventesList"></div>
-            </div>
-
-            <div class="plantao-card">
-              <div class="plantao-card-title">Ferias</div>
-              <div class="plantao-form-grid">
-                <select class="field" id="plantaoFeriasEscrevente"></select>
-                <input class="field" id="plantaoFeriasInicio" type="date" />
-                <input class="field" id="plantaoFeriasFim" type="date" />
-                <button class="btn btn-primary plantao-action" type="button" onclick="adicionarFeriasPlantao()">Adicionar</button>
-              </div>
-              <div class="plantao-list" id="plantaoFeriasList"></div>
-            </div>
-
+          <section class="plantao-tab-panel" id="plantaoEscalaTab" role="tabpanel" aria-labelledby="plantaoTabEscala">
             <div class="plantao-card plantao-card-wide">
-              <div class="plantao-card-title">Cadastrar plantao por periodo</div>
-              <div class="plantao-form-grid periodo">
-                <select class="field" id="plantaoPeriodoEscrevente"></select>
-                <input class="field" id="plantaoPeriodoInicio" type="date" />
-                <input class="field" id="plantaoPeriodoFim" type="date" />
-                <button class="btn btn-primary plantao-action" type="button" onclick="cadastrarPeriodoPlantao()">Salvar periodo</button>
-              </div>
+              <details class="plantao-manual-entry">
+                <summary>Adicionar período manual</summary>
+                <div class="plantao-form-grid periodo">
+                  <label class="plantao-date-field"><span>Escrevente</span><select class="field" id="plantaoPeriodoEscrevente"></select></label>
+                  <label class="plantao-date-field"><span>Início</span><input class="field" id="plantaoPeriodoInicio" type="date" /></label>
+                  <label class="plantao-date-field"><span>Fim</span><input class="field" id="plantaoPeriodoFim" type="date" /></label>
+                  <button class="btn btn-primary plantao-action" type="button" onclick="cadastrarPeriodoPlantao()">Salvar período</button>
+                </div>
+              </details>
 
-              <div class="plantao-card-title secondary">Gerar escala automatica</div>
-              <div class="plantao-form-grid escala">
-                <input class="field" id="plantaoEscalaInicio" type="date" />
-                <input class="field" id="plantaoEscalaFim" type="date" />
-                <button class="btn btn-primary plantao-action" type="button" onclick="gerarEscalaPlantao()">Gerar escala</button>
-                <button class="btn btn-secondary plantao-action danger" type="button" onclick="excluirEscalaPlantao()">Excluir escala</button>
+              <div class="plantao-generator">
+                <div class="plantao-generator-title"><strong>Gerar escala automática</strong><span>Distribui os períodos entre a equipe disponível</span></div>
+                <div class="plantao-form-grid escala">
+                  <label class="plantao-date-field"><span>Início</span><input class="field" id="plantaoEscalaInicio" type="date" /></label>
+                  <label class="plantao-date-field"><span>Fim</span><input class="field" id="plantaoEscalaFim" type="date" /></label>
+                  <button class="btn btn-primary plantao-action" type="button" onclick="gerarEscalaPlantao()">Gerar escala</button>
+                  <button class="btn btn-secondary plantao-action danger" type="button" onclick="excluirEscalaPlantao()">Limpar escala</button>
+                </div>
               </div>
-              <div class="plantao-summary" id="plantaoResumo"></div>
               <div class="plantao-schedule" id="plantaoEscalaList"></div>
             </div>
-          </div>
+          </section>
+
+          <section class="plantao-tab-panel hidden" id="plantaoEquipeTab" role="tabpanel" aria-labelledby="plantaoTabEquipe" hidden>
+            <div class="plantao-grid">
+              <div class="plantao-card">
+                <div class="plantao-card-title">Escreventes</div>
+                <div class="plantao-inline-form">
+                  <input class="field" id="plantaoNomeInput" type="text" maxlength="80" placeholder="Nome do escrevente" />
+                  <button class="btn btn-primary plantao-action" type="button" onclick="adicionarEscreventePlantao()">Cadastrar</button>
+                </div>
+                <div class="plantao-list" id="plantaoEscreventesList"></div>
+              </div>
+
+              <div class="plantao-card">
+                <div class="plantao-card-title">Férias</div>
+                <div class="plantao-form-grid">
+                  <label class="plantao-date-field"><span>Escrevente</span><select class="field" id="plantaoFeriasEscrevente"></select></label>
+                  <label class="plantao-date-field"><span>Início</span><input class="field" id="plantaoFeriasInicio" type="date" /></label>
+                  <label class="plantao-date-field"><span>Fim</span><input class="field" id="plantaoFeriasFim" type="date" /></label>
+                  <button class="btn btn-primary plantao-action" type="button" onclick="adicionarFeriasPlantao()">Adicionar</button>
+                </div>
+                <div class="plantao-list" id="plantaoFeriasList"></div>
+              </div>
+            </div>
+          </section>
         </div>
       </section>
 
@@ -923,6 +937,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.min.js?v=dccf3134331e9bf7"></script>
+  <script src="/assets/app.min.js?v=457028618115c506"></script>
 </body>
 </html>
