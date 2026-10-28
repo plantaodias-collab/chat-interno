@@ -12570,3 +12570,28 @@ body.theme-dark .admin-tab-group + .admin-tab-group { border-color: #334155; }
   text-align: center;
 }
 body.theme-dark .login-recovery-hint { color: #aab9cc; }
+
+/* Keep the open message action menu anchored to its trigger, outside the timestamp row. */
+.message-action-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  z-index: 1;
+}
+
+.message-action-menu[open] {
+  z-index: 20;
+}
+
+.message-action-menu[open] .message-actions {
+  position: absolute !important;
+  top: calc(100% + 7px);
+  right: 0;
+  left: auto;
+  display: flex !important;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 32px));
+  margin: 0;
+  box-sizing: border-box;
+  z-index: 21;
+}
