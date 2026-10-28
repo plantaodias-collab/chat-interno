@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/app.min.css?v=f54ecc0b174f6405" />
+  <link rel="stylesheet" href="/assets/app.min.css?v=a49eda2b537b1f9b" />
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@17.0.3/dist/twemoji.min.js" crossorigin="anonymous" defer></script>
@@ -79,8 +79,8 @@
             class="workspace-search-input"
             id="conversationSearchInput"
             type="text"
-            placeholder="Buscar grupos e contatos"
-            aria-label="Buscar grupos e contatos"
+            placeholder="Buscar canais, grupos e pessoas"
+            aria-label="Buscar canais, grupos e pessoas"
             oninput="atualizarBuscaConversas(this.value)"
           />
           <button class="workspace-search-clear hidden" id="conversationSearchClear" type="button" onclick="limparBuscaConversas()" aria-label="Limpar busca">×</button>
@@ -92,9 +92,16 @@
         </div>
         <div class="inbox-shortcuts" id="sidebarInboxShortcuts"></div>
       </section>
+      <section class="sidebar-section" id="sidebarChannelsSection" aria-label="Canais">
+        <div class="sidebar-section-header">
+          <button class="section-toggle" type="button" onclick="alternarSecaoSidebar('canais')" aria-expanded="true" aria-controls="canaisList">▾ <span>Canais</span></button>
+          <button class="menu-btn" id="novoCanalBtn" onclick="abrirNovoCanal()" style="display:none;" aria-label="Criar canal">+</button>
+        </div>
+        <div class="menu-list" id="canaisList"></div>
+      </section>
       <section class="sidebar-section">
         <div class="sidebar-section-header">
-          <div class="section-title">Grupos</div>
+          <button class="section-toggle" type="button" onclick="alternarSecaoSidebar('grupos')" aria-expanded="true" aria-controls="gruposList">▾ <span>Grupos</span></button>
           <button class="menu-btn" id="novoGrupoBtn" onclick="abrirNovoGrupo()" style="display:none;" aria-label="Criar novo grupo">+</button>
         </div>
         <div class="menu-list" id="gruposList"></div>
@@ -120,7 +127,7 @@
         </div>
 
         <div class="sidebar-section-header">
-          <div class="section-title">Equipe</div>
+          <button class="section-toggle" type="button" onclick="alternarSecaoSidebar('equipe')" aria-expanded="true" aria-controls="contatosList">▾ <span>Equipe</span></button>
           <button class="menu-btn" onclick="abrirNovoContato()" aria-label="Criar novo contato">+</button>
         </div>
         <div class="menu-list" id="contatosList"></div>
@@ -175,6 +182,10 @@
             <option value="resolvido">Resolvido</option>
             <option value="urgente">Urgente</option>
           </select>
+          <button class="header-btn action-icon-btn hidden" id="chatDetailsBtn" type="button" onclick="abrirPainelConversa('info')" title="Detalhes da conversa" aria-label="Abrir detalhes da conversa">
+            <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg></span>
+            <span class="action-text optional-mobile">Detalhes</span>
+          </button>
           <details class="header-more-menu">
             <summary class="header-btn action-icon-btn" aria-label="Mais opções">
               <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 6h.01M12 12h.01M12 18h.01"/></svg></span>
@@ -201,6 +212,10 @@
               <button class="header-btn action-icon-btn hidden" id="favoriteChatBtn" onclick="alternarFavoritoAtual()" title="Fixar conversa no topo" aria-label="Fixar conversa no topo" aria-pressed="false">
                 <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z"/></svg></span>
                 <span class="action-text">Fixar</span>
+              </button>
+              <button class="header-btn action-icon-btn hidden" id="muteChatBtn" onclick="alternarSilencioAtual()" title="Silenciar conversa" aria-label="Silenciar conversa" aria-pressed="false">
+                <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></span>
+                <span class="action-text" id="muteChatText">Silenciar</span>
               </button>
               <button class="header-btn action-icon-btn hidden" id="exportChatBtn" onclick="exportarConversaTxt()" title="Exportar conversa em TXT" aria-label="Exportar conversa em TXT">
                 <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></span>
@@ -457,6 +472,22 @@
       </div>
     </main>
 
+    <aside class="chat-context-panel hidden" id="chatContextPanel" aria-label="Painel da conversa">
+      <div class="chat-context-header">
+        <div><small id="chatContextEyebrow">Conversa</small><h3 id="chatContextTitle">Detalhes</h3></div>
+        <button type="button" onclick="fecharPainelConversa()" aria-label="Fechar painel">×</button>
+      </div>
+      <nav class="chat-context-tabs" id="chatContextTabs" aria-label="Seções da conversa">
+        <button type="button" data-context-tab="info" onclick="abrirPainelConversa('info')">Detalhes</button>
+        <button type="button" data-context-tab="files" onclick="abrirPainelConversa('files')">Arquivos</button>
+      </nav>
+      <div class="chat-context-body" id="chatContextBody"></div>
+      <div class="thread-composer hidden" id="threadComposer">
+        <textarea id="threadInput" rows="2" maxlength="4000" placeholder="Responder nesta thread" aria-label="Responder nesta thread" onkeydown="enviarThreadSeEnter(event)"></textarea>
+        <button type="button" onclick="enviarRespostaThread()">Responder</button>
+      </div>
+    </aside>
+
     <section class="assistant-native-panel hidden" id="assistantNativePanel" aria-label="IA Cartório Dias de Castro">
       <header class="assistant-native-header">
         <div class="assistant-native-brand"><span>✦</span><div><strong>IA Cartório Dias de Castro</strong><small>Cartório Dias de Castro</small></div></div>
@@ -536,7 +567,11 @@
         </section>
 
         <section class="modal-tab-panel hidden" data-admin-panel="grupos" style="border-top:1px solid #e5e7eb; padding-top:22px;">
-          <h4 style="margin-bottom:14px;">Criar novo grupo</h4>
+          <h4 style="margin-bottom:14px;">Criar grupo ou canal</h4>
+          <div class="admin-group-options">
+            <div class="form-group"><label for="adminNovoGrupoTipo">Tipo</label><select class="field" id="adminNovoGrupoTipo" onchange="atualizarTipoNovoGrupo()"><option value="grupo">Grupo</option><option value="canal">Canal</option></select></div>
+            <div class="form-group"><label for="adminNovoGrupoVisibilidade">Acesso</label><select class="field" id="adminNovoGrupoVisibilidade"><option value="privado">Privado: apenas participantes</option><option value="publico">Público: toda a equipe</option></select></div>
+          </div>
           <div class="form-group">
             <label for="adminNovoGrupoNome">Nome do grupo</label>
             <input class="field" type="text" id="adminNovoGrupoNome" placeholder="Nome do grupo" />
@@ -548,9 +583,18 @@
           <div class="form-group">
             <label>Membros do grupo</label>
             <div id="adminGrupoMembros" style="border:1px solid #dbe1ea; border-radius:14px; padding:12px; max-height:220px; overflow:auto;"></div>
-            <div style="font-size:12px; color:#64748b; margin-top:6px;">Somente os membros selecionados verão este grupo e suas conversas.</div>
+            <div style="font-size:12px; color:#64748b; margin-top:6px;">Em espaços privados, somente os participantes selecionados terão acesso. O administrador criador é incluído automaticamente.</div>
           </div>
-          <button class="btn btn-primary" onclick="criarNovoGrupo()">Criar grupo</button>
+          <button class="btn btn-primary" onclick="criarNovoGrupo()">Criar</button>
+          <div class="admin-group-manage">
+            <h4>Gerenciar participantes e descrição</h4>
+            <select class="field" id="adminGrupoEditarSelect" onchange="preencherGrupoEdicao()"><option value="">Selecione um grupo ou canal</option></select>
+            <input class="field" id="adminGrupoEditarNome" maxlength="80" placeholder="Nome" />
+            <input class="field" id="adminGrupoEditarDesc" maxlength="300" placeholder="Descrição" />
+            <select class="field" id="adminGrupoEditarVisibilidade"><option value="privado">Privado</option><option value="publico">Público</option></select>
+            <div id="adminGrupoEditarMembros" class="admin-group-members"></div>
+            <button class="btn btn-secondary" type="button" onclick="salvarGrupoEditado()">Salvar alterações</button>
+          </div>
         </section>
 
         <section class="modal-tab-panel hidden" data-admin-panel="avisos" style="border-top:1px solid #e5e7eb; padding-top:22px;">
@@ -813,6 +857,12 @@
       <div class="form-group">
         <label for="globalSearchInput">Buscar em conversas, mensagens e arquivos</label>
         <input class="field" type="text" id="globalSearchInput" placeholder="Digite pelo menos 2 letras" oninput="executarBuscaGlobal(this.value)" />
+        <div class="global-search-filters">
+          <label>Remetente<select class="field" id="globalSearchSender" onchange="executarBuscaGlobal(document.getElementById('globalSearchInput').value)"><option value="">Todos</option></select></label>
+          <label>De<input class="field" type="date" id="globalSearchFrom" onchange="executarBuscaGlobal(document.getElementById('globalSearchInput').value)" /></label>
+          <label>Até<input class="field" type="date" id="globalSearchTo" onchange="executarBuscaGlobal(document.getElementById('globalSearchInput').value)" /></label>
+          <label class="global-search-files"><input type="checkbox" id="globalSearchFiles" onchange="executarBuscaGlobal(document.getElementById('globalSearchInput').value)" /> Apenas arquivos</label>
+        </div>
       </div>
       <div class="global-search-results" id="globalSearchResults">Digite um termo para buscar.</div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:18px;">
@@ -872,6 +922,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/assets/app.min.js?v=f4145197940b31f8"></script>
+  <script src="/assets/app.min.js?v=dccf3134331e9bf7"></script>
 </body>
 </html>

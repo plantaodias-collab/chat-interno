@@ -1,148 +1,39 @@
-# Chat Interno - Aplicativo de Comunicação da Equipe
+# Chat Interno
 
-Aplicativo de chat interno para comunicação entre funcionários em rede local. Suporta grupos, mensagens privadas, notificações em tempo real e gerenciamento de usuários.
+Aplicação web de comunicação interna com Express, Socket.IO e interface em HTML, CSS e JavaScript. A interface reúne conversas individuais, grupos e canais em uma barra lateral; o histórico, os arquivos e as threads usam o mesmo armazenamento e as mesmas regras de acesso.
 
-## Funcionalidades
+## Conversas
 
-✅ Autenticação por email e senha
-✅ Salas de chat em grupos
-✅ Mensagens privadas entre usuários
-✅ Notificações em tempo real
-✅ Painel de administração para gerenciar usuários
-✅ Cadastro de usuários com senha padrão
-✅ Criação de grupos
-✅ Histórico de mensagens
-✅ Interface web responsiva
-✅ Funciona em rede local
+- **Canais públicos:** disponíveis aos usuários ativos. Administradores podem criá-los e editar nome, descrição e participantes.
+- **Canais privados e grupos:** disponíveis somente aos participantes. Administradores podem incluir e remover participantes.
+- **Mensagens:** envio em tempo real, respostas vinculadas, reações, edição e exclusão conforme as permissões atuais, anexos, busca e histórico progressivo.
+- **Organização:** não lidas, favoritos, mensagens fixadas, seções recolhíveis, busca com filtros e painel de detalhes, arquivos e threads.
+- **Notificações:** silêncio por conversa ou canal salvo na conta; som opcional salvo no navegador.
 
-## Requisitos
+Grupos existentes sem campo de visibilidade mantêm a regra anterior: com participantes cadastrados são restritos; sem participantes são públicos. Nenhuma migração destrutiva é necessária.
 
-- Node.js v14 ou superior
-- npm
-- Conexão de rede local (pode ser na mesma máquina)
+## Execução
 
-## Instalação Rápida
+Requer Node.js compatível com as dependências do projeto e npm.
 
-### 1. Extrair os arquivos
-Coloque todos os arquivos em uma pasta, ex: `C:\ChatInterno`
-
-### 2. Instalar dependências
 ```bash
-cd C:\ChatInterno
-npm install
-```
-
-### 3. Executar setup inicial
-```bash
-npm run setup
-```
-
-Siga as instruções para:
-- Definir nome do administrador
-- Definir email do administrador
-- Definir senha do administrador
-- (Opcional) Criar grupos de exemplo
-
-### 4. Iniciar o servidor
-```bash
+npm ci
+npm run build
 npm start
 ```
 
-O servidor iniciará em `http://localhost:3000`
+O servidor usa `PORT` (padrão: `3000`). Em produção, configure `SECRET_KEY` e um volume persistente em `STORAGE_ROOT` ou `RAILWAY_VOLUME_MOUNT_PATH`. O aplicativo precisa preservar o diretório `data/`, `uploads/` e os backups do volume. Não elimine arquivos de dados para tentar corrigir uma falha de inicialização.
 
-Se quiser que outras máquinas acessem, use o IP da máquina:
-`http://SEU_IP:3000`
+O administrador é criado por um procedimento controlado de instalação; não existe senha padrão de usuário. O painel administrativo gera senhas temporárias individuais quando necessário.
 
-## Uso
+## Testes
 
-### Para o Administrador
-
-1. Acesse http://localhost:3000
-2. Faça login com email e senha criados no setup
-3. Clique em "⚙️ Painel Admin"
-4. Cadastre novos usuários (será gerada uma senha padrão)
-5. Crie grupos de comunicação
-
-### Para Funcionários
-
-1. Receba email e senha do administrador
-2. Acesse http://localhost:3000 (ou http://SEU_IP:3000)
-3. Faça login com email e senha
-4. Participe dos grupos
-5. Envie mensagens privadas para colegas
-
-## Estrutura de Arquivos
-
-```
-ChatInterno/
-├── server.js           # Servidor backend (Express + Socket.IO)
-├── index.html          # Interface web
-├── package.json        # Dependências do projeto
-├── setup.js            # Script de configuração inicial
-├── chat.db             # Banco de dados SQLite (criado automaticamente)
-└── README.md           # Este arquivo
-```
-
-## Senhas Padrão
-
-Ao criar um usuário via painel admin, a senha padrão é: **Senha123!**
-
-Oriente os usuários a alterar a senha no primeiro acesso (funcionalidade será adicionada).
-
-## Acessibilidade pela Rede
-
-### Na mesma máquina:
-- http://localhost:3000
-
-### Outra máquina na rede local:
-1. Descubra o IP da máquina servidor:
-   - Windows: Execute `ipconfig` no terminal
-   - Procure por "IPv4 Address" na rede local (geralmente começa com 192.168 ou 10.)
-
-2. Acesse: http://SEU_IP:3000
-
-Exemplo: http://192.168.1.100:3000
-
-## Solução de Problemas
-
-### Porta 3000 já está em uso
-Se a porta 3000 já está em uso, mude no server.js:
-```javascript
-const PORT = process.env.PORT || 3000; // Mude 3000 para outra porta
-```
-
-### Usuários não conseguem acessar de outras máquinas
-- Verifique se o firewall do Windows está bloqueando
-- Permita a porta 3000 no firewall
-- Confirme o IP correto com `ipconfig`
-
-### Banco de dados corrompido
-Delete o arquivo `chat.db` e execute novamente:
 ```bash
-npm run setup
-npm start
+npm test
 ```
 
-## Funcionalidades Futuras
+A suíte inclui testes de autenticação, backups, infraestrutura de IA e integração do chat. O teste de chat inicia um servidor com volume temporário e verifica acesso a canais, threads, arquivos, busca, silêncio e envio em tempo real por Socket.IO.
 
-- Alteração de senha pelos usuários
-- Upload de arquivos/imagens
-- Busca de mensagens
-- Perfis de usuários
-- Emojis e formatação
-- Salas de chamada de voz/vídeo
-- Gravação de mensagens de áudio
+## Dados e limites atuais
 
-## Suporte Técnico
-
-Se encontrar problemas, verifique:
-
-1. Node.js instalado corretamente: `node --version`
-2. npm instalado corretamente: `npm --version`
-3. Dependências instaladas: verificar pasta `node_modules`
-4. Banco de dados acessível: procurar por `chat.db`
-5. Porta 3000 disponível ou alterada no server.js
-
-## Licença
-
-Livre para uso interno.
+Os dados operacionais são arquivos JSON no volume, não um banco SQLite. Os anexos seguem os limites de upload e retenção do servidor. A lista de arquivos no painel mostra os 200 anexos mais recentes por conversa. A busca global consulta o histórico autorizado e apresenta até 80 resultados por solicitação. Threads reutilizam o vínculo `reply_to_id`; as respostas também aparecem no histórico principal.

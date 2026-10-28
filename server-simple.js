@@ -635,7 +635,7 @@ const storage = multer.diskStorage({
     const ext = getUploadExtension(file);
     const base = path.basename(file.originalname || 'arquivo', ext);
     const safeBase = sanitizeFileName(base);
-    cb(null, `${Date.now()}_${safeBase}${ext}`);
+    cb(null, `${Date.now()}_${crypto.randomBytes(5).toString('hex')}_${safeBase}${ext}`);
   }
 });
 
@@ -1622,6 +1622,17 @@ function canUserAccessConversation(userId, tipo, id) {
   return Boolean(findActiveUserById(numericId)) && Number(userId) !== numericId;
 }
 
+function getMutedConversationKeys(userId) {
+  const user = findActiveUserById(userId);
+  return Array.isArray(user?.conversas_silenciadas)
+    ? user.conversas_silenciadas.filter((key) => /^(grupo|privado)-\d+$/.test(String(key)))
+    : [];
+}
+
+function usuarioSilenciouConversa(userId, tipo, id) {
+  return getMutedConversationKeys(userId).includes(getClientConversationKey(tipo, id));
+}
+
 function emitConversationWorkflow(tipo, id, payload) {
   const normalized = normalizeConversationType(tipo);
   const numericId = Number(id);
@@ -2097,11 +2108,26 @@ function clampNumber(value, min, max, fallback) {
 }
 
 function paginateMessages(messages, req) {
-  const hasPagination = req.query?.limit || req.query?.before;
+  const hasPagination = req.query?.limit || req.query?.before || req.query?.around;
   const sorted = [...messages].sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em));
   if (!hasPagination) return sorted;
 
   const limit = clampNumber(req.query.limit, 20, 100, 50);
+  const around = Number(req.query.around);
+  if (Number.isSafeInteger(around) && around > 0) {
+    const index = sorted.findIndex((message) => Number(message.id) === around);
+    if (index >= 0) {
+      const start = Math.max(0, index - Math.floor(limit / 2));
+      const slice = sorted.slice(start, start + limit);
+      return {
+        mensagens: slice,
+        hasMore: start > 0,
+        hasNewer: start + slice.length < sorted.length,
+        nextBefore: slice[0]?.criado_em || null,
+        totalLoaded: slice.length
+      };
+    }
+  }
   const before = req.query.before ? new Date(req.query.before).getTime() : null;
   const filtered = Number.isFinite(before)
     ? sorted.filter((message) => new Date(message.criado_em).getTime() < before)
@@ -2132,6 +2158,21 @@ function getMembrosDoGrupo(grupoId) {
   return db.membros_grupo
     .filter((m) => Number(m.grupo_id) === Number(grupoId))
     .map((m) => Number(m.usuario_id));
+}
+
+function getGrupoById(grupoId) {
+  return db.grupos.find((grupo) => Number(grupo.id) === Number(grupoId)) || null;
+}
+
+function getTipoGrupo(grupo) {
+  return grupo?.tipo === 'canal' ? 'canal' : 'grupo';
+}
+
+function getVisibilidadeGrupo(grupo) {
+  if (!grupo) return 'privado';
+  if (grupo.visibilidade === 'publico' || grupo.visibilidade === 'privado') return grupo.visibilidade;
+  // Grupos antigos não têm este campo: a lista de membros define o acesso legado.
+  return getMembrosDoGrupo(grupo.id).length ? 'privado' : 'publico';
 }
 
 function ensureGroupReadTracking(message) {
@@ -2197,12 +2238,13 @@ function getMentionHandlesForUser(user) {
 function getMentionedUsersInGroup(conteudo, grupoId, senderId) {
   const normalized = normalizeSearchText(conteudo);
   if (!normalized.includes('@')) return [];
+  const grupo = getGrupoById(grupoId);
   const memberIds = new Set((db.membros_grupo || [])
     .filter((m) => Number(m.grupo_id) === Number(grupoId))
     .map((m) => Number(m.usuario_id)));
 
   return db.usuarios
-    .filter((user) => user.ativo !== 0 && Number(user.id) !== Number(senderId) && memberIds.has(Number(user.id)))
+    .filter((user) => user.ativo !== 0 && Number(user.id) !== Number(senderId) && (getVisibilidadeGrupo(grupo) === 'publico' || memberIds.has(Number(user.id))))
     .filter((user) => getMentionHandlesForUser(user).some((handle) => normalized.includes(`@${handle}`)))
     .map((user) => ({ id: Number(user.id), nome: user.nome, email: user.email }));
 }
@@ -2360,13 +2402,14 @@ function limparConversaPrivadaPendente(usuarioId, contatoId) {
 }
 
 function grupoEhRestrito(grupoId) {
-  return getMembrosDoGrupo(grupoId).length > 0;
+  return getVisibilidadeGrupo(getGrupoById(grupoId)) === 'privado';
 }
 
 function usuarioPodeAcessarGrupo(userId, grupoId) {
-  const membros = getMembrosDoGrupo(grupoId);
-  if (!membros.length) return true;
-  return membros.includes(Number(userId));
+  const grupo = getGrupoById(grupoId);
+  if (!grupo) return false;
+  if (getVisibilidadeGrupo(grupo) === 'publico') return true;
+  return getMembrosDoGrupo(grupoId).includes(Number(userId));
 }
 
 function listarGruposVisiveisParaUsuario(userId) {
@@ -2395,22 +2438,23 @@ function compareByCreatedDesc(a, b) {
   return new Date(b?.criado_em || 0).getTime() - new Date(a?.criado_em || 0).getTime();
 }
 
-function getGroupConversationSummary(grupoId, userId) {
-  const messages = db.mensagens
-    .filter((message) => Number(message.grupo_id) === Number(grupoId))
-    .sort(compareByCreatedDesc);
-  const latest = messages[0] || null;
-  const unread = messages.filter((message) => {
-    if (Number(message.usuario_id) === Number(userId)) return false;
-    ensureGroupReadTracking(message);
-    return !message.leituras_grupo.some((item) => Number(item.usuario_id) === Number(userId));
-  }).length;
-
-  return {
-    ultimaMensagem: latest ? getMessagePreviewText(latest) : '',
-    criado_em: latest?.criado_em || null,
-    naoLidas: unread
-  };
+function getGroupSummariesForUser(grupos, userId) {
+  const summaries = new Map(grupos.map((grupo) => [Number(grupo.id), {
+    ultimaMensagem: '', criado_em: null, naoLidas: 0
+  }]));
+  for (const message of db.mensagens) {
+    const summary = summaries.get(Number(message.grupo_id));
+    if (!summary) continue;
+    if (!summary.criado_em || new Date(message.criado_em).getTime() > new Date(summary.criado_em).getTime()) {
+      summary.ultimaMensagem = getMessagePreviewText(message);
+      summary.criado_em = message.criado_em;
+    }
+    if (Number(message.usuario_id) !== Number(userId)) {
+      ensureGroupReadTracking(message);
+      if (!message.leituras_grupo.some((item) => Number(item.usuario_id) === Number(userId))) summary.naoLidas += 1;
+    }
+  }
+  return summaries;
 }
 
 function removeFileIfExists(fileName, baseDir = UPLOAD_DIR) {
@@ -4614,33 +4658,53 @@ app.post('/api/admin/backups/importar', verificarToken, (req, res) => {
   }
 });
 
+app.get('/api/admin/grupos', verificarToken, (req, res) => {
+  const admin = findActiveUserById(req.userId);
+  if (!admin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
+  res.json(db.grupos.map((grupo) => ({
+    ...grupo,
+    tipo: getTipoGrupo(grupo),
+    visibilidade: getVisibilidadeGrupo(grupo),
+    membros: getMembrosDoGrupo(grupo.id)
+  })));
+});
+
 app.post('/api/admin/criar-grupo', verificarToken, (req, res) => {
   try {
     const usuarioAdmin = db.usuarios.find((u) => u.id === req.userId);
     if (!usuarioAdmin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
 
-    const nome = sanitizeText(req.body?.nome);
-    const descricao = sanitizeText(req.body?.descricao);
+    const nome = sanitizeText(req.body?.nome).slice(0, 80);
+    const descricao = sanitizeText(req.body?.descricao).slice(0, 300);
+    const tipo = req.body?.tipo === 'canal' ? 'canal' : 'grupo';
+    const visibilidade = tipo === 'canal' && req.body?.visibilidade === 'publico' ? 'publico' : 'privado';
     const memberIds = Array.isArray(req.body?.memberIds)
       ? req.body.memberIds.map((id) => Number(id)).filter((id) => Number.isFinite(id))
       : [];
     if (!nome) {
       return res.status(400).json({ erro: 'Nome do grupo é obrigatório' });
     }
+    if (db.grupos.some((grupo) => getTipoGrupo(grupo) === tipo && normalizeKey(grupo.nome) === normalizeKey(nome))) {
+      return res.status(409).json({ erro: 'Já existe um grupo ou canal com este nome' });
+    }
 
     const novoGrupo = {
-      id: Date.now(),
+      id: db.grupos.reduce((max, grupo) => Math.max(max, Number(grupo.id) || 0), Date.now()) + 1,
       nome,
       descricao,
+      tipo,
+      visibilidade,
+      criado_por: Number(req.userId),
       criado_em: new Date().toISOString()
     };
 
     db.grupos.push(novoGrupo);
     const membrosUnicos = Array.from(new Set([Number(req.userId), ...memberIds]));
+    let nextMemberId = db.membros_grupo.reduce((max, member) => Math.max(max, Number(member.id) || 0), Date.now());
     membrosUnicos.forEach((usuarioId) => {
       if (findActiveUserById(usuarioId)) {
         db.membros_grupo.push({
-          id: Date.now() + usuarioId,
+          id: ++nextMemberId,
           grupo_id: novoGrupo.id,
           usuario_id: usuarioId
         });
@@ -4648,7 +4712,60 @@ app.post('/api/admin/criar-grupo', verificarToken, (req, res) => {
     });
     db.save();
 
+    atualizarSalasGrupo(novoGrupo.id);
+    io.emit('grupos-atualizados', { grupoId: novoGrupo.id });
+
     res.json({ id: novoGrupo.id, mensagem: 'Grupo criado com sucesso' });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+function atualizarSalasGrupo(grupoId) {
+  for (const client of io.of('/').sockets.values()) {
+    const room = `grupo-${grupoId}`;
+    if (usuarioPodeAcessarGrupo(client.data?.userId, grupoId)) client.join(room);
+    else client.leave(room);
+  }
+}
+
+app.put('/api/admin/grupos/:id', verificarToken, (req, res) => {
+  try {
+    const admin = findActiveUserById(req.userId);
+    if (!admin?.admin) return res.status(403).json({ erro: 'Acesso negado' });
+    const grupo = getGrupoById(req.params.id);
+    if (!grupo) return res.status(404).json({ erro: 'Grupo ou canal não encontrado' });
+    const nome = sanitizeText(req.body?.nome).slice(0, 80);
+    const descricao = sanitizeText(req.body?.descricao).slice(0, 300);
+    if (!nome) return res.status(400).json({ erro: 'Nome obrigatório' });
+    if (db.grupos.some((item) => Number(item.id) !== Number(grupo.id) && getTipoGrupo(item) === getTipoGrupo(grupo) && normalizeKey(item.nome) === normalizeKey(nome))) {
+      return res.status(409).json({ erro: 'Já existe um grupo ou canal com este nome' });
+    }
+    const previousVisibility = getVisibilidadeGrupo(grupo);
+    const visibilidade = ['publico', 'privado'].includes(req.body?.visibilidade)
+      ? req.body.visibilidade : previousVisibility;
+    const memberIds = Array.isArray(req.body?.memberIds)
+      ? [...new Set(req.body.memberIds.map(Number).filter((id) => findActiveUserById(id)))]
+      : getMembrosDoGrupo(grupo.id);
+    if (visibilidade === 'privado' && !memberIds.length) {
+      return res.status(400).json({ erro: 'Selecione ao menos um participante para o espaço privado' });
+    }
+    grupo.nome = nome;
+    grupo.descricao = descricao;
+    grupo.visibilidade = visibilidade;
+    grupo.tipo = getTipoGrupo(grupo);
+    grupo.atualizado_em = new Date().toISOString();
+    db.membros_grupo = db.membros_grupo.filter((item) => Number(item.grupo_id) !== Number(grupo.id));
+    let nextMemberId = db.membros_grupo.reduce((max, member) => Math.max(max, Number(member.id) || 0), Date.now());
+    memberIds.forEach((usuarioId) => db.membros_grupo.push({
+      id: ++nextMemberId,
+      grupo_id: Number(grupo.id),
+      usuario_id: usuarioId
+    }));
+    db.save();
+    atualizarSalasGrupo(grupo.id);
+    io.emit('grupos-atualizados', { grupoId: Number(grupo.id), visibilidadeAnterior: previousVisibility });
+    res.json({ grupo: { ...grupo, membros: memberIds } });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -4683,11 +4800,15 @@ app.put('/api/admin/grupos/:id/aviso', verificarToken, (req, res) => {
 
 app.get('/api/grupos', verificarToken, (req, res) => {
   try {
+    const grupos = listarGruposVisiveisParaUsuario(req.userId);
+    const summaries = getGroupSummariesForUser(grupos, req.userId);
     res.json(
-      listarGruposVisiveisParaUsuario(req.userId)
+      grupos
         .map((grupo) => ({
           ...grupo,
-          ...getGroupConversationSummary(grupo.id, req.userId),
+          ...summaries.get(Number(grupo.id)),
+          tipo: getTipoGrupo(grupo),
+          visibilidade: getVisibilidadeGrupo(grupo),
           restrito: grupoEhRestrito(grupo.id),
           membros: getMembrosDoGrupo(grupo.id)
         }))
@@ -4696,6 +4817,29 @@ app.get('/api/grupos', verificarToken, (req, res) => {
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
+});
+
+app.get('/api/conversas/silenciadas', verificarToken, (req, res) => {
+  res.json({ conversas: getMutedConversationKeys(req.userId) });
+});
+
+app.put('/api/conversas/:tipo/:id/silenciar', verificarToken, (req, res) => {
+  const tipo = normalizeConversationType(req.params.tipo);
+  const id = Number(req.params.id);
+  if (!canUserAccessConversation(req.userId, tipo, id)) {
+    return res.status(403).json({ erro: 'Acesso negado à conversa' });
+  }
+  if (typeof req.body?.silenciado !== 'boolean') {
+    return res.status(400).json({ erro: 'Informe se a conversa deve ser silenciada' });
+  }
+  const user = findActiveUserById(req.userId);
+  const key = getClientConversationKey(tipo, id);
+  const next = new Set(getMutedConversationKeys(req.userId));
+  if (req.body.silenciado) next.add(key);
+  else next.delete(key);
+  user.conversas_silenciadas = [...next];
+  db.saveFile('usuarios.json', db.usuarios);
+  res.json({ silenciado: next.has(key) });
 });
 
 app.get('/api/usuarios', verificarToken, (req, res) => {
@@ -4873,6 +5017,48 @@ app.get('/api/mensagens/privadas/:usuarioId', verificarToken, (req, res) => {
       .map(enrichMessage);
 
     res.json(paginateMessages(mensagens, req));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.get('/api/mensagens/:id/thread', verificarToken, (req, res) => {
+  try {
+    const root = getMessageById(req.params.id);
+    if (!root || !canUserAccessMessage(req.userId, root)) {
+      return res.status(404).json({ erro: 'Mensagem não encontrada' });
+    }
+    const replies = db.mensagens
+      .filter((message) => Number(message.reply_to_id) === Number(root.id) && canUserAccessMessage(req.userId, message))
+      .sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em));
+    res.json({ root: enrichMessage(root), replies: replies.map(enrichMessage) });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.get('/api/conversas/:tipo/:id/arquivos', verificarToken, (req, res) => {
+  try {
+    const tipo = normalizeConversationType(req.params.tipo);
+    const id = Number(req.params.id);
+    if (!canUserAccessConversation(req.userId, tipo, id)) {
+      return res.status(403).json({ erro: 'Acesso negado à conversa' });
+    }
+    const arquivos = db.mensagens
+      .filter((message) => message.tipo === 'arquivo' && (tipo === 'grupo'
+        ? Number(message.grupo_id) === id
+        : isSamePrivateConversation(message, req.userId, id)))
+      .sort(compareByCreatedDesc)
+      .slice(0, 200)
+      .map((message) => ({
+        id: Number(message.id),
+        nome: message.arquivo_nome_original || 'Arquivo',
+        nomeSalvo: message.arquivo_expirado_em ? null : message.arquivo_nome_salvo,
+        tamanho: Number(message.arquivo_tamanho || 0),
+        criadoEm: message.criado_em,
+        remetente: db.usuarios.find((user) => Number(user.id) === Number(message.usuario_id))?.nome || 'Usuário'
+      }));
+    res.json({ arquivos });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -5251,25 +5437,39 @@ app.get('/api/busca-conversas', verificarToken, (req, res) => {
 app.get('/api/busca-global', verificarToken, (req, res) => {
   try {
     const query = normalizeSearchText(req.query?.q);
-    if (query.length < 2) return res.json({ resultados: [] });
+    const senderId = Number(req.query?.senderId);
+    const from = req.query?.from ? Date.parse(String(req.query.from)) : NaN;
+    const to = req.query?.to ? Date.parse(String(req.query.to)) : NaN;
+    const filesOnly = req.query?.filesOnly === 'true';
+    const hasFilters = (Number.isSafeInteger(senderId) && senderId > 0) || Number.isFinite(from) || Number.isFinite(to) || filesOnly;
+    if (query.length < 2 && !hasFilters) return res.json({ resultados: [] });
+    const usersById = new Map(db.usuarios.map((user) => [Number(user.id), user.nome]));
+    const messagesById = new Map(db.mensagens.map((message) => [Number(message.id), message]));
 
     const resultados = db.mensagens
       .filter((message) => canUserAccessMessage(req.userId, message))
-      .map(enrichMessage)
       .filter((message) => {
+        if (Number.isSafeInteger(senderId) && senderId > 0 && Number(message.usuario_id) !== senderId) return false;
+        if (filesOnly && message.tipo !== 'arquivo') return false;
+        const createdAt = new Date(message.criado_em).getTime();
+        if (Number.isFinite(from) && createdAt < from) return false;
+        if (Number.isFinite(to) && createdAt >= to) return false;
+        if (query.length < 2) return true;
+        const reply = messagesById.get(Number(message.reply_to_id));
         const haystack = [
-          message.usuario_nome,
+          usersById.get(Number(message.usuario_id)),
           message.conteudo,
           message.arquivo_nome_original,
-          message.reply_preview?.conteudo,
-          message.reply_preview?.usuario_nome,
+          reply?.conteudo,
+          usersById.get(Number(reply?.usuario_id)),
           message.tipo === 'arquivo' ? 'arquivo anexo pdf imagem documento' : ''
         ].map(normalizeSearchText).join(' ');
         return haystack.includes(query);
       })
       .sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))
       .slice(0, 80)
-      .map((message) => {
+      .map((raw) => {
+        const message = enrichMessage(raw);
         const tipoChat = message.grupo_id ? 'grupo' : 'privado';
         const chatId = message.grupo_id
           ? Number(message.grupo_id)
@@ -5491,26 +5691,30 @@ app.post('/api/mensagens/:id/fixar', verificarToken, (req, res) => {
 
 app.post('/api/upload', verificarToken, upload.single('arquivo'), async (req, res) => {
   try {
+    const rejectUpload = (status, erro) => {
+      if (req.file?.filename) removeFileIfExists(req.file.filename);
+      return res.status(status).json({ erro });
+    };
     const tipoChat = sanitizeText(req.body?.tipoChat);
     const chatId = Number(req.body?.chatId);
     const replyToId = Number(req.body?.replyToId || 0);
     if (!req.file) return res.status(400).json({ erro: 'Arquivo não enviado' });
-    if (!tipoChat || !chatId) return res.status(400).json({ erro: 'Destino do arquivo não informado' });
+    if (!tipoChat || !chatId) return rejectUpload(400, 'Destino do arquivo não informado');
 
     if (!['grupo', 'privado'].includes(tipoChat)) {
-      return res.status(400).json({ erro: 'Tipo de chat inválido' });
+      return rejectUpload(400, 'Tipo de chat inválido');
     }
     if (tipoChat === 'grupo' && !db.grupos.some((g) => g.id === chatId)) {
-      return res.status(404).json({ erro: 'Grupo não encontrado' });
+      return rejectUpload(404, 'Grupo não encontrado');
     }
     if (tipoChat === 'grupo' && !usuarioPodeAcessarGrupo(req.userId, chatId)) {
-      return res.status(403).json({ erro: 'Acesso negado a este grupo' });
+      return rejectUpload(403, 'Acesso negado a este grupo');
     }
-    if (tipoChat === 'privado' && !findActiveUserById(chatId)) {
-      return res.status(404).json({ erro: 'Usuário de destino não encontrado' });
+    if (tipoChat === 'privado' && (!findActiveUserById(chatId) || chatId === Number(req.userId))) {
+      return rejectUpload(404, 'Usuário de destino não encontrado');
     }
     if (!isValidReplyTarget({ replyToId, tipoChat, chatId, userId: req.userId })) {
-      return res.status(400).json({ erro: 'Mensagem respondida inválida para esta conversa' });
+      return rejectUpload(400, 'Mensagem respondida inválida para esta conversa');
     }
 
     let arquivoThumbNomeSalvo = null;
@@ -5619,6 +5823,7 @@ io.on('connection', (socket) => {
     const id = authenticatedUserId;
     const usuario = authenticatedUser;
     socket.join(`usuario-${id}`);
+    listarGruposVisiveisParaUsuario(id).forEach((grupo) => socket.join(`grupo-${grupo.id}`));
     socketUsers.set(socket.id, id);
 
     if (!onlineUsers.has(id)) onlineUsers.set(id, new Set());
@@ -5701,6 +5906,8 @@ io.on('connection', (socket) => {
 
   socket.on('mensagem-grupo', (data) => {
     data = { ...(data || {}), usuarioId: authenticatedUserId, usuarioNome: authenticatedUser.nome };
+    data.conteudo = sanitizeText(data.conteudo).slice(0, 4000).trim();
+    if (!data.conteudo) return;
     if (!usuarioPodeAcessarGrupo(data.usuarioId, data.grupoId)) {
       return;
     }
@@ -5756,6 +5963,8 @@ io.on('connection', (socket) => {
 
   socket.on('mensagem-privada', (data) => {
     data = { ...(data || {}), remetente_id: authenticatedUserId, remetenteNome: authenticatedUser.nome };
+    data.conteudo = sanitizeText(data.conteudo).slice(0, 4000).trim();
+    if (!data.conteudo) return;
     if (!findActiveUserById(data.destinatario_id)) return;
     if (!isValidReplyTarget({ replyToId: Number(data.replyToId || 0), tipoChat: 'privado', chatId: data.destinatario_id, userId: data.remetente_id })) {
       return;
@@ -6427,6 +6636,11 @@ app.delete('/api/push/subscribe', verificarToken, (req, res) => {
 
 async function enviarPushParaUsuario(usuarioId, payload) {
   if (!webpush) return;
+  const tag = String(payload?.tag || '');
+  const groupMatch = /^(?:mencao-)?grupo-(\d+)$/.exec(tag);
+  const privateMatch = /^privado-(\d+)$/.exec(tag);
+  if (groupMatch && usuarioSilenciouConversa(usuarioId, 'grupo', Number(groupMatch[1]))) return;
+  if (privateMatch && usuarioSilenciouConversa(usuarioId, 'privado', Number(privateMatch[1]))) return;
   const subs = db.push_subscriptions.filter((s) => Number(s.usuario_id) === Number(usuarioId));
   for (const sub of subs) {
     try {

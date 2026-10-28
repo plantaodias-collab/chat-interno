@@ -46,6 +46,7 @@ let userStatusState = {};
 let lastSeenState = {};
 let typingUsers = new Map();
 let adminUsuariosCache = [];
+let adminGruposCache = [];
 let adminBackupsCache = [];
 let adminBackupSelecionadoId = '';
 let adminBackupAgendamento = null;
@@ -68,6 +69,13 @@ let pendingSidebarContactsRender = false;
 let conversationFilter = 'todos';
 let favoriteChats = new Set();
 let priorityChats = new Set();
+let mutedChats = new Set();
+let notificationSoundEnabled = false;
+let contextPanelMode = null;
+let activeThreadRootId = null;
+let contextPanelRequestSeq = 0;
+let currentMessagesHasNewer = false;
+let firstUnreadMessageId = null;
 let priorityMessages = new Set();
 let savedStickers = [];
 let pinnedMessagesByConversation = {};
@@ -236,6 +244,69 @@ function updateDailyMotivation() {
 
 function getChatKey(tipo, id) {
   return `${tipo}-${id}`;
+}
+
+async function carregarConversasSilenciadas() {
+  try {
+    const response = await fetch('/api/conversas/silenciadas', { headers: authHeaders() });
+    if (!response.ok) return;
+    const data = await response.json();
+    mutedChats = new Set(Array.isArray(data.conversas) ? data.conversas : []);
+    atualizarBotaoFavorito();
+    renderGrupos();
+    renderContatos();
+  } catch (err) {
+    console.error('Falha ao carregar conversas silenciadas:', err);
+  }
+}
+
+async function alternarSilencioAtual() {
+  if (!tipoChat || !chatIdAtual) return;
+  const key = getChatKey(tipoChat, chatIdAtual);
+  const silenciado = !mutedChats.has(key);
+  try {
+    const response = await fetch(`/api/conversas/${tipoChat}/${chatIdAtual}/silenciar`, {
+      method: 'PUT',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ silenciado })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.erro || 'Falha ao alterar notificações');
+    if (data.silenciado) mutedChats.add(key);
+    else mutedChats.delete(key);
+    atualizarBotaoFavorito();
+    renderGrupos();
+    renderContatos();
+    if (contextPanelMode === 'info') renderPainelConversa();
+    mostrarNotificacao(data.silenciado ? 'Conversa silenciada' : 'Notificações da conversa ativadas', 'success');
+  } catch (err) {
+    mostrarNotificacao(err.message, 'error');
+  }
+}
+
+function alternarSomNotificacoes() {
+  notificationSoundEnabled = !notificationSoundEnabled;
+  localStorage.setItem('chatinterno.notificationSound', notificationSoundEnabled ? '1' : '0');
+  if (contextPanelMode === 'info') renderPainelConversa();
+}
+
+function tocarSomNotificacao() {
+  if (!notificationSoundEnabled) return;
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const context = new AudioContext();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 660;
+    gain.gain.setValueAtTime(0.025, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.12);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.12);
+    oscillator.onended = () => context.close();
+  } catch (_err) { /* o navegador pode bloquear áudio em segundo plano */ }
 }
 
 function carregarFavoritos() {
@@ -906,6 +977,8 @@ function uiIcon(name) {
 
 function atualizarBotaoFavorito() {
   const btn = document.getElementById('favoriteChatBtn');
+  const muteBtn = document.getElementById('muteChatBtn');
+  const detailsBtn = document.getElementById('chatDetailsBtn');
   const priorityBtn = document.getElementById('priorityChatBtn');
   const exportBtn = document.getElementById('exportChatBtn');
   const homeBtn = document.getElementById('homeChatBtn');
@@ -917,6 +990,8 @@ function atualizarBotaoFavorito() {
   if (galleryBtn) galleryBtn.classList.toggle('hidden', !hasChat);
   if (exportPdfBtn) exportPdfBtn.classList.toggle('hidden', !hasChat);
   homeBtn.classList.toggle('hidden', !hasChat);
+  muteBtn?.classList.toggle('hidden', !hasChat);
+  detailsBtn?.classList.toggle('hidden', !hasChat);
   btn.classList.toggle('hidden', !hasChat);
   priorityBtn.classList.toggle('hidden', !hasChat);
   exportBtn.classList.toggle('hidden', !hasChat);
@@ -928,6 +1003,13 @@ function atualizarBotaoFavorito() {
   const key = getChatKey(tipoChat, chatIdAtual);
   const isFavorite = favoriteChats.has(key);
   const isPriority = priorityChats.has(key);
+  const isMuted = mutedChats.has(key);
+  if (muteBtn) {
+    muteBtn.setAttribute('aria-pressed', String(isMuted));
+    muteBtn.setAttribute('aria-label', isMuted ? 'Ativar notificações da conversa' : 'Silenciar conversa');
+    muteBtn.title = isMuted ? 'Ativar notificações' : 'Silenciar conversa';
+    muteBtn.querySelector('.action-text').textContent = isMuted ? 'Ativar alertas' : 'Silenciar';
+  }
   attendanceSelect.value = getAttendanceStatus(key);
   const favoriteIcon = btn.querySelector('.action-icon');
   const favoriteText = btn.querySelector('.action-text');
@@ -2006,9 +2088,28 @@ function isVideoAttachment(message) {
 }
 
 function linkifyTextHtml(text, query) {
-  const highlighted = highlightText(text, query);
-  const formatted = highlighted.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-  return formatted.replace(/(https?:\/\/[^\s<]+)/g, '<a class="message-link" href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  const inline = (line) => highlightText(line, query)
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>')
+    .replace(/(^|[^\w])_([^_\n]+)_(?!\w)/g, '$1<em>$2</em>')
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a class="message-link" href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  const lines = String(text ?? '').split(/\r?\n/);
+  let inList = false;
+  const html = [];
+  for (const line of lines) {
+    const listItem = line.match(/^\s*(?:[-•]|\d+\.)\s+(.+)$/);
+    if (listItem) {
+      if (!inList) html.push('<ul class="message-list">');
+      inList = true;
+      html.push(`<li>${inline(listItem[1])}</li>`);
+    } else {
+      if (inList) html.push('</ul>');
+      inList = false;
+      html.push(`<div class="message-line">${inline(line) || '&nbsp;'}</div>`);
+    }
+  }
+  if (inList) html.push('</ul>');
+  return html.join('');
 }
 
 function getFirstUrl(text) {
@@ -2171,7 +2272,7 @@ function prepararEdicaoMensagem(messageId) {
 
 function atualizarBuscaMensagens(value) {
   currentMessageSearch = String(value || '').trim();
-  renderMessages();
+  renderMessages({ scrollToBottom: false });
 }
 
 function sortByRecent(items, tipo) {
@@ -2885,6 +2986,7 @@ async function ativarNotificacoesNavegador() {
 }
 
 async function carregarDadosIniciais() {
+  await carregarConversasSilenciadas();
   await carregarWorkflow();
   await carregarGrupos();
   await carregarContatos();
@@ -2908,9 +3010,12 @@ function aplicarSessaoUsuario() {
   document.getElementById('userStatusSelect').value = usuarioAtual.status || 'disponivel';
 
   const isAdmin = Boolean(usuarioAtual.admin);
+  notificationSoundEnabled = localStorage.getItem('chatinterno.notificationSound') === '1';
   document.getElementById('adminBadge').style.display = isAdmin ? 'inline-flex' : 'none';
   document.getElementById('adminSection').classList.toggle('hidden', !isAdmin);
   document.getElementById('novoGrupoBtn').style.display = isAdmin ? 'inline-flex' : 'none';
+  document.getElementById('novoCanalBtn').style.display = isAdmin ? 'inline-flex' : 'none';
+  restaurarSecoesSidebar();
   document.getElementById('ajustesBtn').classList.remove('hidden');
   carregarMencoesInbox();
   atualizarBadgeOperacional();
@@ -4316,6 +4421,7 @@ function atualizarPainelInicialSeAberto() {
 
 function voltarTelaInicial() {
   fecharSugestoesMencao();
+  fecharPainelConversa();
   tipoChat = null;
   chatIdAtual = null;
   currentMessageSearch = '';
@@ -4406,25 +4512,29 @@ function processarMensagemGrupo(data) {
   lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
 
   if (isCurrent) {
-    upsertMessageInCache(message);
+    upsertMessageInCache(message, { scrollToBottom: contextPanelMode === 'thread' && Number(message.reply_to_id) === activeThreadRootId ? false : undefined });
     if (Number(data.usuarioId) !== Number(usuarioAtual.id)) {
-      if (isAppVisibleAndFocused()) {
+      if (isAppVisibleAndFocused() && document.getElementById('messagesContainer').scrollHeight - document.getElementById('messagesContainer').scrollTop - document.getElementById('messagesContainer').clientHeight < 100) {
         marcarConversaAtualComoLidaSeVisivel();
       } else {
         unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
       }
     }
-  } else {
+  } else if (Number(data.usuarioId) !== Number(usuarioAtual.id)) {
     unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
   }
 
   typingUsers.delete(`grupo-${data.grupoId}`);
   renderTypingSurfaces();
+  scheduleSidebarRender({ groups: true });
   updateBrowserTitle();
   atualizarPainelInicialSeAberto();
+  if (contextPanelMode === 'thread' && Number(message.reply_to_id) === activeThreadRootId) void carregarThreadPainel();
 
-  if (Number(data.usuarioId) !== Number(usuarioAtual.id)) {
+  const foiMencionado = Array.isArray(message.mencoes_usuario_ids) && message.mencoes_usuario_ids.includes(Number(usuarioAtual.id));
+  if (Number(data.usuarioId) !== Number(usuarioAtual.id) && !mutedChats.has(chatKey) && !foiMencionado) {
     mostrarNotificacao(`${data.usuarioNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem'} no grupo`, 'success');
+    tocarSomNotificacao();
     if (!isAppVisibleAndFocused()) mostrarNotificacaoNavegador('Nova mensagem em grupo', {
       body: data.tipo === 'arquivo'
         ? `${data.usuarioNome}: Arquivo ${data.arquivo_nome_original}`
@@ -4452,9 +4562,9 @@ function processarMensagemPrivada(data) {
   lastTimestampState[chatKey] = toTimestamp(data.criado_em || new Date());
 
   if (isCurrent) {
-    upsertMessageInCache(message);
+    upsertMessageInCache(message, { scrollToBottom: contextPanelMode === 'thread' && Number(message.reply_to_id) === activeThreadRootId ? false : undefined });
 
-    if (isAppVisibleAndFocused()) {
+    if (isAppVisibleAndFocused() && document.getElementById('messagesContainer').scrollHeight - document.getElementById('messagesContainer').scrollTop - document.getElementById('messagesContainer').clientHeight < 100) {
       marcarConversaAtualComoLidaSeVisivel();
     } else {
       unreadState[chatKey] = (unreadState[chatKey] || 0) + 1;
@@ -4465,10 +4575,14 @@ function processarMensagemPrivada(data) {
 
   typingUsers.delete(`privado-${data.remetente_id}`);
   renderTypingSurfaces();
+  scheduleSidebarRender({ contacts: true });
   updateBrowserTitle();
   atualizarPainelInicialSeAberto();
+  if (contextPanelMode === 'thread' && Number(message.reply_to_id) === activeThreadRootId) void carregarThreadPainel();
 
-  mostrarNotificacao(`${data.remetenteNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem privada'}`, 'success');
+  if (!mutedChats.has(chatKey)) {
+    mostrarNotificacao(`${data.remetenteNome} enviou ${data.tipo === 'arquivo' ? 'um arquivo' : 'uma mensagem privada'}`, 'success');
+    tocarSomNotificacao();
 
   if (!isAppVisibleAndFocused()) mostrarNotificacaoNavegador('Nova mensagem privada', {
     body: data.tipo === 'arquivo'
@@ -4476,6 +4590,7 @@ function processarMensagemPrivada(data) {
       : `${data.remetenteNome}: ${data.conteudo}`,
     tag: `privado-${data.remetente_id}`
   });
+  }
 }
 
 async function fazerLogin() {
@@ -4607,6 +4722,14 @@ function conectarSocket() {
     }
   });
 
+  socket.on('grupos-atualizados', async () => {
+    await carregarGrupos();
+    if (tipoChat === 'grupo' && !gruposCache.some((grupo) => Number(grupo.id) === Number(chatIdAtual))) {
+      voltarTelaInicial();
+      mostrarNotificacao('Seu acesso a este espaço foi atualizado.', 'info');
+    }
+  });
+
   socket.on('plantao-escala-atualizada', (data) => {
     normalizarPlantaoState(data);
     renderPlantaoPanel();
@@ -4633,11 +4756,14 @@ function conectarSocket() {
 
   socket.on('mencao-recebida', (data) => {
     registrarMencaoInbox(data);
-    mostrarNotificacao(data?.title || 'Você foi mencionado', 'info');
-    mostrarNotificacaoNavegador(data?.title || 'Você foi mencionado', {
-      body: data?.body || 'Abra o chat para ver a mensagem.',
-      tag: `mencao-${data?.tipoChat || 'chat'}-${data?.chatId || 'atual'}`
-    });
+    if (!mutedChats.has(getChatKey(data?.tipoChat || 'grupo', data?.chatId))) {
+      mostrarNotificacao(data?.title || 'Você foi mencionado', 'info');
+      tocarSomNotificacao();
+      mostrarNotificacaoNavegador(data?.title || 'Você foi mencionado', {
+        body: data?.body || 'Abra o chat para ver a mensagem.',
+        tag: `mencao-${data?.tipoChat || 'chat'}-${data?.chatId || 'atual'}`
+      });
+    }
     if (data?.tipoChat === 'grupo') {
       unreadState[getChatKey('grupo', data.chatId)] = Math.max(Number(unreadState[getChatKey('grupo', data.chatId)] || 0), 1);
       scheduleSidebarRender({ groups: true });
@@ -4662,7 +4788,8 @@ function conectarSocket() {
         ...data,
         usuarioNome: usuarioAtual.nome,
         usuarioId: usuarioAtual.id
-      });
+      }, { scrollToBottom: !(contextPanelMode === 'thread' && Number(data.reply_to_id) === activeThreadRootId) });
+      if (contextPanelMode === 'thread' && Number(data.reply_to_id) === activeThreadRootId) void carregarThreadPainel();
     }
     scheduleSidebarRender({ contacts: true });
   });
@@ -4713,7 +4840,8 @@ function conectarSocket() {
         usuarioNome: data.message.usuario_nome,
         usuarioId: data.message.usuario_id,
         showReactionPicker: false
-      }, { scrollToBottom: data.acao !== 'reacao' });
+      }, { scrollToBottom: false });
+      if (contextPanelMode === 'thread' && (Number(data.message.id) === activeThreadRootId || Number(data.message.reply_to_id) === activeThreadRootId)) void carregarThreadPainel();
     }
 
     if (data.tipoChat === 'grupo') {
@@ -5196,24 +5324,24 @@ async function carregarResumoConversas() {
 
 function renderGrupos() {
   const gruposList = document.getElementById('gruposList');
+  const canaisList = document.getElementById('canaisList');
   gruposList.innerHTML = '';
+  canaisList.innerHTML = '';
   renderSidebarInbox();
 
-  const gruposFiltrados = sortByRecent(gruposCache, 'grupo').filter((grupo) => {
+  const visiveis = sortByRecent(gruposCache, 'grupo').filter((grupo) => {
     const key = getChatKey('grupo', grupo.id);
     const unread = unreadState[key] || 0;
     if (!conversationMatchesFilter(key, { tipo: 'grupo', unread })) return false;
     return chatMatchesSearch([grupo.nome, grupo.descricao], key);
   });
 
-  if (!gruposFiltrados.length) {
-    gruposList.innerHTML = conversationSearchTerm
-      ? `<div class="empty-list"><strong>Nenhum grupo encontrado</strong><span>Tente outro nome ou limpe a busca.</span></div>`
-      : `<div class="empty-list"><strong>Sem grupos para mostrar</strong><span>Quando houver grupos ativos, eles aparecem aqui.</span></div>`;
-    return;
-  }
-
-  gruposFiltrados.forEach(grupo => {
+  const renderSection = (list, items, label) => {
+    if (!items.length) {
+      list.innerHTML = `<div class="empty-list"><span>${conversationSearchTerm ? `Nenhum ${label} encontrado` : `Sem ${label} para mostrar`}</span></div>`;
+      return;
+    }
+    items.forEach((grupo) => {
     const key = getChatKey('grupo', grupo.id);
     const unread = unreadState[key] || 0;
     const typingPreviewHtml = getTypingPreviewHtml('grupo', grupo.id);
@@ -5221,13 +5349,16 @@ function renderGrupos() {
     const isFavorite = favoriteChats.has(key);
     const attendanceStatus = getAttendanceStatus(key);
 
-    const item = document.createElement('div');
+    const item = document.createElement('button');
+    item.type = 'button';
     item.className = `chat-item ${tipoChat === 'grupo' && Number(chatIdAtual) === Number(grupo.id) ? 'active' : ''} ${unread > 0 ? 'unread' : ''} ${isPriority ? 'priority' : ''} ${attendanceStatus ? `attendance-${attendanceStatus}` : ''}`;
+    const isChannel = grupo.tipo === 'canal';
+    const icon = isChannel ? (grupo.visibilidade === 'privado' ? '🔒' : '#') : '◈';
     item.innerHTML = `
-      <div class="chat-icon group">#</div>
+      <div class="chat-icon group ${isChannel ? grupo.visibilidade : ''}" aria-hidden="true">${icon}</div>
       <div class="chat-details">
         <div class="chat-top">
-          <div class="chat-name">${isFavorite ? '★ ' : ''}${escapeHtml(grupo.nome)}</div>
+          <div class="chat-name">${isFavorite ? '★ ' : ''}${escapeHtml(grupo.nome)}${mutedChats.has(key) ? ' <span class="muted-mark" title="Notificações silenciadas">🔕</span>' : ''}</div>
           <div class="chat-time">${lastTimeState[key] || ''}</div>
         </div>
         <div class="chat-preview-row">
@@ -5238,8 +5369,33 @@ function renderGrupos() {
       </div>
     `;
     item.addEventListener('click', () => carregarChat('grupo', grupo.id, grupo.nome));
-    gruposList.appendChild(item);
-  });
+    list.appendChild(item);
+    });
+  };
+  renderSection(canaisList, visiveis.filter((grupo) => grupo.tipo === 'canal'), 'canal');
+  renderSection(gruposList, visiveis.filter((grupo) => grupo.tipo !== 'canal'), 'grupo');
+}
+
+function alternarSecaoSidebar(section) {
+  const id = { canais: 'canaisList', grupos: 'gruposList', equipe: 'contatosList' }[section];
+  if (!id) return;
+  const list = document.getElementById(id);
+  const collapsed = list.classList.toggle('sidebar-collapsed');
+  const button = document.querySelector(`[aria-controls="${id}"]`);
+  button?.setAttribute('aria-expanded', String(!collapsed));
+  if (button) button.firstChild.textContent = collapsed ? '▸ ' : '▾ ';
+  localStorage.setItem(`chatinterno.sidebar.${section}`, collapsed ? '1' : '0');
+}
+
+function restaurarSecoesSidebar() {
+  for (const section of ['canais', 'grupos', 'equipe']) {
+    const id = { canais: 'canaisList', grupos: 'gruposList', equipe: 'contatosList' }[section];
+    const collapsed = localStorage.getItem(`chatinterno.sidebar.${section}`) === '1';
+    document.getElementById(id)?.classList.toggle('sidebar-collapsed', collapsed);
+    const button = document.querySelector(`[aria-controls="${id}"]`);
+    button?.setAttribute('aria-expanded', String(!collapsed));
+    if (button) button.firstChild.textContent = collapsed ? '▸ ' : '▾ ';
+  }
 }
 
 function renderContatos() {
@@ -5298,7 +5454,7 @@ function renderContatos() {
       </div>
       <div class="chat-details">
         <div class="chat-top">
-          <div class="chat-name">${isFavorite ? '★ ' : ''}${escapeHtml(usuario.nome)}</div>
+          <div class="chat-name">${isFavorite ? '★ ' : ''}${escapeHtml(usuario.nome)}${mutedChats.has(key) ? ' <span class="muted-mark" title="Notificações silenciadas">🔕</span>' : ''}</div>
           <div class="chat-time">${lastTimeState[key] || ''}</div>
         </div>
         <div class="chat-preview-row">
@@ -5331,9 +5487,10 @@ function renderContatos() {
   }
 }
 
-async function carregarChat(tipo, id, nome) {
+async function carregarChat(tipo, id, nome, { aroundMessageId = null } = {}) {
   const loadSeq = ++currentChatLoadSeq;
   fecharSugestoesMencao();
+  fecharPainelConversa();
   tipoChat = tipo;
   chatIdAtual = id;
   nomeChatAtual = nome;
@@ -5341,6 +5498,8 @@ async function carregarChat(tipo, id, nome) {
   currentMessageSearch = '';
   currentMessagesCache = [];
   currentMessagesHasMore = false;
+  currentMessagesHasNewer = false;
+  firstUnreadMessageId = null;
   currentMessagesNextBefore = null;
   currentMessagesLoadingOlder = false;
   activeReplyMessageId = null;
@@ -5360,7 +5519,8 @@ async function carregarChat(tipo, id, nome) {
   typingUsers.delete(`${tipo}-${id}`);
   renderTypingSurfaces();
 
-  document.getElementById('headerTitle').textContent = (tipo === 'grupo' ? '# ' : '') + nome;
+  const currentGroup = tipo === 'grupo' ? gruposCache.find((group) => Number(group.id) === Number(id)) : null;
+  document.getElementById('headerTitle').textContent = (currentGroup?.visibilidade === 'privado' ? '🔒 ' : tipo === 'grupo' ? '# ' : '') + nome;
   updateHeaderIcon(tipo, nome);
   updateHeaderStatus();
   renderWorkflowPanel();
@@ -5373,9 +5533,10 @@ async function carregarChat(tipo, id, nome) {
   messagesContainer.innerHTML = '';
 
   try {
-    const endpoint = tipo === 'grupo'
+    const endpointBase = tipo === 'grupo'
       ? `/api/mensagens/grupo/${id}?limit=${MESSAGE_PAGE_SIZE}`
       : `/api/mensagens/privadas/${id}?limit=${MESSAGE_PAGE_SIZE}`;
+    const endpoint = aroundMessageId ? `${endpointBase}&around=${encodeURIComponent(aroundMessageId)}` : endpointBase;
 
     const response = await fetch(endpoint, { headers: authHeaders() });
     if (!response.ok) throw new Error('Falha ao carregar mensagens');
@@ -5385,6 +5546,7 @@ async function carregarChat(tipo, id, nome) {
 
     const mensagens = Array.isArray(payload) ? payload : payload.mensagens;
     currentMessagesHasMore = Boolean(payload?.hasMore);
+    currentMessagesHasNewer = Boolean(payload?.hasNewer);
     currentMessagesNextBefore = payload?.nextBefore || (Array.isArray(mensagens) && mensagens.length ? mensagens[0].criado_em : null);
     currentMessagesCache = Array.isArray(mensagens)
       ? mensagens.map((msg) => normalizeMessage({
@@ -5394,8 +5556,23 @@ async function carregarChat(tipo, id, nome) {
           showReactionPicker: false
         }))
       : [];
+    if (!aroundMessageId) {
+      const firstUnread = currentMessagesCache.find((message) => Number(message.usuarioId) !== Number(usuarioAtual.id) && (
+        tipo === 'grupo'
+          ? !getLeiturasGrupo(message).some((read) => Number(read.usuario_id) === Number(usuarioAtual.id))
+          : !message.lido
+      ));
+      firstUnreadMessageId = firstUnread?.id || null;
+    }
     adicionarFigurinhasSalvasEmLote(currentMessagesCache);
-    renderMessages({ stabilizeBottom: true });
+    renderMessages({ scrollToBottom: !aroundMessageId, stabilizeBottom: !aroundMessageId });
+
+    if (aroundMessageId) requestAnimationFrame(() => {
+      const row = document.querySelector(`[data-message-id="${Number(aroundMessageId)}"]`);
+      row?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      row?.classList.add('unread');
+      if (row) setTimeout(() => row.classList.remove('unread'), 1800);
+    });
 
     if (tipo === 'grupo') {
       socket.emit('entrar-grupo', { grupoId: id, usuarioId: usuarioAtual.id });
@@ -5412,6 +5589,155 @@ async function carregarChat(tipo, id, nome) {
 function getReactionUsers(emojiMap, emoji) {
   const users = emojiMap?.[emoji];
   return Array.isArray(users) ? users.map(Number) : [];
+}
+
+function fecharPainelConversa() {
+  contextPanelRequestSeq += 1;
+  contextPanelMode = null;
+  activeThreadRootId = null;
+  document.getElementById('chatContextPanel')?.classList.add('hidden');
+  document.getElementById('chatContainer')?.classList.remove('context-open');
+}
+
+function abrirPainelConversa(mode = 'info') {
+  if (!tipoChat || !chatIdAtual) return;
+  contextPanelMode = mode;
+  document.getElementById('chatContextPanel').classList.remove('hidden');
+  document.getElementById('chatContainer').classList.add('context-open');
+  renderPainelConversa();
+}
+
+function abrirThread(messageId) {
+  const message = getMessageByIdFromCache(messageId);
+  activeThreadRootId = Number(message?.reply_to_id || messageId);
+  abrirPainelConversa('thread');
+  document.getElementById('threadInput')?.focus();
+}
+
+function renderPainelConversa() {
+  const body = document.getElementById('chatContextBody');
+  const tabs = document.getElementById('chatContextTabs');
+  const composer = document.getElementById('threadComposer');
+  const title = document.getElementById('chatContextTitle');
+  const eyebrow = document.getElementById('chatContextEyebrow');
+  if (!body || !contextPanelMode) return;
+  contextPanelRequestSeq += 1;
+  tabs.classList.toggle('hidden', contextPanelMode === 'thread');
+  composer.classList.toggle('hidden', contextPanelMode !== 'thread');
+  tabs.querySelectorAll('[data-context-tab]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.contextTab === contextPanelMode);
+  });
+  eyebrow.textContent = nomeChatAtual;
+  title.textContent = contextPanelMode === 'thread' ? 'Thread' : contextPanelMode === 'files' ? 'Arquivos compartilhados' : 'Detalhes da conversa';
+  if (contextPanelMode === 'files') {
+    body.textContent = 'Carregando arquivos...';
+    void carregarArquivosPainel(contextPanelRequestSeq);
+    return;
+  }
+  if (contextPanelMode === 'thread') {
+    body.textContent = 'Carregando thread...';
+    void carregarThreadPainel(contextPanelRequestSeq);
+    return;
+  }
+  const grupo = tipoChat === 'grupo' ? gruposCache.find((item) => Number(item.id) === Number(chatIdAtual)) : null;
+  const isChannel = grupo?.tipo === 'canal';
+  const isPublic = grupo?.visibilidade === 'publico';
+  const participants = tipoChat === 'privado'
+    ? [usuarioAtual, contatosCache.find((user) => Number(user.id) === Number(chatIdAtual))].filter(Boolean)
+    : isPublic
+      ? [usuarioAtual, ...contatosCache]
+      : [usuarioAtual, ...contatosCache].filter((user) => grupo?.membros?.includes(Number(user.id)));
+  const key = getChatKey(tipoChat, chatIdAtual);
+  body.innerHTML = `
+    <div class="context-summary">
+      <span class="context-type">${tipoChat === 'privado' ? 'Conversa individual' : isChannel ? (isPublic ? 'Canal público' : 'Canal privado') : 'Grupo privado'}</span>
+      <h4>${escapeHtml(nomeChatAtual)}</h4>
+      <p>${escapeHtml(grupo?.descricao || (tipoChat === 'privado' ? 'Conversa direta entre duas pessoas.' : 'Sem descrição cadastrada.'))}</p>
+    </div>
+    <div class="context-actions">
+      <button type="button" onclick="alternarSilencioAtual()">${mutedChats.has(key) ? 'Ativar notificações' : 'Silenciar notificações'}</button>
+      <button type="button" onclick="alternarSomNotificacoes()">Som: ${notificationSoundEnabled ? 'ativado' : 'desativado'}</button>
+      ${usuarioAtual.admin && grupo ? '<button type="button" onclick="abrirEdicaoGrupoAtual()">Gerenciar participantes</button>' : ''}
+    </div>
+    <h4 class="context-section-title">Participantes · ${participants.length}</h4>
+    <div class="context-participants">${participants.map((user) => `<div><span class="context-avatar" ${avatarStyle(user.nome || user.email)}>${escapeHtml(initials(user.nome))}</span><span>${escapeHtml(user.nome)}</span></div>`).join('')}</div>
+  `;
+}
+
+async function carregarArquivosPainel(requestSeq) {
+  const body = document.getElementById('chatContextBody');
+  try {
+    const response = await fetch(`/api/conversas/${tipoChat}/${chatIdAtual}/arquivos`, { headers: authHeaders() });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.erro || 'Falha ao carregar arquivos');
+    if (requestSeq !== contextPanelRequestSeq) return;
+    const arquivos = Array.isArray(data.arquivos) ? data.arquivos : [];
+    body.innerHTML = arquivos.length ? arquivos.map((arquivo) => `
+      <div class="context-file">
+        <strong>${escapeHtml(arquivo.nome)}</strong>
+        <small>${escapeHtml(arquivo.remetente)} · ${escapeHtml(formatMessageTimestamp(arquivo.criadoEm))} · ${escapeHtml(formatFileSize(arquivo.tamanho))}</small>
+        ${arquivo.nomeSalvo ? `<a href="/api/uploads/${encodeURIComponent(arquivo.nomeSalvo)}" target="_blank" rel="noopener noreferrer">Abrir arquivo</a>` : '<span>Arquivo expirado</span>'}
+      </div>`).join('') : '<div class="context-empty">Nenhum arquivo compartilhado nesta conversa.</div>';
+  } catch (err) {
+    if (requestSeq === contextPanelRequestSeq) body.textContent = err.message;
+  }
+}
+
+function renderMensagemThread(message) {
+  const content = message.tipo === 'arquivo'
+    ? `<strong>📎 ${escapeHtml(message.arquivo_nome_original || 'Arquivo')}</strong>`
+    : linkifyTextHtml(message.conteudo || '');
+  return `<article class="thread-message"><div class="thread-author">${escapeHtml(message.usuario_nome || message.usuarioNome || 'Usuário')} <time>${escapeHtml(formatMessageTimestamp(message.criado_em))}</time></div><div class="thread-text">${content}</div></article>`;
+}
+
+async function carregarThreadPainel(requestSeq = contextPanelRequestSeq) {
+  const body = document.getElementById('chatContextBody');
+  const rootId = activeThreadRootId;
+  if (!rootId) return;
+  const wasNearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 90;
+  const previousScrollTop = body.scrollTop;
+  try {
+    const response = await fetch(`/api/mensagens/${rootId}/thread`, { headers: authHeaders() });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.erro || 'Falha ao carregar thread');
+    if (requestSeq !== contextPanelRequestSeq || rootId !== activeThreadRootId) return;
+    body.innerHTML = `
+      <button class="context-back" type="button" onclick="abrirPainelConversa('info')">← Detalhes da conversa</button>
+      ${renderMensagemThread(data.root)}
+      <div class="thread-divider">${data.replies.length} ${data.replies.length === 1 ? 'resposta' : 'respostas'}</div>
+      ${data.replies.length ? data.replies.map(renderMensagemThread).join('') : '<div class="context-empty">Seja a primeira pessoa a responder.</div>'}
+    `;
+    body.scrollTop = wasNearBottom ? body.scrollHeight : previousScrollTop;
+  } catch (err) {
+    if (requestSeq === contextPanelRequestSeq) body.textContent = err.message;
+  }
+}
+
+function enviarThreadSeEnter(event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    enviarRespostaThread();
+  }
+}
+
+function enviarRespostaThread() {
+  const input = document.getElementById('threadInput');
+  const conteudo = input.value.trim();
+  if (!conteudo || !activeThreadRootId || !tipoChat || !chatIdAtual) return;
+  if (!socket?.connected) return mostrarNotificacao('Aguarde a reconexão para responder.', 'error');
+  const payload = { conteudo, replyToId: activeThreadRootId, client_temp_id: `thread-${Date.now()}-${Math.random().toString(36).slice(2)}` };
+  if (tipoChat === 'grupo') socket.emit('mensagem-grupo', { ...payload, grupoId: chatIdAtual });
+  else socket.emit('mensagem-privada', { ...payload, destinatario_id: chatIdAtual });
+  input.value = '';
+}
+
+async function abrirEdicaoGrupoAtual() {
+  if (!usuarioAtual?.admin || tipoChat !== 'grupo') return;
+  abrirPainelAdmin();
+  setAdminTab('grupos');
+  await carregarGruposAdmin();
+  document.getElementById('adminGrupoEditarSelect').value = String(chatIdAtual);
+  preencherGrupoEdicao();
 }
 
 function renderMessageRow(message) {
@@ -5493,6 +5819,7 @@ function renderMessageRow(message) {
       <button class="message-action-btn ${isPriorityMessage ? 'active' : ''}" onclick="alternarPrioridadeMensagem(${Number(message.id)})" title="${isPriorityMessage ? 'Remover destaque da mensagem' : 'Destacar mensagem como prioridade'}" aria-label="${isPriorityMessage ? 'Remover destaque da mensagem' : 'Destacar mensagem como prioridade'}" aria-pressed="${isPriorityMessage ? 'true' : 'false'}">${isPriorityMessage ? 'Remover prioridade' : 'Prioridade'}</button>
       <button class="message-action-btn ${isMensagemFixada(message.id) ? 'active' : ''}" onclick="alternarFixarMensagem(${Number(message.id)})" title="${isMensagemFixada(message.id) ? 'Desfixar mensagem' : 'Fixar mensagem no topo da conversa'}" aria-label="${isMensagemFixada(message.id) ? 'Desfixar mensagem' : 'Fixar mensagem no topo da conversa'}" aria-pressed="${isMensagemFixada(message.id) ? 'true' : 'false'}">${isMensagemFixada(message.id) ? 'Desfixar' : 'Fixar'}</button>
       <button class="message-action-btn" onclick="responderMensagem(${Number(message.id)})" title="Responder" aria-label="Responder mensagem">Responder</button>
+      <button class="message-action-btn" onclick="abrirThread(${Number(message.id)})" title="Abrir thread" aria-label="Abrir thread da mensagem">Thread</button>
       <button class="message-action-btn" onclick="copiarMensagem(${Number(message.id)})" title="Copiar mensagem" aria-label="Copiar mensagem">Copiar</button>
       <button class="message-action-btn" onclick="abrirEncaminharMensagem(${Number(message.id)})" title="Encaminhar" aria-label="Encaminhar mensagem">Encaminhar</button>
       ${stickerAttachment ? `<button class="message-action-btn" onclick="salvarFigurinhaMensagem(${Number(message.id)})" title="Salvar figurinha" aria-label="Salvar figurinha">Salvar figurinha</button>` : ''}
@@ -5626,12 +5953,17 @@ function renderMessages(options = {}) {
   const renderLimitHtml = hasRenderLimit
     ? `<div class="message-render-note">Mostrando as ${MESSAGE_RENDER_LIMIT} mensagens mais recentes para manter o chat rapido.</div>`
     : '';
+  const loadNewerHtml = currentMessagesHasNewer
+    ? '<div class="message-render-note"><button type="button" class="load-older-btn" onclick="carregarChat(tipoChat, chatIdAtual, nomeChatAtual)">Ir para as mensagens recentes</button></div>'
+    : '';
   container.innerHTML = loadOlderHtml + renderLimitHtml + filtered.map((message) => {
     const ehOutro = Number(message.usuarioId) !== Number(usuarioAtual.id);
     const currentDay = formatCalendarDayLabel(message.criado_em || new Date());
     const dividerHtml = currentDay && currentDay !== lastRenderedDay
       ? `<div class="message-date-divider"><span>${escapeHtml(currentDay)}</span></div>`
       : '';
+    const unreadDividerHtml = Number(message.id) === Number(firstUnreadMessageId) && firstUnreadMessageId
+      ? '<div class="message-unread-divider"><span>Novas mensagens</span></div>' : '';
     const compact = !dividerHtml &&
       previousMessage &&
       Number(previousMessage.usuarioId) === Number(message.usuarioId) &&
@@ -5640,8 +5972,8 @@ function renderMessages(options = {}) {
     previousMessage = message;
     const priorityClass = isMensagemPrioritaria(message.id) ? 'message-priority-row' : '';
     const mentionClass = isMessageMentioningMe(message) ? 'message-mention-row' : '';
-    return `${dividerHtml}<div class="message-row ${ehOutro ? '' : 'own'} ${compact ? 'compact' : ''} ${priorityClass} ${mentionClass}" data-message-id="${Number(message.id)}" data-usuario-id="${Number(message.usuarioId || 0)}">${renderMessageRow(message)}</div>`;
-  }).join('');
+    return `${dividerHtml}${unreadDividerHtml}<div class="message-row ${ehOutro ? '' : 'own'} ${compact ? 'compact' : ''} ${priorityClass} ${mentionClass}" data-message-id="${Number(message.id)}" data-usuario-id="${Number(message.usuarioId || 0)}">${renderMessageRow(message)}</div>`;
+  }).join('') + loadNewerHtml;
   hydrateSecureAttachments(container);
   aplicarTwemoji(container);
   if (scrollToBottom) scrollMessagesToBottom({ stabilize: stabilizeBottom });
@@ -5697,7 +6029,12 @@ async function carregarMensagensAnteriores() {
 
 function abrirBuscaGlobal() {
   document.getElementById('globalSearchInput').value = '';
-  document.getElementById('globalSearchResults').textContent = 'Digite um termo para buscar.';
+  document.getElementById('globalSearchSender').innerHTML = '<option value="">Todos</option>' +
+    [usuarioAtual, ...contatosCache].filter(Boolean).map((user) => `<option value="${Number(user.id)}">${escapeHtml(user.nome || user.email || 'Usuário')}</option>`).join('');
+  document.getElementById('globalSearchFrom').value = '';
+  document.getElementById('globalSearchTo').value = '';
+  document.getElementById('globalSearchFiles').checked = false;
+  document.getElementById('globalSearchResults').textContent = 'Digite um termo ou escolha um filtro para buscar.';
   document.getElementById('globalSearchModal').classList.add('active');
   setTimeout(() => document.getElementById('globalSearchInput').focus(), 50);
 }
@@ -5706,14 +6043,31 @@ function executarBuscaGlobal(value) {
   clearTimeout(globalSearchTimer);
   const query = String(value || '').trim();
   const results = document.getElementById('globalSearchResults');
-  if (query.length < 2) {
-    results.textContent = 'Digite pelo menos 2 letras.';
+  const senderId = document.getElementById('globalSearchSender').value;
+  const fromValue = document.getElementById('globalSearchFrom').value;
+  const toValue = document.getElementById('globalSearchTo').value;
+  const filesOnly = document.getElementById('globalSearchFiles').checked;
+  if (query.length === 1 || (!query && !senderId && !fromValue && !toValue && !filesOnly)) {
+    results.textContent = 'Digite pelo menos 2 letras ou escolha um filtro.';
+    return;
+  }
+  if (fromValue && toValue && fromValue > toValue) {
+    results.textContent = 'A data inicial deve ser anterior à data final.';
     return;
   }
   results.textContent = 'Buscando...';
   globalSearchTimer = setTimeout(async () => {
     try {
-      const response = await fetch(`/api/busca-global?q=${encodeURIComponent(query)}`, { headers: authHeaders() });
+      const params = new URLSearchParams({ q: query });
+      if (senderId) params.set('senderId', senderId);
+      if (fromValue) params.set('from', new Date(`${fromValue}T00:00:00`).toISOString());
+      if (toValue) {
+        const nextDay = new Date(`${toValue}T00:00:00`);
+        nextDay.setDate(nextDay.getDate() + 1);
+        params.set('to', nextDay.toISOString());
+      }
+      if (filesOnly) params.set('filesOnly', 'true');
+      const response = await fetch(`/api/busca-global?${params}`, { headers: authHeaders() });
       if (!response.ok) throw new Error('Falha na busca');
       const data = await response.json();
       const encontrados = Array.isArray(data.resultados) ? data.resultados : [];
@@ -5722,12 +6076,16 @@ function executarBuscaGlobal(value) {
         return;
       }
       results.innerHTML = encontrados.map((item) => `
-        <div class="global-search-result" onclick="abrirResultadoBusca('${escapeHtml(item.tipoChat)}', ${Number(item.chatId)}, '${escapeHtml(item.chatNome).replace(/'/g, '&#039;')}', ${Number(item.id)})">
+        <button type="button" class="global-search-result">
           <strong>${escapeHtml(item.chatNome)} · ${escapeHtml(item.usuario_nome || 'Usuario')}</strong>
           <div>${highlightText(item.conteudo || '', query)}</div>
           <small>${escapeHtml(formatMessageTimestamp(item.criado_em))}</small>
-        </div>
+        </button>
       `).join('');
+      results.querySelectorAll('.global-search-result').forEach((button, index) => {
+        const item = encontrados[index];
+        button.addEventListener('click', () => abrirResultadoBusca(item.tipoChat, Number(item.chatId), item.chatNome, Number(item.id)));
+      });
     } catch (err) {
       results.textContent = 'Erro ao buscar: ' + err.message;
     }
@@ -5736,15 +6094,7 @@ function executarBuscaGlobal(value) {
 
 async function abrirResultadoBusca(tipo, id, nome, messageId) {
   fecharModal('globalSearchModal');
-  await carregarChat(tipo, id, nome);
-  setTimeout(() => {
-    const row = document.querySelector(`[data-message-id="${Number(messageId)}"]`);
-    if (row) {
-      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      row.classList.add('unread');
-      setTimeout(() => row.classList.remove('unread'), 1800);
-    }
-  }, 300);
+  await carregarChat(tipo, id, nome, { aroundMessageId: messageId });
 }
 
 function exportarConversaTxt() {
@@ -5892,25 +6242,30 @@ async function abrirGaleriaConversa() {
   hydrateSecureAttachments(overlay);
 }
 
-function upsertMessageInCache(message, { scrollToBottom = true } = {}) {
+function upsertMessageInCache(message, { scrollToBottom } = {}) {
   const normalized = normalizeMessage(message);
+  const container = document.getElementById('messagesContainer');
+  const nearBottom = container && container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+  const isOwnMessage = Number(normalized.usuarioId || normalized.usuario_id) === Number(usuarioAtual?.id);
   const index = currentMessagesCache.findIndex((item) => Number(item.id) === Number(normalized.id));
   if (index >= 0) currentMessagesCache[index] = { ...currentMessagesCache[index], ...normalized };
   else currentMessagesCache.push(normalized);
   currentMessagesCache.sort((a, b) => toTimestamp(a.criado_em) - toTimestamp(b.criado_em));
-  renderMessages({ scrollToBottom });
+  renderMessages({ scrollToBottom: scrollToBottom ?? (nearBottom || isOwnMessage) });
 }
 
-function replaceTemporaryMessage(clientTempId, message) {
+function replaceTemporaryMessage(clientTempId, message, { scrollToBottom = true } = {}) {
   const normalized = normalizeMessage(message);
-  const index = currentMessagesCache.findIndex((item) => String(item.client_temp_id || '') === String(clientTempId || ''));
+  const index = clientTempId
+    ? currentMessagesCache.findIndex((item) => String(item.client_temp_id || '') === String(clientTempId))
+    : -1;
   if (index >= 0) {
     currentMessagesCache[index] = { ...currentMessagesCache[index], ...normalized, client_temp_id: null };
   } else {
     currentMessagesCache.push(normalized);
   }
   currentMessagesCache.sort((a, b) => toTimestamp(a.criado_em) - toTimestamp(b.criado_em));
-  renderMessages();
+  renderMessages({ scrollToBottom });
 }
 
 function marcarMensagensComoLidasNaTela(remetenteId) {
@@ -6482,6 +6837,7 @@ async function carregarUsuariosAdmin() {
     const usuarios = await response.json();
     adminUsuariosCache = Array.isArray(usuarios) ? usuarios : [];
     renderGrupoMembrosSelector();
+    preencherGrupoEdicao();
     const tbody = document.getElementById('adminUsuariosTable');
     tbody.innerHTML = '';
 
@@ -6718,6 +7074,7 @@ function abrirPainelAdmin() {
   setAdminTab('usuarios');
   carregarUsuariosAdmin();
   carregarGrupos();
+  carregarGruposAdmin();
   carregarBackupsAdmin();
   carregarAgendamentoBackupAdmin();
   carregarMensagensApagadasAdmin();
@@ -6925,9 +7282,84 @@ async function redefinirSenhaTemporariaUsuario(usuarioId, nomeUsuario) {
   }
 }
 
+async function carregarGruposAdmin() {
+  if (!usuarioAtual?.admin) return;
+  try {
+    const response = await fetch('/api/admin/grupos', { headers: authHeaders() });
+    if (!response.ok) throw new Error('Falha ao carregar grupos e canais');
+    const data = await response.json();
+    adminGruposCache = Array.isArray(data) ? data : [];
+    const select = document.getElementById('adminGrupoEditarSelect');
+    const selected = select.value;
+    select.replaceChildren(new Option('Selecione um grupo ou canal', ''));
+    adminGruposCache.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).forEach((grupo) => {
+      select.add(new Option(`${grupo.tipo === 'canal' ? 'Canal' : 'Grupo'} · ${grupo.nome}`, String(grupo.id)));
+    });
+    if (adminGruposCache.some((grupo) => String(grupo.id) === selected)) select.value = selected;
+    preencherGrupoEdicao();
+  } catch (err) {
+    mostrarNotificacao(err.message, 'error');
+  }
+}
+
+function preencherGrupoEdicao() {
+  const id = Number(document.getElementById('adminGrupoEditarSelect')?.value);
+  const grupo = adminGruposCache.find((item) => Number(item.id) === id);
+  const nome = document.getElementById('adminGrupoEditarNome');
+  const descricao = document.getElementById('adminGrupoEditarDesc');
+  const visibilidade = document.getElementById('adminGrupoEditarVisibilidade');
+  const membros = document.getElementById('adminGrupoEditarMembros');
+  if (!nome || !descricao || !visibilidade || !membros) return;
+  nome.value = grupo?.nome || '';
+  descricao.value = grupo?.descricao || '';
+  visibilidade.value = grupo?.visibilidade || 'privado';
+  visibilidade.querySelector('[value="publico"]').disabled = grupo?.tipo !== 'canal';
+  membros.replaceChildren();
+  if (!grupo) return;
+  adminUsuariosCache.filter((user) => user.ativo).forEach((user) => {
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'admin-grupo-editar-membro';
+    checkbox.value = String(user.id);
+    checkbox.checked = grupo.membros?.includes(Number(user.id)) || false;
+    label.append(checkbox, document.createTextNode(user.nome));
+    membros.appendChild(label);
+  });
+}
+
+async function salvarGrupoEditado() {
+  const id = Number(document.getElementById('adminGrupoEditarSelect').value);
+  if (!id) return mostrarNotificacao('Selecione um grupo ou canal', 'error');
+  const nome = document.getElementById('adminGrupoEditarNome').value.trim();
+  const descricao = document.getElementById('adminGrupoEditarDesc').value.trim();
+  const visibilidade = document.getElementById('adminGrupoEditarVisibilidade').value;
+  const memberIds = [...document.querySelectorAll('.admin-grupo-editar-membro:checked')].map((input) => Number(input.value));
+  try {
+    const response = await fetch(`/api/admin/grupos/${id}`, {
+      method: 'PUT',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ nome, descricao, visibilidade, memberIds })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.erro || 'Falha ao salvar grupo');
+    await Promise.all([carregarGruposAdmin(), carregarGrupos()]);
+    if (tipoChat === 'grupo' && Number(chatIdAtual) === id) {
+      nomeChatAtual = nome;
+      document.getElementById('headerTitle').textContent = `# ${nome}`;
+      if (contextPanelMode === 'info') renderPainelConversa();
+    }
+    mostrarNotificacao('Alterações salvas', 'success');
+  } catch (err) {
+    mostrarNotificacao(err.message, 'error');
+  }
+}
+
 async function criarNovoGrupo() {
   const nome = document.getElementById('adminNovoGrupoNome').value.trim();
   const descricao = document.getElementById('adminNovoGrupoDesc').value.trim();
+  const tipo = document.getElementById('adminNovoGrupoTipo').value;
+  const visibilidade = document.getElementById('adminNovoGrupoVisibilidade').value;
   const memberIds = Array.from(document.querySelectorAll('.admin-grupo-membro:checked'))
     .map((checkbox) => Number(checkbox.value));
 
@@ -6940,7 +7372,7 @@ async function criarNovoGrupo() {
     const response = await fetch('/api/admin/criar-grupo', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ nome, descricao, memberIds })
+      body: JSON.stringify({ nome, descricao, tipo, visibilidade, memberIds })
     });
 
     const data = await response.json();
@@ -6949,11 +7381,12 @@ async function criarNovoGrupo() {
       return;
     }
 
-    mostrarNotificacao('Grupo criado com sucesso', 'success');
+    mostrarNotificacao(tipo === 'canal' ? 'Canal criado com sucesso' : 'Grupo criado com sucesso', 'success');
     document.getElementById('adminNovoGrupoNome').value = '';
     document.getElementById('adminNovoGrupoDesc').value = '';
     renderGrupoMembrosSelector();
     carregarGrupos();
+    carregarGruposAdmin();
   } catch (err) {
     mostrarErro('Erro: ' + err.message);
   }
@@ -6998,7 +7431,28 @@ async function limparAvisoGrupoAdmin() {
   await salvarAvisoGrupoAdmin();
 }
 
-function abrirNovoGrupo() { abrirPainelAdmin(); }
+function abrirNovoGrupo() {
+  abrirPainelAdmin();
+  setAdminTab('grupos');
+  document.getElementById('adminNovoGrupoTipo').value = 'grupo';
+  atualizarTipoNovoGrupo();
+  document.getElementById('adminNovoGrupoNome').focus();
+}
+
+function abrirNovoCanal() {
+  abrirPainelAdmin();
+  setAdminTab('grupos');
+  document.getElementById('adminNovoGrupoTipo').value = 'canal';
+  atualizarTipoNovoGrupo();
+  document.getElementById('adminNovoGrupoNome').focus();
+}
+
+function atualizarTipoNovoGrupo() {
+  const tipo = document.getElementById('adminNovoGrupoTipo').value;
+  const visibilidade = document.getElementById('adminNovoGrupoVisibilidade');
+  visibilidade.querySelector('[value="publico"]').disabled = tipo !== 'canal';
+  visibilidade.value = tipo === 'canal' ? 'publico' : 'privado';
+}
 function abrirNovoContato() { mostrarNotificacao('Todos os contatos cadastrados aparecem na lista', 'success'); }
 
 async function fazerLogout() {
