@@ -12595,3 +12595,14 @@ body.theme-dark .login-recovery-hint { color: #aab9cc; }
   box-sizing: border-box;
   z-index: 21;
 }
+
+/* Received messages open their action menu toward the conversation, not behind the sidebar. */
+.message.other .message-action-menu[open] .message-actions {
+  right: auto;
+  left: 0;
+}
+
+.message.own .message-action-menu[open] .message-actions {
+  right: 0;
+  left: auto;
+}
