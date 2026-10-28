@@ -12784,7 +12784,9 @@ body.theme-dark .plantao-manual-entry { border-color: #344b62; }
 #chatContainer .messages-container {
   background: #f7f9fc; padding-inline: clamp(16px, 3vw, 44px);
 }
-#chatContainer .message-row { max-width: 1100px; margin-inline: auto; padding-inline: 8px; }
+#chatContainer .message-row {
+  width: 100%; max-width: none; margin-inline: 0; padding-inline: 8px;
+}
 #chatContainer .message-row + .message-row:not(.compact) {
   border-top-color: #e9eef4; margin-top: 5px; padding-top: 11px;
 }
