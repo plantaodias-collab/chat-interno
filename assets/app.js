@@ -3019,7 +3019,6 @@ function aplicarSessaoUsuario() {
   document.getElementById('adminBadge').style.display = isAdmin ? 'inline-flex' : 'none';
   document.getElementById('adminSection').classList.toggle('hidden', !isAdmin);
   document.getElementById('novoGrupoBtn').style.display = isAdmin ? 'inline-flex' : 'none';
-  document.getElementById('novoCanalBtn').style.display = isAdmin ? 'inline-flex' : 'none';
   restaurarSecoesSidebar();
   document.getElementById('ajustesBtn').classList.remove('hidden');
   carregarMencoesInbox();
