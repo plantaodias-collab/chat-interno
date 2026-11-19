@@ -12792,6 +12792,51 @@ body.theme-dark .login-box .field::placeholder {
   }
 }
 
+/* Filtros da caixa de entrada: contadores legíveis sem ocupar espaço excessivo. */
+#chatContainer .inbox-section {
+  padding-top: 5px;
+  padding-bottom: 2px;
+}
+
+#chatContainer .inbox-shortcuts {
+  gap: 4px;
+  padding: 0 8px 4px;
+}
+
+#chatContainer .inbox-shortcut {
+  gap: 3px;
+  padding: 5px 6px;
+  color: #d7e5f4;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+#chatContainer .inbox-shortcut strong {
+  display: inline-grid;
+  min-width: 22px;
+  min-height: 20px;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e8f1ff;
+  color: #1d426d;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+#chatContainer .inbox-shortcut:hover,
+#chatContainer .inbox-shortcut.active {
+  color: #ffffff;
+  background: rgba(96,165,250,.16);
+}
+
+#chatContainer .inbox-shortcut:hover strong,
+#chatContainer .inbox-shortcut.active strong {
+  background: #ffffff;
+  color: #173b65;
+}
+
 /* Received messages open their action menu toward the conversation, not behind the sidebar. */
 .message.other .message-action-menu[open] .message-actions {
   right: auto;
