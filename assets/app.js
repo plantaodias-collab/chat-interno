@@ -4601,8 +4601,21 @@ async function fazerLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const senha = document.getElementById('loginSenha').value;
 
-  if (!email || !senha) {
-    mostrarErro('Digite e-mail e senha');
+  if (!email) {
+    mostrarErro('Informe seu e-mail.');
+    document.getElementById('loginEmail').focus();
+    return;
+  }
+
+  if (!document.getElementById('loginEmail').checkValidity()) {
+    mostrarErro('Informe um e-mail válido.');
+    document.getElementById('loginEmail').focus();
+    return;
+  }
+
+  if (!senha) {
+    mostrarErro('Informe sua senha.');
+    document.getElementById('loginSenha').focus();
     return;
   }
 
@@ -4634,10 +4647,28 @@ async function fazerLogin() {
   }
 }
 
+function alternarVisibilidadeSenha() {
+  const input = document.getElementById('loginSenha');
+  const button = document.getElementById('loginPasswordToggle');
+  if (!input || !button) return;
+  const mostrar = input.type === 'password';
+  input.type = mostrar ? 'text' : 'password';
+  button.textContent = mostrar ? 'Ocultar' : 'Mostrar';
+  button.setAttribute('aria-pressed', String(mostrar));
+  button.setAttribute('aria-label', mostrar ? 'Ocultar senha' : 'Mostrar senha');
+}
+
+function limparErroLogin() {
+  const target = document.getElementById('loginError');
+  if (target) target.textContent = '';
+}
+
 document.getElementById('loginForm')?.addEventListener('submit', (event) => {
   event.preventDefault();
   fazerLogin();
 });
+document.getElementById('loginEmail')?.addEventListener('input', limparErroLogin);
+document.getElementById('loginSenha')?.addEventListener('input', limparErroLogin);
 
 function conectarSocket() {
   socket = io();
