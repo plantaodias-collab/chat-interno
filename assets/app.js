@@ -5351,9 +5351,7 @@ async function carregarResumoConversas() {
 
 function renderGrupos() {
   const gruposList = document.getElementById('gruposList');
-  const canaisList = document.getElementById('canaisList');
   gruposList.innerHTML = '';
-  canaisList.innerHTML = '';
   renderSidebarInbox();
 
   const visiveis = sortByRecent(gruposCache, 'grupo').filter((grupo) => {
@@ -5399,12 +5397,11 @@ function renderGrupos() {
     list.appendChild(item);
     });
   };
-  renderSection(canaisList, visiveis.filter((grupo) => grupo.tipo === 'canal'), 'canal');
   renderSection(gruposList, visiveis.filter((grupo) => grupo.tipo !== 'canal'), 'grupo');
 }
 
 function alternarSecaoSidebar(section) {
-  const id = { canais: 'canaisList', grupos: 'gruposList', equipe: 'contatosList' }[section];
+  const id = { grupos: 'gruposList', equipe: 'contatosList' }[section];
   if (!id) return;
   const list = document.getElementById(id);
   const collapsed = list.classList.toggle('sidebar-collapsed');
@@ -5415,8 +5412,8 @@ function alternarSecaoSidebar(section) {
 }
 
 function restaurarSecoesSidebar() {
-  for (const section of ['canais', 'grupos', 'equipe']) {
-    const id = { canais: 'canaisList', grupos: 'gruposList', equipe: 'contatosList' }[section];
+  for (const section of ['grupos', 'equipe']) {
+    const id = { grupos: 'gruposList', equipe: 'contatosList' }[section];
     const collapsed = localStorage.getItem(`chatinterno.sidebar.${section}`) === '1';
     document.getElementById(id)?.classList.toggle('sidebar-collapsed', collapsed);
     const button = document.querySelector(`[aria-controls="${id}"]`);
