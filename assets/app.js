@@ -2987,11 +2987,15 @@ async function ativarNotificacoesNavegador() {
 }
 
 async function carregarDadosIniciais() {
-  await carregarConversasSilenciadas();
-  await carregarWorkflow();
-  await carregarGrupos();
-  await carregarContatos();
-  await carregarResumoConversas();
+  // As listas laterais são independentes: uma falha transitória em outra
+  // chamada não pode impedir que grupos e colegas sejam carregados.
+  await Promise.allSettled([
+    carregarConversasSilenciadas(),
+    carregarWorkflow(),
+    carregarGrupos(),
+    carregarContatos(),
+    carregarResumoConversas()
+  ]);
   await registrarServiceWorkerNotificacoes();
   updateBrowserTitle();
   atualizarBotaoNotificacoes();
@@ -5277,7 +5281,7 @@ async function excluirPeriodoEscalaPlantao(inicio, fim) {
 
 async function carregarGrupos() {
   try {
-    const response = await fetch('/api/grupos', { headers: authHeaders() });
+    const response = await fetch('/api/grupos', { headers: authHeaders(), credentials: 'same-origin' });
     if (!response.ok) throw new Error('Falha ao carregar grupos');
     gruposCache = await response.json();
     if (!Array.isArray(gruposCache)) gruposCache = [];
@@ -5295,7 +5299,6 @@ async function carregarGrupos() {
     atualizarPainelInicialSeAberto();
   } catch (err) {
     console.error(err);
-    gruposCache = [];
     renderGrupos();
     renderPinnedNotice();
     renderAvisosGrupoAdmin();
@@ -5307,7 +5310,7 @@ async function carregarGrupos() {
 
 async function carregarContatos() {
   try {
-    const response = await fetch('/api/usuarios', { headers: authHeaders() });
+    const response = await fetch('/api/usuarios', { headers: authHeaders(), credentials: 'same-origin' });
     if (!response.ok) throw new Error('Falha ao carregar contatos');
     contatosCache = await response.json();
     if (!Array.isArray(contatosCache)) contatosCache = [];
@@ -5319,7 +5322,6 @@ async function carregarContatos() {
     atualizarPainelInicialSeAberto();
   } catch (err) {
     console.error(err);
-    contatosCache = [];
     renderContatos();
   atualizarPainelInicialSeAberto();
   atualizarBadgeOperacional();
