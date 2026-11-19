@@ -12984,6 +12984,34 @@ body.theme-dark .plantao-manual-entry { border-color: #344b62; }
 #chatContainer .sidebar { background: #132846; border-color: #2e486c; }
 #chatContainer .sidebar-section { padding-top: 8px; padding-bottom: 8px; }
 #chatContainer .sidebar-section-header { min-height: 32px; }
+
+/* Compacta a transição da caixa de entrada para os grupos. */
+#chatContainer #sidebarInboxSection {
+  padding-bottom: 0;
+}
+
+#chatContainer #sidebarInboxSection + .sidebar-section {
+  padding-top: 2px;
+  padding-bottom: 4px;
+}
+
+#chatContainer #sidebarInboxSection + .sidebar-section > .sidebar-section-header {
+  min-height: 26px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+}
+
+#chatContainer #gruposList .chat-name {
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+#chatContainer #gruposList .chat-time {
+  font-size: 11px;
+}
+
 #chatContainer .menu-list.sidebar-collapsed { display: none !important; }
 #chatContainer .section-toggle {
   appearance: none; background: transparent; border: 0; color: #dceafa; cursor: pointer;
