@@ -11475,21 +11475,6 @@ body.sidebar-collapsed .container {
   grid-template-columns: 74px minmax(0, 1fr) !important;
 }
 
-/* Lista de contatos (Online/Offline) como uma unica lista que rola
-   junto, em vez de duas caixas de scroll separadas. Antes o grupo
-   Offline ficava preso em max-height:260px enquanto o Online podia
-   crescer ate 34vh, entao com muita gente online os offline ficavam
-   espremidos numa caixinha minuscula e dificeis de achar. */
-.contacts-section .menu-list {
-  overflow-y: auto;
-}
-
-.contact-group.online-group .contact-group-items,
-.contact-group.offline-group .contact-group-items {
-  max-height: none !important;
-  overflow: visible !important;
-}
-
 /* Sidebar um pouco mais larga (pedido do usuario), so em telas
    largas o suficiente pra nao apertar a area de conversa. Nao
    entra em conflito com o colapso (.sidebar-collapsed tem mais
@@ -11499,17 +11484,6 @@ body.sidebar-collapsed .container {
   .container {
     grid-template-columns: 360px minmax(0, 1fr) !important;
   }
-}
-
-/* O grupo Online tinha flex:0 0 auto (nunca encolhe): sem o scroll
-   interno de cima, ele passava a reivindicar a altura total dos
-   itens e espremia o Offline a quase 0px. Os dois passam a apenas
-   ocupar sua altura natural, empilhados, e quem rola tudo agora
-   e o .menu-list (unico scroll). */
-.contact-group.online-group,
-.contact-group.offline-group {
-  flex: 0 0 auto !important;
-  min-height: 0;
 }
 
 /* Fix: o botao Prioridade tambem ganha a classe is-active (alem de
@@ -12685,8 +12659,9 @@ body.theme-dark .login-box .field::placeholder {
   overflow: hidden;
 }
 
-.contact-groups {
+#chatContainer .contacts-section .contact-groups {
   min-height: 0;
+  flex: 1 1 0;
   overflow: hidden;
   gap: 8px;
 }
@@ -12695,17 +12670,28 @@ body.theme-dark .login-box .field::placeholder {
   min-height: 0;
 }
 
-.contact-group.online-group {
-  flex: 0 1 42%;
-  max-height: 42%;
-}
-
-.contact-group.offline-group {
-  flex: 1 1 58%;
+#chatContainer .contacts-section .contact-group {
+  flex: 1 1 0;
+  min-height: 0;
   max-height: none;
 }
 
-.contact-group-items {
+#chatContainer .contacts-section .contact-group-header {
+  flex: 0 0 auto;
+}
+
+#chatContainer .contacts-section .contact-group-items {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #9cb6d5 #1e344f;
+}
+
+#chatContainer .welcome-state.dashboard-home {
   min-height: 0;
   overflow-y: auto;
   scrollbar-gutter: stable;
