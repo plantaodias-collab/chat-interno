@@ -4395,8 +4395,10 @@ function getWelcomeStateHtml() {
           </div>
           <div class="dashboard-grid dashboard-work-grid">
             ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecerão aqui.', 'chat')}
+            <div class="dashboard-secondary">
             ${getDashboardListHtml('Para sua atenção', attentionItems.length ? 'prioridades e pendências' : 'nenhuma pendência', attentionItems, 'Nenhuma pendência no momento.')}
             ${getDashboardListHtml('Não lidas e prioridades', priorityItems.length ? 'prioridades marcadas' : 'responder primeiro', priorityItems.length ? priorityItems : unreadItems, 'Tudo em dia por aqui.')}
+            </div>
           </div>
         </section>
         <aside class="dashboard-assistant-contact ${iaEmBreve ? 'is-coming-soon' : ''}" aria-label="IA Cartório Dias de Castro">
