@@ -4394,8 +4394,8 @@ function getWelcomeStateHtml() {
             ${getDashboardStatCard('grupos', totalGrupos, 'grupos', '')}
           </div>
           <div class="dashboard-grid dashboard-work-grid">
-            ${getDashboardListHtml('Para sua atenção', attentionItems.length ? 'prioridades e pendências' : 'nenhuma pendência', attentionItems, 'Nenhuma pendência no momento.')}
             ${getDashboardListHtml('Recentes', 'continuar atendimento', recentItems, 'As conversas recentes aparecerão aqui.', 'chat')}
+            ${getDashboardListHtml('Para sua atenção', attentionItems.length ? 'prioridades e pendências' : 'nenhuma pendência', attentionItems, 'Nenhuma pendência no momento.')}
             ${getDashboardListHtml('Não lidas e prioridades', priorityItems.length ? 'prioridades marcadas' : 'responder primeiro', priorityItems.length ? priorityItems : unreadItems, 'Tudo em dia por aqui.')}
           </div>
         </section>
